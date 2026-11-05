@@ -4,6 +4,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AdminController, ProfileController } from './admin/admin.controller';
 import { AuthModule } from './auth/auth.module';
+import { GateModule } from './gate/gate.module';
 import { HealthController } from './health/health.controller';
 import { JobsModule } from './jobs/jobs.service';
 import { NotificationsModule } from './notifications/notifications.module';
@@ -25,6 +26,7 @@ import { VisitsModule } from './visits/visits.module';
     PassesModule,
     StorageModule,
     VisitsModule,
+    GateModule,
   ],
   controllers: [HealthController, AdminController, ProfileController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
