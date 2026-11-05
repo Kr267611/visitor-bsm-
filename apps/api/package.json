@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "start": "node dist/src/main.js",
-    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js",
+    "dev": "tsx watch --env-file=.env src/main.ts",
     "test": "jest",
     "test:e2e": "jest --config test/jest-e2e.json --runInBand --forceExit",
     "prisma": "prisma"
@@ -21,8 +21,10 @@
     "@nestjs/throttler": "^6.7.1",
     "@nestjs/websockets": "^11.2.8",
     "@prisma/client": "^6.0.0",
+    "@sentry/node": "^11.10.0",
     "@visitor/shared": "workspace:*",
     "bullmq": "^6.7.0",
+    "helmet": "^8.3.0",
     "ioredis": "^5.4.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",

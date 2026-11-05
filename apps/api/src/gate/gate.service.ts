@@ -66,6 +66,11 @@ export class GateService {
   }
 
   private async checkIn(visit: GateVisit, action: Action) {
+    // Isi scan ka retry beech mein poora ho gaya ho sakta hai: pehle wahi dekho, warna galat "already inside".
+    if (visit.status !== 'APPROVED') {
+      const replay = await this.replay(action.clientEventId);
+      if (replay) return replay;
+    }
     this.assertCanEnter(visit);
     try {
       await this.lifecycle.apply({
@@ -95,6 +100,8 @@ export class GateService {
   private async checkOut(visit: GateVisit, action: Action) {
     // Time khatam hone par bhi bahar jaane dena hai, isliye yahan window check nahi.
     if (visit.status !== 'CHECKED_IN') {
+      const replay = await this.replay(action.clientEventId);
+      if (replay) return replay;
       throw new ApiException(409, 'NOT_CHECKED_IN', 'Yeh visitor andar nahi hai.', { status: visit.status });
     }
     try {

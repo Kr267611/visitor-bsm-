@@ -1,4 +1,5 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, Logger } from '@nestjs/common';
+import * as Sentry from '@sentry/node';
 import type { Response } from 'express';
 import { ApiException } from './api-exception';
 
@@ -30,6 +31,7 @@ export class ApiErrorFilter implements ExceptionFilter {
       return;
     }
     this.logger.error(exception);
+    Sentry.captureException(exception);
     res.status(500).json({ error: 'INTERNAL', message: 'Kuch gadbad ho gayi. Dobara koshish karein.' });
   }
 }

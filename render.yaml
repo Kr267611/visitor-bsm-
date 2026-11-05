@@ -1,0 +1,68 @@
+# Staging: sab free. Asli launch se pehle docs/runbook.md ki "Launch checklist" dekhein.
+services:
+  - type: web
+    name: visitor-api
+    runtime: docker
+    region: singapore
+    plan: free
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    numInstances: 1
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: visitor-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: visitor-redis
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CONSENT_VERSION
+        value: v1
+      - key: SMS_PROVIDER
+        value: console
+      - key: QR_PRIVATE_KEY
+        sync: false
+      - key: QR_PUBLIC_KEY
+        sync: false
+      - key: PUBLIC_WEB_URL
+        sync: false
+      - key: API_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: MSG91_AUTH_KEY
+        sync: false
+      - key: SMS_SENDER
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+
+  - type: keyvalue
+    name: visitor-redis
+    region: singapore
+    plan: free
+    # BullMQ ki jobs kabhi delete nahi honi chahiye.
+    maxmemoryPolicy: noeviction
+    ipAllowList: []
+
+databases:
+  - name: visitor-db
+    region: singapore
+    plan: free
+    databaseName: visitor
+    user: visitor

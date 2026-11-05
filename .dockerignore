@@ -1,0 +1,9 @@
+**/node_modules
+**/dist
+**/.env
+.git
+.tools
+.superpowers
+docs
+apps/web
+apps/mobile
