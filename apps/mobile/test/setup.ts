@@ -36,3 +36,6 @@ beforeEach(() => {
   const { __router } = jest.requireMock('expo-router');
   Object.values(__router).forEach((fn) => (fn as jest.Mock).mockClear());
 });
+
+// Asli app jaisa React Native ka FormData, jo { uri, name, type } leta hai.
+global.FormData = jest.requireActual('react-native/Libraries/Network/FormData').default;

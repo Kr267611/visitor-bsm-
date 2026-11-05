@@ -1,0 +1,262 @@
+import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { fakeServer, Handlers, json, renderScreen, signIn, USERS } from '../../test/harness';
+import { capturePhoto, compressUntilSmall } from './capturePhoto';
+import { WalkInScreen } from './WalkInScreen';
+
+jest.mock('./capturePhoto', () => ({
+  ...jest.requireActual('./capturePhoto'),
+  capturePhoto: jest.fn(),
+}));
+
+type Listener = (payload?: unknown) => void;
+const mockSocket = {
+  listeners: new Map<string, Listener>(),
+  on(event: string, fn: Listener) {
+    this.listeners.set(event, fn);
+    return this;
+  },
+  disconnect: () => undefined,
+  fire(event: string, payload?: unknown) {
+    this.listeners.get(event)?.(payload);
+  },
+};
+jest.mock('socket.io-client', () => ({ io: () => mockSocket }));
+
+const detail = (over: object = {}) => ({
+  id: 'v1',
+  code: 'VIS-2026-00001',
+  status: 'PENDING_APPROVAL',
+  visitorName: 'Rahul Verma',
+  company: 'ACME',
+  photoUrl: null,
+  hostName: 'Anita Singh',
+  validFrom: '2026-11-05T04:30:00.000Z',
+  validTo: '2026-11-05T08:30:00.000Z',
+  checkedInAt: null,
+  purpose: 'Delivery',
+  hostId: 'h1',
+  type: 'WALKIN',
+  decisionNote: null,
+  receptionCallRequestedAt: null,
+  ...over,
+});
+
+function server(over: Handlers = {}) {
+  return fakeServer({
+    'GET /gates': () => json(200, [{ id: 'g1', name: 'Main Gate 1', siteId: 's1' }]),
+    'GET /gate/visitors/lookup': () => json(200, { found: false }),
+    'POST /gate/walk-ins/otp': () => json(204),
+    'GET /users/hosts': () => json(200, [{ id: 'h1', name: 'Anita Singh', department: 'Finance' }]),
+    'POST /uploads/photo': () => json(201, { key: 'uploads/u/p.jpg' }),
+    'POST /gate/walk-ins': () => json(201, { visitId: 'v1', code: 'VIS-2026-00001', status: 'PENDING_APPROVAL' }),
+    'GET /visits/v1': () => json(200, detail()),
+    ...over,
+  });
+}
+
+async function startFlow() {
+  await fireEvent.changeText(await screen.findByLabelText('Visitor ka mobile'), '98765 43210');
+  await fireEvent.press(screen.getByRole('button', { name: 'Aage badhein' }));
+  await screen.findByLabelText('OTP');
+}
+
+async function fillDetails(opts: { photo?: boolean; consent?: boolean } = {}) {
+  await fireEvent.changeText(screen.getByLabelText('OTP'), '123456');
+  await fireEvent.changeText(screen.getByLabelText('Naam'), 'Rahul Verma');
+  await fireEvent.changeText(screen.getByLabelText('Kaam'), 'Delivery');
+  if (opts.photo !== false) {
+    await fireEvent.press(screen.getByRole('button', { name: 'Photo lein' }));
+    await screen.findByLabelText('Li gayi photo');
+  }
+  await fireEvent.changeText(screen.getByLabelText('Kisse milna hai'), 'anita');
+  await fireEvent.press(await screen.findByRole('button', { name: /Anita Singh/ }));
+  if (opts.consent !== false) {
+    await fireEvent.press(screen.getByRole('checkbox', { name: /Visitor ko bata diya gaya hai/ }));
+  }
+}
+
+const submit = () => fireEvent.press(screen.getByRole('button', { name: 'Host ko bhejein' }));
+
+describe('walk-in', () => {
+  beforeEach(async () => {
+    mockSocket.listeners.clear();
+    (capturePhoto as jest.Mock).mockResolvedValue({ uri: 'file://photo.jpg' });
+    await signIn(USERS.guard);
+  });
+
+  it('known visitor prefilled after lookup, no new photo needed', async () => {
+    const s = server({
+      'GET /gate/visitors/lookup': () =>
+        json(200, { found: true, name: 'Rahul Verma', company: 'ACME', photoUrl: 'http://api.test/photos/old' }),
+    });
+    await renderScreen(<WalkInScreen />, s);
+    await startFlow();
+    expect(screen.getByLabelText('Naam').props.value).toBe('Rahul Verma');
+    expect(screen.getByLabelText('Company').props.value).toBe('ACME');
+    await fillDetails({ photo: false });
+    await submit();
+    await screen.findByText(/Host ke jawab ka intezaar/);
+    const body = s.calls.find((c) => c.key === 'POST /gate/walk-ins')!.body;
+    expect(body.photoKey).toBeUndefined();
+    expect(s.calls.some((c) => c.key === 'POST /uploads/photo')).toBe(false);
+  });
+
+  it('invalid phone stopped before any request', async () => {
+    const s = server();
+    await renderScreen(<WalkInScreen />, s);
+    await fireEvent.changeText(await screen.findByLabelText('Visitor ka mobile'), '123');
+    await fireEvent.press(screen.getByRole('button', { name: 'Aage badhein' }));
+    expect(await screen.findByText(/Mobile number sahi nahi hai/)).toBeTruthy();
+    expect(s.calls.filter((c) => c.key.includes('walk-ins'))).toHaveLength(0);
+  });
+
+  it('new visitor needs name and photo', async () => {
+    await renderScreen(<WalkInScreen />, server());
+    await startFlow();
+    await fillDetails({ photo: false });
+    expect(screen.getByRole('button', { name: 'Host ko bhejein' })).toBeDisabled();
+    await fireEvent.press(screen.getByRole('button', { name: 'Photo lein' }));
+    await screen.findByLabelText('Li gayi photo');
+    expect(screen.getByRole('button', { name: 'Host ko bhejein' })).toBeEnabled();
+  });
+
+  it('submit blocked without consent', async () => {
+    await renderScreen(<WalkInScreen />, server());
+    await startFlow();
+    await fillDetails({ consent: false });
+    expect(screen.getByRole('button', { name: 'Host ko bhejein' })).toBeDisabled();
+  });
+
+  it('wrong OTP stays on form with message, nothing lost', async () => {
+    const s = server({ 'POST /gate/walk-ins': () => json(401, { error: 'INVALID_OTP', message: 'OTP sahi nahi hai.' }) });
+    await renderScreen(<WalkInScreen />, s);
+    await startFlow();
+    await fillDetails();
+    await submit();
+    expect(await screen.findByText('OTP sahi nahi hai.')).toBeTruthy();
+    expect(screen.getByLabelText('Naam').props.value).toBe('Rahul Verma');
+    expect(s.calls.filter((c) => c.key === 'POST /uploads/photo')).toHaveLength(1);
+    await submit();
+    await waitFor(() => expect(s.calls.filter((c) => c.key === 'POST /gate/walk-ins')).toHaveLength(2));
+    expect(s.calls.filter((c) => c.key === 'POST /uploads/photo')).toHaveLength(1);
+  });
+
+  it('retry after network loss reuses clientEventId', async () => {
+    let first = true;
+    const s = server({
+      'POST /gate/walk-ins': () => {
+        if (first) {
+          first = false;
+          throw new TypeError('offline');
+        }
+        return json(201, { visitId: 'v1', code: 'c', status: 'PENDING_APPROVAL' });
+      },
+    });
+    await renderScreen(<WalkInScreen />, s);
+    await startFlow();
+    await fillDetails();
+    await submit();
+    await screen.findByText(/connection/);
+    await submit();
+    await screen.findByText(/Host ke jawab ka intezaar/);
+    const ids = s.calls.filter((c) => c.key === 'POST /gate/walk-ins').map((c) => c.body.clientEventId);
+    expect(ids[0]).toBe(ids[1]);
+  });
+
+  async function reachWaiting(s = server()) {
+    await renderScreen(<WalkInScreen />, s);
+    await startFlow();
+    await fillDetails();
+    await submit();
+    await screen.findByText(/Host ke jawab ka intezaar/);
+    return s;
+  }
+
+  it('waiting screen shows approved via socket, then Check-in button', async () => {
+    const s = await reachWaiting(
+      server({ 'POST /visits/v1/check-in': () => json(200, { result: 'CHECKED_IN' }) }),
+    );
+    await act(async () => mockSocket.fire('ready'));
+    s.handlers['GET /visits/v1'] = () => json(200, detail({ status: 'APPROVED', decisionNote: '10 minute baithao' }));
+    await act(async () => mockSocket.fire('visit.updated', { visitId: 'v1', status: 'APPROVED' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Check-in karein' }));
+    expect(screen.getByText(/10 minute baithao/)).toBeTruthy();
+    expect(await screen.findByText(/Entry ho gayi/)).toBeTruthy();
+    expect(s.calls.find((c) => c.key === 'POST /visits/v1/check-in')!.body.gateId).toBe('g1');
+  });
+
+  it('ignores updates for other visits', async () => {
+    const s = await reachWaiting();
+    const before = s.calls.filter((c) => c.key === 'GET /visits/v1').length;
+    await act(async () => mockSocket.fire('visit.updated', { visitId: 'other', status: 'APPROVED' }));
+    expect(s.calls.filter((c) => c.key === 'GET /visits/v1').length).toBe(before);
+  });
+
+  it('polls every 5s when socket down', async () => {
+    const s = await reachWaiting();
+    s.handlers['GET /visits/v1'] = () => json(200, detail({ status: 'APPROVED' }));
+    expect(await screen.findByRole('button', { name: 'Check-in karein' }, { timeout: 7000 })).toBeTruthy();
+  }, 15_000);
+
+  it('rejected shows reason, no check-in button', async () => {
+    const s = await reachWaiting();
+    s.handlers['GET /visits/v1'] = () => json(200, detail({ status: 'REJECTED', decisionNote: 'Aaj nahi' }));
+    await act(async () => mockSocket.fire('visit.updated', { visitId: 'v1', status: 'REJECTED' }));
+    expect(await screen.findByText(/Aaj nahi/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Check-in karein' })).toBeNull();
+  });
+
+  it('after 5 min shows "Reception host ko call kar raha hai"', async () => {
+    const s = await reachWaiting();
+    s.handlers['GET /visits/v1'] = () => json(200, detail({ receptionCallRequestedAt: '2026-11-05T05:00:00.000Z' }));
+    await act(async () => mockSocket.fire('visit.updated', { visitId: 'v1', status: 'PENDING_APPROVAL' }));
+    expect(await screen.findByText(/Reception host ko call kar raha hai/)).toBeTruthy();
+  });
+
+  it('resend OTP disabled for 30s', async () => {
+    await renderScreen(<WalkInScreen resendDelayMs={100} />, server());
+    await startFlow();
+    expect(screen.getByRole('button', { name: /OTP dobara bhejein/ })).toBeDisabled();
+    await waitFor(() => expect(screen.getByRole('button', { name: /OTP dobara bhejein/ })).toBeEnabled());
+  });
+
+  it('check-in reuses clientEventId on retry', async () => {
+    let first = true;
+    const s = await reachWaiting(
+      server({
+        'POST /visits/v1/check-in': () => {
+          if (first) {
+            first = false;
+            throw new TypeError('offline');
+          }
+          return json(200, { result: 'CHECKED_IN' });
+        },
+      }),
+    );
+    s.handlers['GET /visits/v1'] = () => json(200, detail({ status: 'APPROVED' }));
+    await act(async () => mockSocket.fire('visit.updated', { visitId: 'v1', status: 'APPROVED' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Check-in karein' }));
+    await screen.findByText(/connection/);
+    await fireEvent.press(screen.getByRole('button', { name: 'Check-in karein' }));
+    await screen.findByText(/Entry ho gayi/);
+    const ids = s.calls.filter((c) => c.key === 'POST /visits/v1/check-in').map((c) => c.body.clientEventId);
+    expect(ids[0]).toBe(ids[1]);
+  });
+});
+
+describe('compressUntilSmall', () => {
+  it('lowers quality until under 200 KB', async () => {
+    const seen: number[] = [];
+    const uri = await compressUntilSmall(async (q) => {
+      seen.push(q);
+      return { uri: `file://${q}`, size: q > 0.5 ? 500_000 : 150_000 };
+    }, 200_000);
+    expect(uri).toBe(`file://${seen[seen.length - 1]}`);
+    expect(seen[0]).toBeGreaterThan(seen[seen.length - 1]);
+  });
+
+  it('gives the smallest attempt if nothing fits', async () => {
+    const uri = await compressUntilSmall(async (q) => ({ uri: `file://${q}`, size: 900_000 }), 200_000);
+    expect(uri).toBe('file://0.35');
+  });
+});

@@ -245,6 +245,14 @@ export function createApiClient(options: ApiClientOptions) {
     const res = await send(method, path, opts, tokens?.accessToken);
     if (res.status !== 401) return parse<T>(res);
 
+    // Sirf login expire hone par refresh. Visitor ka galat OTP bhi 401 hai, usse guard logout nahi hona chahiye.
+    const code = await res
+      .clone()
+      .json()
+      .then((body: { error?: string }) => body.error)
+      .catch(() => undefined);
+    if (code && code !== 'UNAUTHORIZED') return parse<T>(res);
+
     await refresh();
     const next = await options.tokens.get();
     return parse<T>(await send(method, path, opts, next?.accessToken));

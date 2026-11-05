@@ -90,6 +90,26 @@ describe('createApiClient', () => {
     expect(t.expiredCount()).toBe(0);
   });
 
+  it('wrong visitor OTP on a logged-in route keeps the session', async () => {
+    const t = setup(() => json(401, { error: 'INVALID_OTP', message: 'OTP sahi nahi hai.' }));
+    const err = await t.api.gate
+      .walkIn({
+        phone: 'p',
+        otp: '1',
+        name: 'n',
+        hostId: 'h',
+        purpose: 'x',
+        gateId: 'g',
+        consent: true,
+        clientEventId: 'c',
+      })
+      .catch((e) => e);
+    expect(err.code).toBe('INVALID_OTP');
+    expect(t.calls).toHaveLength(1);
+    expect(t.stored()).not.toBeNull();
+    expect(t.expiredCount()).toBe(0);
+  });
+
   it('error body becomes ApiError with code', async () => {
     const t = setup(() => json(409, { error: 'ALREADY_CHECKED_IN', message: 'Andar hain', gate: 'Gate 1' }));
     const err = await t.api.gate.scan({ qr: 'q', gateId: 'g', mode: 'IN', clientEventId: 'c' }).catch((e) => e);
