@@ -79,6 +79,7 @@ export function ApprovalPage() {
           <dd>{WHEN.format(new Date(v.validTo))}</dd>
         </dl>
         {v.decisionNote && <p>Note: {v.decisionNote}</p>}
+        {v.deliveryFailed && <p className="notice">SMS nahi pahunch paya. "Link dobara bhejein" karein ya visitor ko call karein.</p>}
 
         {pending && (
           <>

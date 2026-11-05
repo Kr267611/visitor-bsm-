@@ -116,6 +116,7 @@ model Visit {
   groupId                  String?     @map("group_id") @db.Uuid
   type                     VisitType
   purpose                  String
+  invitedName              String?     @map("invited_name")
   status                   VisitStatus
   validFrom                DateTime    @map("valid_from")
   validTo                  DateTime    @map("valid_to")

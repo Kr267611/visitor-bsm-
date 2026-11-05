@@ -12,6 +12,7 @@ export class Msg91SmsProvider implements SmsProvider {
     const res = await this.fetchImpl('https://api.msg91.com/api/v2/sendsms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', authkey: this.authKey },
+      signal: AbortSignal.timeout(10_000),
       body: JSON.stringify({
         sender: this.sender,
         route: '4',

@@ -1,12 +1,13 @@
 import { Global, Injectable, Module } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { AuthModule } from '../auth/auth.module';
 
 export interface BlobStore {
   put(key: string, body: Buffer, contentType: string): Promise<void>;
   get(key: string): Promise<Buffer | null>;
   exists(key: string): Promise<boolean>;
+  delete(key: string): Promise<void>;
 }
 
 /** Tests aur local kaam ke liye. */
@@ -21,6 +22,9 @@ export class MemoryBlobStore implements BlobStore {
   }
   async exists(key: string) {
     return this.blobs.has(key);
+  }
+  async delete(key: string) {
+    this.blobs.delete(key);
   }
 }
 
@@ -41,6 +45,10 @@ export class S3BlobStore implements BlobStore {
     await this.client.send(
       new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: body, ContentType: contentType }),
     );
+  }
+
+  async delete(key: string) {
+    await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
   }
 
   async get(key: string) {
@@ -79,6 +87,10 @@ export class StorageService {
 
   exists(key: string) {
     return this.store.exists(key);
+  }
+
+  delete(key: string) {
+    return this.store.delete(key);
   }
 
   /** Short-lived link hamare API par. Storage ka host client ko kabhi nahi dikhta. */

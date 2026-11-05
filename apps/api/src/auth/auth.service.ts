@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { OtpService } from './otp.service';
 
 const REFRESH_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const ROTATION_GRACE_MS = 30_000;
 
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 const invalidSession = () => new ApiException(401, 'UNAUTHORIZED', 'Dobara login karein.');
@@ -43,28 +44,33 @@ export class AuthService {
       where: { tokenHash: sha256(refreshToken) },
       include: { user: true, device: true },
     });
+    // Jawab raaste mein kho jaye ya do tabs ek saath refresh karein to logout na ho: 30 second ki chhoot.
+    const graceOver = stored?.revokedAt && Date.now() - stored.revokedAt.getTime() > ROTATION_GRACE_MS;
     if (
       !stored ||
-      stored.revokedAt ||
+      graceOver ||
       stored.expiresAt < new Date() ||
       stored.device.revokedAt ||
       !stored.user.isActive
     ) {
       throw invalidSession();
     }
-    const { count } = await this.prisma.refreshToken.updateMany({
+    await this.prisma.refreshToken.updateMany({
       where: { id: stored.id, revokedAt: null },
       data: { revokedAt: new Date() },
     });
-    if (count !== 1) throw invalidSession();
     return this.issueTokens(stored.user, stored.deviceId);
   }
 
   async logout(refreshToken: string): Promise<void> {
-    await this.prisma.refreshToken.updateMany({
-      where: { tokenHash: sha256(refreshToken), revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
+    const stored = await this.prisma.refreshToken.findUnique({ where: { tokenHash: sha256(refreshToken) } });
+    if (!stored) return;
+    const now = new Date();
+    await this.prisma.$transaction([
+      this.prisma.refreshToken.updateMany({ where: { deviceId: stored.deviceId, revokedAt: null }, data: { revokedAt: now } }),
+      // Logout ke baad is phone par visitors ke naam wale push nahi aane chahiye.
+      this.prisma.device.update({ where: { id: stored.deviceId }, data: { revokedAt: now, pushToken: null } }),
+    ]);
   }
 
   private async issueTokens(user: User, deviceId: string) {

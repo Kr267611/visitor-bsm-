@@ -133,6 +133,10 @@ describe('auth', () => {
     const second = await http().post('/auth/refresh').send({ refreshToken: first.refreshToken });
     expect(second.status).toBe(200);
     expect(second.body.refreshToken).not.toBe(first.refreshToken);
+    await prisma.refreshToken.updateMany({
+      where: { revokedAt: { not: null } },
+      data: { revokedAt: new Date(Date.now() - 60_000) },
+    });
     await http().post('/auth/refresh').send({ refreshToken: first.refreshToken }).expect(401);
   });
 

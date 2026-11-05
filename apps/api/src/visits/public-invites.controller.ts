@@ -51,7 +51,7 @@ export class PublicInvitesController {
     const hasPass = v.status === 'APPROVED' || v.status === 'CHECKED_IN';
     return {
       status: v.status,
-      visitorName: v.visitor.name,
+      visitorName: v.status === 'INVITED' ? (v.invitedName ?? v.visitor.name) : v.visitor.name,
       hostName: v.host.name,
       siteName: v.site.name,
       validFrom: v.validFrom.toISOString(),
@@ -92,11 +92,14 @@ export class PublicInvitesController {
       return this.view(visit);
     }
 
+    // Band link se visitor ka record kabhi nahi badalna chahiye.
+    if (visit.status !== 'INVITED') throw new InvalidTransitionError(visit.status);
+
     const body = parseBody(registerSchema, rawBody);
     if (!body.consent) {
       throw new ApiException(422, 'CONSENT_REQUIRED', 'Aage badhne ke liye sahmati dena zaroori hai.');
     }
-    if (visit.status === 'INVITED' && visit.validTo < new Date()) {
+    if (visit.validTo < new Date()) {
       throw new ApiException(410, 'INVITE_EXPIRED', 'Is link ka time khatam ho gaya hai. Apne host se naya link maangein.');
     }
     if (!body.photoKey.startsWith(`visitors/${visit.id}/`) || !(await this.storage.exists(body.photoKey))) {
@@ -104,22 +107,27 @@ export class PublicInvitesController {
     }
 
     const consentAt = new Date();
-    await this.prisma.visitor.update({
-      where: { id: visit.visitorId },
-      data: {
-        name: body.name,
-        company: body.company,
-        photoKey: body.photoKey,
-        idType: body.idType,
-        idLast4: body.idLast4,
-        consentAt,
-        consentVersion: process.env.CONSENT_VERSION,
-        deleteAfter: new Date(consentAt.getTime() + RETENTION_DAYS * 24 * 60 * 60 * 1000),
-      },
-    });
-
     try {
-      await this.lifecycle.apply({ visitId: visit.id, action: 'REGISTER', actorId: null });
+      await this.lifecycle.apply({
+        visitId: visit.id,
+        action: 'REGISTER',
+        actorId: null,
+        inTx: async (tx) => {
+          await tx.visitor.update({
+            where: { id: visit.visitorId },
+            data: {
+              name: body.name,
+              company: body.company,
+              photoKey: body.photoKey,
+              idType: body.idType,
+              idLast4: body.idLast4,
+              consentAt,
+              consentVersion: process.env.CONSENT_VERSION,
+              deleteAfter: new Date(consentAt.getTime() + RETENTION_DAYS * 24 * 60 * 60 * 1000),
+            },
+          });
+        },
+      });
     } catch (error) {
       // Doosri request pehle jeet gayi: wahi pass de do.
       const fresh = await this.load(token);

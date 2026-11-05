@@ -1,4 +1,5 @@
 import { Body, Controller, HttpCode, Post } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { z } from 'zod';
 import { parseBody, requirePhone } from '../common/parse';
 import { AuthService } from './auth.service';
@@ -13,6 +14,7 @@ const verifySchema = z.object({
 const refreshSchema = z.object({ refreshToken: z.string().min(1) });
 
 @Public()
+@Throttle({ default: { limit: () => Number(process.env.AUTH_RATE_LIMIT ?? 20), ttl: 60_000 } })
 @Controller('auth')
 export class AuthController {
   constructor(private readonly auth: AuthService) {}

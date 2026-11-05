@@ -5,6 +5,7 @@ import { io } from 'socket.io-client';
 import { accessToken, useWebClient } from '../api';
 
 const POLL_MS = 30_000;
+const RECONNECT_MS = 3_000;
 export const DASHBOARD_KEY = ['dashboard', 'live'];
 
 export function useLiveSite(): {
@@ -21,13 +22,27 @@ export function useLiveSite(): {
       // Har reconnect par naya token.
       auth: (callback) => callback({ token: accessToken() }),
     });
-    socket.on('ready', () => setConnected(true));
-    socket.on('disconnect', () => setConnected(false));
+    let retry: ReturnType<typeof setTimeout> | null = null;
+    socket.on('ready', () => {
+      setConnected(true);
+      // Connection tootne ke beech jo badla, woh bhi dikhe.
+      void queryClient.invalidateQueries({ queryKey: DASHBOARD_KEY });
+    });
+    socket.on('disconnect', (reason: string) => {
+      setConnected(false);
+      // Server ne token expire hone par nikala: library khud reconnect nahi karti.
+      if (reason === 'io server disconnect') {
+        retry = setTimeout(() => {
+          void web.client.me.get().catch(() => undefined).finally(() => socket.connect());
+        }, RECONNECT_MS);
+      }
+    });
     socket.on('connect_error', () => setConnected(false));
     socket.on('visit.updated', () => {
       void queryClient.invalidateQueries({ queryKey: DASHBOARD_KEY });
     });
     return () => {
+      if (retry) clearTimeout(retry);
       socket.disconnect();
     };
   }, [web, queryClient]);

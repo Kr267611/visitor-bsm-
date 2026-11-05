@@ -11,10 +11,20 @@ const pushTokenSchema = z.object({ pushToken: z.string().min(1).max(300) });
 export class DevicesController {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** Security sirf apni site ke devices. Admin sab. */
+  private scope(user: AuthUser) {
+    return user.role === 'admin' ? {} : { user: { siteId: user.siteId } };
+  }
+
   @Post('devices/push-token')
   @HttpCode(204)
   async savePushToken(@CurrentUser() user: AuthUser, @Body() body: unknown) {
     const { pushToken } = parseBody(pushTokenSchema, body);
+    // Ek phone ka token sirf aakhri login par, warna doosre user ke push is phone par aayenge.
+    await this.prisma.device.updateMany({
+      where: { pushToken, id: { not: user.deviceId } },
+      data: { pushToken: null },
+    });
     await this.prisma.device.update({
       where: { id: user.deviceId },
       data: { pushToken, lastSeenAt: new Date() },
@@ -23,8 +33,9 @@ export class DevicesController {
 
   @Roles('admin', 'security')
   @Get('admin/devices')
-  list() {
+  list(@CurrentUser() user: AuthUser) {
     return this.prisma.device.findMany({
+      where: this.scope(user),
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
@@ -40,15 +51,13 @@ export class DevicesController {
   @Roles('admin', 'security')
   @Post('admin/devices/:id/revoke')
   @HttpCode(204)
-  async revoke(@Param('id', ParseUUIDPipe) id: string) {
-    const { count } = await this.prisma.device.updateMany({
+  async revoke(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
+    const exists = await this.prisma.device.count({ where: { id, ...this.scope(user) } });
+    if (!exists) throw new ApiException(404, 'NOT_FOUND', 'Device nahi mila.');
+    await this.prisma.device.updateMany({
       where: { id, revokedAt: null },
       data: { revokedAt: new Date(), pushToken: null },
     });
-    if (count === 0) {
-      const exists = await this.prisma.device.count({ where: { id } });
-      if (!exists) throw new ApiException(404, 'NOT_FOUND', 'Device nahi mila.');
-    }
     await this.prisma.refreshToken.updateMany({
       where: { deviceId: id, revokedAt: null },
       data: { revokedAt: new Date() },

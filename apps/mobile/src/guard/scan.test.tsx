@@ -1,12 +1,14 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import * as SecureStore from 'expo-secure-store';
+import { AppState } from 'react-native';
 import { fakeServer, Handlers, json, renderScreen, signIn, USERS } from '../../test/harness';
 import { GuardHomeScreen } from './GuardHomeScreen';
 
-const mockCamera: { props: any; permission: any; request: jest.Mock } = {
+const mockCamera: { props: any; permission: any; request: jest.Mock; get: jest.Mock } = {
   props: null,
   permission: { granted: true, canAskAgain: true },
   request: jest.fn(),
+  get: jest.fn(),
 };
 
 jest.mock('expo-camera', () => ({
@@ -14,7 +16,7 @@ jest.mock('expo-camera', () => ({
     mockCamera.props = props;
     return null;
   },
-  useCameraPermissions: () => [mockCamera.permission, mockCamera.request],
+  useCameraPermissions: () => [mockCamera.permission, mockCamera.request, mockCamera.get],
 }));
 
 const { __router: router } = jest.requireMock('expo-router');
@@ -145,6 +147,71 @@ describe('guard scan', () => {
     expect(await screen.findByText('Entry confirm nahi hui. Dobara scan karein.', {}, { timeout: 5000 })).toBeTruthy();
     expect(screen.queryByText('Andar ja sakte hain')).toBeNull();
   }, 15_000);
+
+  it('rescan after a network failure reuses the event id', async () => {
+    const s = await open(
+      server({
+        'POST /gate/scan': () => {
+          throw new TypeError('offline');
+        },
+      }),
+    );
+    await readQr('v1.qr');
+    await fireEvent.press(await screen.findByRole('button', { name: 'Agla scan' }, { timeout: 5000 }));
+    s.handlers['POST /gate/scan'] = () => json(200, ok);
+    await readQr('v1.qr');
+    await screen.findByText('Rahul Verma');
+    const ids = scanCalls(s).map((c) => c.body.clientEventId);
+    expect(new Set(ids).size).toBe(1);
+  }, 15_000);
+
+  it('after a definite answer the next scan gets a new id', async () => {
+    const s = await open();
+    await readQr('v1.qr');
+    await fireEvent.press(await screen.findByRole('button', { name: 'Agla scan' }));
+    await readQr('v1.qr');
+    await waitFor(() => expect(scanCalls(s)).toHaveLength(2));
+    expect(scanCalls(s)[0].body.clientEventId).not.toBe(scanCalls(s)[1].body.clientEventId);
+  });
+
+  it('guard can log out from the main screen', async () => {
+    const s = await open(server({ 'POST /auth/logout': () => json(204) }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Logout' }));
+    await waitFor(() => expect(s.calls.some((c) => c.key === 'POST /auth/logout')).toBe(true));
+  });
+
+  it('gate can be changed from the main screen', async () => {
+    const s = server({
+      'GET /gates': () =>
+        json(200, [
+          { id: 'g1', name: 'Main Gate 1', siteId: 's1' },
+          { id: 'g2', name: 'Gate 2', siteId: 's1' },
+        ]),
+    });
+    await renderScreen(<GuardHomeScreen />, s);
+    await fireEvent.press(await screen.findByRole('button', { name: 'Gate 2' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Gate badlein' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Main Gate 1' }));
+    await waitFor(() => expect(mockCamera.props).not.toBeNull());
+    await readQr('v1.qr');
+    await screen.findByText('Rahul Verma');
+    expect(scanCalls(s)[0].body.gateId).toBe('g1');
+  });
+
+  it('returning from Settings re-checks camera permission', async () => {
+    const listeners: ((state: string) => void)[] = [];
+    const spy = jest.spyOn(AppState, 'addEventListener').mockImplementation(((_: string, fn: (s: string) => void) => {
+      listeners.push(fn);
+      return { remove: () => undefined };
+    }) as never);
+    mockCamera.permission = { granted: false, canAskAgain: false };
+    mockCamera.get.mockClear();
+    await renderScreen(<GuardHomeScreen />, server());
+    await screen.findByText(/Camera ki permission nahi hai/);
+    await act(async () => listeners.forEach((fn) => fn('active')));
+    expect(mockCamera.get).toHaveBeenCalled();
+    spy.mockRestore();
+  });
 
   it('camera denied shows settings link and manual check-in', async () => {
     mockCamera.permission = { granted: false, canAskAgain: false };

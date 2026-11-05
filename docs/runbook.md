@@ -12,6 +12,7 @@ Staging free plans par chalta hai. Asli visitors ka data free plan par nahi rakh
 - [ ] SMS: gateway account, DLT templates (`apps/api/src/notifications/templates.ts` aur `otp.service.ts` ka text), phir `SMS_PROVIDER=msg91`, `MSG91_AUTH_KEY`, `SMS_SENDER`.
 - [ ] Staging par asli SMS, asli Expo push, aur India se gate scan ka speed test (p95 2 second ke andar). Jio aur Airtel dono par.
 - [ ] `QR_*` keys production ke liye nayi banayein: `npx tsx scripts/gen-qr-keys.ts`.
+- [ ] Android push: Firebase project (FCM) aur `eas init` ka projectId lagayein. Iske bina host ko sirf SMS jayega.
 - [ ] Seed production par mat chalayein. Pehla admin SQL se banayein.
 
 ## Rozana monitoring

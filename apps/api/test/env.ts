@@ -14,3 +14,4 @@ process.env.QR_PUBLIC_KEY = Buffer.from(qrKeys.publicKey.export({ type: 'spki', 
 process.env.PUSH_PROVIDER = 'fake';
 process.env.STORAGE_DRIVER = 'memory';
 process.env.PUBLIC_RATE_LIMIT = '100000';
+process.env.AUTH_RATE_LIMIT = '100000';

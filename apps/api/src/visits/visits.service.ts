@@ -61,6 +61,7 @@ export class VisitsService {
         siteId: user.siteId,
         type: 'PRE',
         purpose: input.purpose,
+        invitedName: input.visitorName,
         status: 'INVITED',
         validFrom: input.validFrom,
         validTo: input.validTo,
@@ -108,8 +109,10 @@ export class VisitsService {
       where: { visitId: id, type: { in: ['APPROVE', 'REJECT'] } },
       orderBy: { occurredAt: 'desc' },
     });
+    const failed = await this.prisma.outbox.count({ where: { visitId: id, status: 'FAILED' } });
     return {
       ...this.toSummary(visit),
+      deliveryFailed: failed > 0,
       purpose: visit.purpose,
       hostId: visit.hostId,
       type: visit.type,
@@ -180,13 +183,16 @@ export class VisitsService {
   }
 
   toSummary(v: VisitWithPeople): VisitSummary {
+    // Visitor ke form bharne se pehle host ko sirf wahi dikhe jo usne khud likha.
+    // Warna kisi ka bhi number daal kar uska saved naam aur photo dekha ja sakta tha.
+    const invited = v.status === 'INVITED';
     return {
       id: v.id,
       code: v.code,
       status: v.status,
-      visitorName: v.visitor.name,
-      company: v.visitor.company,
-      photoUrl: v.visitor.photoKey ? this.storage.photoUrl(v.visitor.photoKey) : null,
+      visitorName: invited ? (v.invitedName ?? v.visitor.name) : v.visitor.name,
+      company: invited ? null : v.visitor.company,
+      photoUrl: !invited && v.visitor.photoKey ? this.storage.photoUrl(v.visitor.photoKey) : null,
       hostName: v.host.name,
       validFrom: v.validFrom.toISOString(),
       validTo: v.validTo.toISOString(),

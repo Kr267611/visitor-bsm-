@@ -24,6 +24,7 @@ export interface LiveDashboard {
 
 export type ErrorCode =
   | 'RATE_LIMITED'
+  | 'SMS_UNAVAILABLE'
   | 'INVALID_PASS'
   | 'WRONG_SITE'
   | 'PASS_NOT_YET_VALID'

@@ -1,8 +1,8 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Crypto from 'expo-crypto';
 import { useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
-import { Linking, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { AppState, Linking, StyleSheet, View } from 'react-native';
 import { errorMessage, useApi } from '../api';
 import { useAuth } from '../auth/AuthProvider';
 import { Button, colors, ErrorText, Muted, Screen, Title } from '../ui/kit';
@@ -18,7 +18,18 @@ export function GuardHomeScreen() {
   const router = useRouter();
   const { logout } = useAuth();
   const { gates, gate, setGate, ready, error } = useGate();
-  const [permission, requestPermission] = useCameraPermissions();
+  const [permission, requestPermission, getPermission] = useCameraPermissions();
+  const [choosingGate, setChoosingGate] = useState(false);
+  // Network fail hua to pata nahi entry hui ya nahi: us QR ke dobara scan par wahi id, taaki galat "pehle hi andar" na aaye.
+  const unconfirmed = useRef<{ key: string; id: string } | null>(null);
+
+  useEffect(() => {
+    // Settings se wapas aane par permission dobara dekho.
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void getPermission();
+    });
+    return () => sub.remove();
+  }, [getPermission]);
   const [mode, setMode] = useState<Mode>('IN');
   const [outcome, setOutcome] = useState<ScanOutcome | null>(null);
   const [busy, setBusy] = useState(false);
@@ -30,7 +41,11 @@ export function GuardHomeScreen() {
     processing.current = true;
     setBusy(true);
     try {
-      setOutcome(await scanWithRetry(api, { qr: data, gateId: gate.id, mode, clientEventId: Crypto.randomUUID() }));
+      const key = `${data}|${mode}`;
+      const clientEventId = unconfirmed.current?.key === key ? unconfirmed.current.id : Crypto.randomUUID();
+      const result = await scanWithRetry(api, { qr: data, gateId: gate.id, mode, clientEventId });
+      unconfirmed.current = result.kind === 'network' ? { key, id: clientEventId } : null;
+      setOutcome(result);
     } finally {
       processing.current = false;
       setBusy(false);
@@ -70,12 +85,20 @@ export function GuardHomeScreen() {
     );
   }
 
-  if (!gate) {
+  if (!gate || choosingGate) {
     return (
       <Screen>
         <Title>Aap kis gate par hain?</Title>
         {gates.map((g) => (
-          <Button key={g.id} title={g.name} kind="plain" onPress={() => setGate(g.id)} />
+          <Button
+            key={g.id}
+            title={g.name}
+            kind="plain"
+            onPress={() => {
+              setGate(g.id);
+              setChoosingGate(false);
+            }}
+          />
         ))}
       </Screen>
     );
@@ -117,6 +140,16 @@ export function GuardHomeScreen() {
 
       <Button title="Walk-in entry" kind="plain" onPress={() => router.push('/(guard)/walk-in')} />
       <Button title="Andar kaun hai" kind="plain" onPress={() => router.push('/(guard)/inside')} />
+      <View style={styles.modes}>
+        {gates.length > 1 ? (
+          <View style={styles.mode}>
+            <Button title="Gate badlein" kind="plain" onPress={() => setChoosingGate(true)} />
+          </View>
+        ) : null}
+        <View style={styles.mode}>
+          <Button title="Logout" kind="plain" onPress={() => void logout()} />
+        </View>
+      </View>
     </Screen>
   );
 }

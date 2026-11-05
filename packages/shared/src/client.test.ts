@@ -83,6 +83,17 @@ describe('createApiClient', () => {
     expect(t.expiredCount()).toBe(0);
   });
 
+  it('server error during refresh keeps the session', async () => {
+    const t = setup((url) =>
+      url.endsWith('/auth/refresh')
+        ? json(503, { error: 'INTERNAL', message: 'down' })
+        : json(401, { error: 'UNAUTHORIZED', message: 'x' }),
+    );
+    await expect(t.api.gates.list()).rejects.toBeInstanceOf(ApiError);
+    expect(t.stored()).not.toBeNull();
+    expect(t.expiredCount()).toBe(0);
+  });
+
   it('wrong OTP 401 does not trigger refresh', async () => {
     const t = setup(() => json(401, { error: 'INVALID_OTP', message: 'OTP sahi nahi hai.' }));
     await expect(t.api.auth.verifyOtp({ phone: 'p', otp: '1', deviceName: 'd' })).rejects.toMatchObject({ code: 'INVALID_OTP' });

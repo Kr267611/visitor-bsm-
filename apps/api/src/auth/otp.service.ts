@@ -7,6 +7,8 @@ import { RedisService } from '../redis/redis.service';
 const OTP_TTL_SEC = 5 * 60;
 const MAX_ATTEMPTS = 5;
 const RATE_WINDOW_SEC = 10 * 60;
+const MAX_DAILY_FAILURES = 30;
+const DAY_SEC = 24 * 60 * 60;
 const MAX_REQUESTS = 3;
 
 export type OtpPurpose = 'LOGIN_OTP' | 'WALKIN_OTP';
@@ -45,20 +47,34 @@ export class OtpService {
       .hset(key, { hash: this.hash(phone, otp), attempts: 0 })
       .expire(key, OTP_TTL_SEC)
       .exec();
-    await this.sms.send(phone, TEXT[purpose](otp));
+    try {
+      await this.sms.send(phone, TEXT[purpose](otp));
+    } catch {
+      // Jo SMS gaya hi nahi, use limit mein nahi ginte.
+      await this.redis.client.decr(rateKey);
+      await this.redis.client.del(key);
+      throw new ApiException(503, 'SMS_UNAVAILABLE', 'SMS abhi nahi ja raha. Thodi der baad koshish karein, ya paper register par likhein.');
+    }
   }
 
   async verify(phone: string, otp: string, purpose: OtpPurpose): Promise<boolean> {
     const key = `otp:${purpose}:${phone}`;
+    const failKey = `otp-fail:${purpose}:${phone}`;
     const stored = await this.redis.client.hget(key, 'hash');
     if (!stored) return false;
+    if (Number(await this.redis.client.get(failKey)) >= MAX_DAILY_FAILURES) return false;
 
     // Pehle attempt ginte hain, taaki parallel requests limit par se na nikal sakein.
     const attempts = await this.redis.client.hincrby(key, 'attempts', 1);
     if (attempts > MAX_ATTEMPTS) return false;
 
     const ok = timingSafeEqual(Buffer.from(stored), Buffer.from(this.hash(phone, otp)));
-    if (ok) await this.redis.client.del(key);
+    if (ok) {
+      await this.redis.client.del(key);
+    } else {
+      const fails = await this.redis.client.incr(failKey);
+      if (fails === 1) await this.redis.client.expire(failKey, DAY_SEC);
+    }
     return ok;
   }
 }

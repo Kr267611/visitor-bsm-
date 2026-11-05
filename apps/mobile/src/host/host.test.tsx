@@ -119,6 +119,11 @@ describe('host screens', () => {
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull());
   });
 
+  it('failed SMS is shown to the host', async () => {
+    await renderScreen(<VisitScreen />, server({ 'GET /visits/v1': () => json(200, detail({ deliveryFailed: true })) }));
+    expect(await screen.findByText(/SMS nahi pahunch paya/)).toBeTruthy();
+  });
+
   it('visit not allowed shows message', async () => {
     await renderScreen(<VisitScreen />, server({ 'GET /visits/v1': () => json(403, { error: 'FORBIDDEN', message: 'Aapko iski permission nahi hai.' }) }));
     expect(await screen.findByText('Aapko iski permission nahi hai.')).toBeTruthy();

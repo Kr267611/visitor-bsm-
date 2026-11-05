@@ -23,6 +23,7 @@ export interface VisitDetail extends VisitSummary {
   hostId: string;
   type: 'PRE' | 'WALKIN';
   decisionNote: string | null;
+  deliveryFailed: boolean;
   receptionCallRequestedAt: string | null;
 }
 
@@ -225,8 +226,8 @@ export function createApiClient(options: ApiClientOptions) {
         const res = await send('POST', '/auth/refresh', { body: { refreshToken: current.refreshToken } });
         await options.tokens.set(await parse<Tokens>(res));
       } catch (error) {
-        // Sirf internet gaya ho to login mat hatao.
-        if (!(error instanceof NetworkError)) {
+        // Sirf server ke saaf "login galat hai" par hatao. Internet ya server ki dikkat par nahi.
+        if (error instanceof ApiError && error.status === 401) {
           await options.tokens.set(null);
           options.onSessionExpired();
         }

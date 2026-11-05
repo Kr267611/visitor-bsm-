@@ -182,6 +182,11 @@ describe('host screens', () => {
       expect(await screen.findByRole('button', { name: 'Approve' })).toBeInTheDocument();
     });
 
+    it('failed SMS is shown to the host', async () => {
+      renderApp('/my/visits/v1', server({ 'GET /visits/v1': () => json(200, detail({ deliveryFailed: true })) }));
+      expect(await screen.findByText(/SMS nahi pahunch paya/)).toBeInTheDocument();
+    });
+
     it('no permission shows message', async () => {
       renderApp('/my/visits/v1', server({ 'GET /visits/v1': () => json(403, { error: 'FORBIDDEN', message: 'Aapko iski permission nahi hai.' }) }));
       expect(await screen.findByRole('alert')).toHaveTextContent('permission');

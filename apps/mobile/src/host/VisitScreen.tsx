@@ -74,6 +74,7 @@ export function VisitScreen() {
         {WHEN.format(new Date(v.validFrom))} se {WHEN.format(new Date(v.validTo))} tak
       </Text>
       {v.decisionNote ? <Text style={styles.line}>Note: {v.decisionNote}</Text> : null}
+      {v.deliveryFailed ? <ErrorText>SMS nahi pahunch paya. "Link dobara bhejein" karein ya visitor ko call karein.</ErrorText> : null}
 
       {pending ? (
         <>

@@ -72,9 +72,8 @@ export function InsideList() {
   const queryClient = useQueryClient();
   const { gate } = useGate();
   const [search, setSearch] = useState('');
-  const connected = useLiveUpdates(() => {
-    void queryClient.invalidateQueries({ queryKey: KEY });
-  });
+  const refresh = () => void queryClient.invalidateQueries({ queryKey: KEY });
+  const connected = useLiveUpdates(refresh, refresh);
   const board = useQuery<LiveDashboard>({
     queryKey: KEY,
     queryFn: () => api.dashboard.live(),

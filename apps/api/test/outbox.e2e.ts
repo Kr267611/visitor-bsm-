@@ -69,18 +69,30 @@ describe('outbox', () => {
     expect(ctx.sms.sent).toHaveLength(0);
   });
 
-  it('5th failure marks FAILED', async () => {
+  it('12th failure marks FAILED, after hours of retries', async () => {
     const row = await addSms();
     ctx.sms.failing = true;
     let now = T0;
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 12; i++) {
       await worker.tick(now);
       now = new Date(now.getTime() + 3_600_000);
     }
     const after = await ctx.prisma.outbox.findUniqueOrThrow({ where: { id: row.id } });
     expect(after.status).toBe('FAILED');
-    expect(after.attempts).toBe(5);
+    expect(after.attempts).toBe(12);
     expect(await worker.tick(new Date(now.getTime() + 3_600_000))).toBe(0);
+  });
+
+  it('backoff stops growing at 30 minutes', async () => {
+    const row = await addSms();
+    ctx.sms.failing = true;
+    let now = T0;
+    for (let i = 0; i < 8; i++) {
+      await worker.tick(now);
+      now = new Date(now.getTime() + 3_600_000);
+    }
+    const after = await ctx.prisma.outbox.findUniqueOrThrow({ where: { id: row.id } });
+    expect(after.nextRetryAt.getTime() - (now.getTime() - 3_600_000)).toBe(30 * 60_000);
   });
 
   it('two ticks in parallel send once', async () => {

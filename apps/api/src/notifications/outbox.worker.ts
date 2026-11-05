@@ -9,7 +9,9 @@ import { renderTemplate, TemplateKey } from './templates';
 const BATCH_SIZE = 50;
 const LEASE_MS = 120_000;
 const BASE_BACKOFF_MS = 30_000;
-const MAX_ATTEMPTS = 5;
+const MAX_BACKOFF_MS = 30 * 60_000;
+// Lagbhag 3.5 ghante tak koshish, taaki gateway ka lamba outage message na khaaye.
+const MAX_ATTEMPTS = 12;
 const TICK_MS = 5_000;
 const APPROVAL_TEMPLATES: string[] = ['APPROVAL_REQUEST', 'APPROVAL_REMINDER'];
 
@@ -105,7 +107,7 @@ export class OutboxWorker implements OnModuleInit {
         attempts,
         status: failed ? 'FAILED' : 'PENDING',
         lastError: error.message,
-        nextRetryAt: new Date(now.getTime() + BASE_BACKOFF_MS * 2 ** row.attempts),
+        nextRetryAt: new Date(now.getTime() + Math.min(BASE_BACKOFF_MS * 2 ** row.attempts, MAX_BACKOFF_MS)),
       },
     });
   }

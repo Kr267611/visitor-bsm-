@@ -31,6 +31,8 @@ export interface ApplyInput {
   >;
   notify?: OutboxDraft[];
   meta?: object;
+  /** Status badalne ke saath, usi transaction mein. */
+  inTx?: (tx: Prisma.TransactionClient) => Promise<void>;
 }
 
 /** `visits.status` sirf yahin se badalta hai: status, audit event aur outbox ek transaction mein. */
@@ -61,6 +63,7 @@ export class VisitLifecycleService {
         const fresh = await tx.visit.findUniqueOrThrow({ where: { id: current.id } });
         throw new InvalidTransitionError(fresh.status);
       }
+      await input.inTx?.(tx);
 
       await tx.visitEvent.create({
         data: {

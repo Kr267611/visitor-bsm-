@@ -16,6 +16,7 @@ const mockSocket = {
     return this;
   },
   disconnect: () => undefined,
+  connect: jest.fn(),
   fire(event: string, payload?: unknown) {
     this.listeners.get(event)?.(payload);
   },
@@ -184,6 +185,21 @@ describe('walk-in', () => {
     expect(await screen.findByText(/Entry ho gayi/)).toBeTruthy();
     expect(s.calls.find((c) => c.key === 'POST /visits/v1/check-in')!.body.gateId).toBe('g1');
   });
+
+  it('ready refetches, so an approval during the gap is not missed', async () => {
+    const s = await reachWaiting();
+    s.handlers['GET /visits/v1'] = () => json(200, detail({ status: 'APPROVED' }));
+    await act(async () => mockSocket.fire('ready'));
+    expect(await screen.findByRole('button', { name: 'Check-in karein' })).toBeTruthy();
+  });
+
+  it('server disconnect (expired token) refreshes session and reconnects', async () => {
+    const s = await reachWaiting(server({ 'GET /me': () => json(200, { id: 'u' }) }));
+    mockSocket.connect.mockClear();
+    await act(async () => mockSocket.fire('disconnect', 'io server disconnect'));
+    await waitFor(() => expect(mockSocket.connect).toHaveBeenCalled(), { timeout: 5000 });
+    expect(s.calls.some((c) => c.key === 'GET /me')).toBe(true);
+  }, 10_000);
 
   it('ignores updates for other visits', async () => {
     const s = await reachWaiting();

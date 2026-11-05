@@ -11,6 +11,7 @@ const socket = vi.hoisted(() => ({
     return this;
   },
   disconnect: () => undefined,
+  connect: vi.fn(),
   fire(event: string, payload?: unknown) {
     this.listeners.get(event)?.(payload);
   },
@@ -112,6 +113,36 @@ describe('desk', () => {
     expect(screen.queryByText(/Live nahi hai/)).not.toBeInTheDocument();
     act(() => socket.fire('disconnect'));
     expect(screen.getByText(/Live nahi hai/)).toBeInTheDocument();
+  });
+
+  it('ready refetches, so changes during the gap are not missed', async () => {
+    const s = server();
+    renderApp('/desk', s);
+    await panel(/Andar hain/);
+    const before = s.calls.filter((c) => c.key === 'GET /dashboard/live').length;
+    act(() => socket.fire('ready'));
+    await waitFor(() =>
+      expect(s.calls.filter((c) => c.key === 'GET /dashboard/live').length).toBeGreaterThan(before),
+    );
+  });
+
+  it('server disconnect (expired token) refreshes session and reconnects', async () => {
+    const s = server({ 'GET /me': () => json(200, { id: 'u' }) });
+    renderApp('/desk', s);
+    await panel(/Andar hain/);
+    socket.connect.mockClear();
+    act(() => socket.fire('disconnect', 'io server disconnect'));
+    await waitFor(() => expect(socket.connect).toHaveBeenCalled(), { timeout: 5000 });
+    expect(s.calls.some((c) => c.key === 'GET /me')).toBe(true);
+  }, 10_000);
+
+  it('normal network drop leaves reconnecting to the socket library', async () => {
+    renderApp('/desk', server());
+    await panel(/Andar hain/);
+    socket.connect.mockClear();
+    act(() => socket.fire('disconnect', 'transport close'));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(socket.connect).not.toHaveBeenCalled();
   });
 
   it('dashboard failure shows the message', async () => {

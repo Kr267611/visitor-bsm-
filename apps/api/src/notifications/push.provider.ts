@@ -30,6 +30,7 @@ export class ExpoPushProvider implements PushProvider {
     const res = await this.fetchImpl('https://exp.host/--/api/v2/push/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(10_000),
       body: JSON.stringify({ to: message.token, body: message.body, data: message.data, sound: 'default' }),
     });
     if (!res.ok) throw new Error(`Expo push ${res.status}`);
