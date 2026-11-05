@@ -138,9 +138,33 @@ export class VisitLifecycleService {
   }
 
   /** Bina status change wala event: CREATED, REMINDER_SENT, wagairah. */
-  async recordEvent(visitId: string, type: string, actorId: string | null, meta?: object): Promise<void> {
-    await this.prisma.visitEvent.create({
-      data: { visitId, type, actorId, meta: meta as Prisma.InputJsonValue | undefined },
-    });
+  async recordEvent(
+    visitId: string,
+    type: string,
+    actorId: string | null,
+    meta?: object,
+    notify: OutboxDraft[] = [],
+  ): Promise<void> {
+    notify.forEach((d) => renderTemplate(d.template, d.vars));
+    await this.prisma.$transaction([
+      this.prisma.visitEvent.create({
+        data: { visitId, type, actorId, meta: meta as Prisma.InputJsonValue | undefined },
+      }),
+      this.prisma.outbox.createMany({
+        data: notify.map((d) => ({
+          visitId,
+          channel: d.channel,
+          template: d.template,
+          recipient: d.recipient,
+          vars: d.vars,
+        })),
+      }),
+    ]);
+  }
+
+  /** Bina status change ke bhi live screens ko batana ho (jaise reception ka call task). */
+  announce(visit: Pick<Visit, 'id' | 'siteId' | 'status'>): void {
+    const event: VisitUpdatedEvent = { visitId: visit.id, siteId: visit.siteId, status: visit.status };
+    this.events.emit(VISIT_UPDATED, event);
   }
 }

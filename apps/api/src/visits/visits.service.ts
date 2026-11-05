@@ -104,7 +104,18 @@ export class VisitsService {
   async get(user: AuthUser, id: string) {
     const visit = await this.load(id);
     if (!this.isHostOrDelegate(user, visit) && !this.isSiteStaff(user, visit, SITE_STAFF)) throw forbidden();
-    return { ...this.toSummary(visit), purpose: visit.purpose, hostId: visit.hostId, type: visit.type };
+    const decision = await this.prisma.visitEvent.findFirst({
+      where: { visitId: id, type: { in: ['APPROVE', 'REJECT'] } },
+      orderBy: { occurredAt: 'desc' },
+    });
+    return {
+      ...this.toSummary(visit),
+      purpose: visit.purpose,
+      hostId: visit.hostId,
+      type: visit.type,
+      decisionNote: (decision?.meta as { note?: string } | null)?.note ?? null,
+      receptionCallRequestedAt: visit.receptionCallRequestedAt?.toISOString() ?? null,
+    };
   }
 
   async cancel(user: AuthUser, id: string) {
