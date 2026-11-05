@@ -210,7 +210,8 @@ describe('guard scan', () => {
     await screen.findByText(/Camera ki permission nahi hai/);
     await act(async () => listeners.forEach((fn) => fn('active')));
     expect(mockCamera.get).toHaveBeenCalled();
-    spy.mockRestore();
+    // jest-expo ka AppState pehle se mock hai: restore karne par woh undefined lautata hai.
+    spy.mockImplementation((() => ({ remove: () => undefined })) as never);
   });
 
   it('camera denied shows settings link and manual check-in', async () => {
