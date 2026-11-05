@@ -6,7 +6,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const role = user?.role;
   const isDesk = role === 'reception' || role === 'security' || role === 'guard' || role === 'admin';
-  const isHost = role === 'employee' || role === 'reception' || role === 'admin';
+  const isHost = role === 'employee' || role === 'reception' || role === 'security' || role === 'admin';
   return (
     <div className="shell">
       <header className="topbar">

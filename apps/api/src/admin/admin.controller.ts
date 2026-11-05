@@ -122,11 +122,12 @@ const meUpdate = z.object({ delegateId: uuid.nullable() });
 export class ProfileController {
   constructor(private readonly prisma: PrismaService) {}
 
-  private profile(id: string) {
-    return this.prisma.user.findUniqueOrThrow({
+  private async profile(id: string) {
+    const { delegate, ...user } = await this.prisma.user.findUniqueOrThrow({
       where: { id },
-      select: { ...USER_FIELDS, delegateId: true },
+      select: { ...USER_FIELDS, delegateId: true, delegate: { select: { name: true } } },
     });
+    return { ...user, delegateName: delegate?.name ?? null };
   }
 
   @Get('me')

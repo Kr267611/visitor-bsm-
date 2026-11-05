@@ -107,6 +107,7 @@ export interface AdminUser {
 
 export interface Profile extends AdminUser {
   delegateId: string | null;
+  delegateName: string | null;
 }
 
 export interface AdminDevice {

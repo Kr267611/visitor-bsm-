@@ -1,19 +1,14 @@
-import { useQuery } from '@tanstack/react-query';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { useApi } from '../api';
 import { useAuth } from '../auth/AuthProvider';
 import { LoginPage } from '../auth/LoginPage';
 import { homeFor, RequireRole } from '../auth/RequireRole';
 import { DeskPage } from '../desk/DeskPage';
+import { ApprovalPage } from '../host/ApprovalPage';
+import { InviteForm } from '../host/InviteForm';
+import { MyVisitsPage } from '../host/MyVisitsPage';
 import { Layout } from '../ui/Layout';
 import { InvitePage } from '../visitor/InvitePage';
 import { PrivacyPage } from '../visitor/PrivacyPage';
-
-function MyVisitsPlaceholder() {
-  const api = useApi();
-  useQuery({ queryKey: ['visits', 'mine'], queryFn: () => api.visits.list() });
-  return <h1>Mere visitors</h1>;
-}
 
 function Home() {
   const { user } = useAuth();
@@ -39,9 +34,13 @@ export function AppRoutes() {
       <Route
         path="/my/*"
         element={
-          <RequireRole roles={['employee', 'reception', 'admin']}>
+          <RequireRole roles={['employee', 'reception', 'security', 'admin']}>
             <Layout>
-              <MyVisitsPlaceholder />
+              <Routes>
+                <Route index element={<MyVisitsPage />} />
+                <Route path="invite" element={<InviteForm />} />
+                <Route path="visits/:id" element={<ApprovalPage />} />
+              </Routes>
             </Layout>
           </RequireRole>
         }

@@ -117,6 +117,7 @@ describe('admin', () => {
     const token = await tokenFor(ctx, user.id);
     const set = await http().patch('/me').set('Authorization', `Bearer ${token}`).send({ delegateId: backup.id }).expect(200);
     expect(set.body.delegateId).toBe(backup.id);
+    expect(set.body.delegateName).toBe(backup.name);
     const cleared = await http().patch('/me').set('Authorization', `Bearer ${token}`).send({ delegateId: null }).expect(200);
     expect(cleared.body.delegateId).toBeNull();
   });
