@@ -1,0 +1,9 @@
+{
+  "name": "visitor-bsm",
+  "private": true,
+  "packageManager": "pnpm@10.34.9",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "pnpm -r test"
+  }
+}
