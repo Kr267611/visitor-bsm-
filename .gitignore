@@ -8,3 +8,6 @@ coverage/
 *.log
 .expo/
 .tools/
+
+dist/
+.expo/
