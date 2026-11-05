@@ -88,7 +88,7 @@ describe('host screens', () => {
       const user = userEvent.setup();
       await fill(user);
       await user.click(screen.getByRole('button', { name: 'Invite bhejein' }));
-      await screen.findByRole('heading', { name: 'Mere visitors' });
+      await screen.findByRole('heading', { level: 1, name: 'Mere visitors' });
       const body = s.calls.find((c) => c.key === 'POST /visits')!.body;
       expect(body).toEqual({
         visitorName: 'Rahul Verma',
@@ -229,7 +229,7 @@ describe('host screens', () => {
         'PATCH /me': ({ body }) =>
           json(200, { delegateId: body.delegateId, delegateName: body.delegateId ? 'Ravi Kumar' : null }),
       });
-      renderApp('/my', s);
+      renderApp('/my/backup', s);
       const user = userEvent.setup();
       await user.type(await screen.findByLabelText('Backup person dhoondein'), 'ravi');
       await user.click(await screen.findByRole('button', { name: /Ravi Kumar/ }));
@@ -243,7 +243,7 @@ describe('host screens', () => {
       const s = server({
         'GET /users/hosts': () => json(200, [{ id: USERS.employee.id, name: 'Anita', department: null }]),
       });
-      renderApp('/my', s);
+      renderApp('/my/backup', s);
       await userEvent.setup().type(await screen.findByLabelText('Backup person dhoondein'), 'an');
       await waitFor(() => expect(s.calls.some((c) => c.key === 'GET /users/hosts')).toBe(true));
       expect(screen.queryByRole('button', { name: /Anita/ })).not.toBeInTheDocument();

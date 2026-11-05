@@ -1,12 +1,22 @@
-import type { LiveDashboard, VisitSummary } from '@visitor/shared';
+import type { VisitSummary } from '@visitor/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ReactNode, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { errorMessage, useApi } from '../api';
 import { useAuth } from '../auth/AuthProvider';
-import { DASHBOARD_KEY, useLiveSite } from './useLiveSite';
+import { useLive } from './LiveSiteContext';
+import { DASHBOARD_KEY } from './useLiveSite';
 import { VisitRow } from './VisitRow';
 
 const GATE_KEY = 'visitor.gate';
+
+export type DeskSection = 'pending' | 'expected' | 'inside';
+
+const TITLES: Record<DeskSection, string> = {
+  pending: 'Approval baaki',
+  expected: 'Aane wale',
+  inside: 'Andar hain',
+};
 
 function storedGate(): string {
   try {
@@ -134,36 +144,15 @@ function DecisionActions({ visit }: { visit: VisitSummary }) {
   );
 }
 
-function Panel(props: { title: string; count: number; urgent?: boolean; children: ReactNode; emptyText?: string }) {
-  return (
-    <section className={`panel ${props.urgent ? 'panel-urgent' : ''}`}>
-      <h2>
-        <span>{props.title}</span>
-        <span className="mono">{props.count}</span>
-      </h2>
-      {props.count === 0 ? <p className="empty">{props.emptyText}</p> : props.children}
-    </section>
-  );
-}
-
 function matches(visit: VisitSummary, search: string) {
   const q = search.trim().toLowerCase();
   return !q || visit.visitorName.toLowerCase().includes(q) || visit.code.toLowerCase().includes(q);
 }
 
-function filterAll(data: LiveDashboard, search: string): LiveDashboard {
-  return {
-    inside: data.inside.filter((v) => matches(v, search)),
-    expected: data.expected.filter((v) => matches(v, search)),
-    pending: data.pending.filter((v) => matches(v, search)),
-    needsCall: data.needsCall.filter((v) => matches(v, search)),
-  };
-}
-
-export function DeskPage() {
+export function DeskPage({ section }: { section: DeskSection }) {
   const api = useApi();
   const { user } = useAuth();
-  const { query, connected } = useLiveSite();
+  const { query, connected } = useLive();
   const gates = useQuery({ queryKey: ['gates'], queryFn: () => api.gates.list() });
   const [gateId, setGateId] = useState(storedGate);
   const [search, setSearch] = useState('');
@@ -176,12 +165,78 @@ export function DeskPage() {
     if (list?.length && !list.some((g) => g.id === gateId)) setGateId(list[0].id);
   }, [gates.data, gateId]);
 
-  const data = query.data ? filterAll(query.data, search) : null;
+  const data = query.data;
+  const filter = (rows: VisitSummary[] = []) => rows.filter((v) => matches(v, search));
+
+  let body: ReactNode = null;
+  if (data && section === 'pending') {
+    const calls = data.needsCall.filter((v) => matches(v, search));
+    const pending = filter(data.pending);
+    body = (
+      <>
+        {calls.length > 0 && (
+          <section className="panel panel-urgent">
+            <h2>
+              <span>Host ko call karein</span>
+              <span className="mono">{calls.length}</span>
+            </h2>
+            {calls.map((visit) => (
+              <VisitRow
+                key={visit.id}
+                visit={visit}
+                note={
+                  <span>
+                    {visit.hostName} ko call karein: <span className="mono">{visit.hostPhone}</span>
+                  </span>
+                }
+              >
+                {canDecide && <DecisionActions visit={visit} />}
+              </VisitRow>
+            ))}
+          </section>
+        )}
+        <section className="panel">
+          {pending.length === 0 && <p className="empty">Koi approval baaki nahi hai.</p>}
+          {pending.map((visit) => (
+            <VisitRow key={visit.id} visit={visit}>
+              {canDecide && <DecisionActions visit={visit} />}
+            </VisitRow>
+          ))}
+        </section>
+      </>
+    );
+  } else if (data && section === 'expected') {
+    const rows = filter(data.expected);
+    body = (
+      <section className="panel">
+        {rows.length === 0 && <p className="empty">Aaj aur koi visitor aane wala nahi hai.</p>}
+        {rows.map((visit) => (
+          <VisitRow key={visit.id} visit={visit}>
+            {canGate && visit.status === 'APPROVED' && <CheckInAction visit={visit} gateId={gateId} />}
+          </VisitRow>
+        ))}
+      </section>
+    );
+  } else if (data) {
+    const rows = filter(data.inside);
+    body = (
+      <section className="panel">
+        {rows.length === 0 && <p className="empty">Abhi koi visitor andar nahi hai.</p>}
+        {rows.map((visit) => (
+          <VisitRow key={visit.id} visit={visit}>
+            {canGate && <CheckOutAction visit={visit} gateId={gateId} />}
+          </VisitRow>
+        ))}
+      </section>
+    );
+  }
+
+  const callsWaiting = data?.needsCall.length ?? 0;
 
   return (
     <>
       <div className="spread">
-        <h1>Reception desk</h1>
+        <h1>{TITLES[section]}</h1>
         {!!gates.data && gates.data.length > 1 && canGate && (
           <div className="row">
             <label htmlFor="desk-gate">Aapka gate</label>
@@ -204,6 +259,11 @@ export function DeskPage() {
         )}
       </div>
 
+      {section !== 'pending' && callsWaiting > 0 && (
+        <Link to="/desk/pending" className="notice notice-link">
+          {callsWaiting} host ko call karna baaki hai. Dekhein
+        </Link>
+      )}
       {!connected && <p className="notice">Live nahi hai. List har 30 second mein update ho rahi hai.</p>}
       {query.isError && (
         <p role="alert" className="error">
@@ -216,50 +276,7 @@ export function DeskPage() {
         <input id="desk-search" value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
-      {data && (
-        <>
-          {data.needsCall.length > 0 && (
-            <Panel title="Host ko call karein" count={data.needsCall.length} urgent>
-              {data.needsCall.map((visit) => (
-                <VisitRow
-                  key={visit.id}
-                  visit={visit}
-                  note={
-                    <span>
-                      {visit.hostName} ko call karein: <span className="mono">{visit.hostPhone}</span>
-                    </span>
-                  }
-                >
-                  {canDecide && <DecisionActions visit={visit} />}
-                </VisitRow>
-              ))}
-            </Panel>
-          )}
-          <div className="desk-grid">
-            <Panel title="Approval baaki" count={data.pending.length} emptyText="Koi approval baaki nahi hai.">
-              {data.pending.map((visit) => (
-                <VisitRow key={visit.id} visit={visit}>
-                  {canDecide && <DecisionActions visit={visit} />}
-                </VisitRow>
-              ))}
-            </Panel>
-            <Panel title="Aane wale" count={data.expected.length} emptyText="Aaj aur koi visitor aane wala nahi hai.">
-              {data.expected.map((visit) => (
-                <VisitRow key={visit.id} visit={visit}>
-                  {canGate && visit.status === 'APPROVED' && <CheckInAction visit={visit} gateId={gateId} />}
-                </VisitRow>
-              ))}
-            </Panel>
-            <Panel title="Andar hain" count={data.inside.length} emptyText="Abhi koi visitor andar nahi hai.">
-              {data.inside.map((visit) => (
-                <VisitRow key={visit.id} visit={visit}>
-                  {canGate && <CheckOutAction visit={visit} gateId={gateId} />}
-                </VisitRow>
-              ))}
-            </Panel>
-          </div>
-        </>
-      )}
+      {body}
     </>
   );
 }

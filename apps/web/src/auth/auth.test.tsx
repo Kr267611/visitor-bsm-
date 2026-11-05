@@ -27,7 +27,7 @@ describe('login', () => {
     });
     renderApp('/login', server);
     await login(userEvent.setup());
-    expect(await screen.findByRole('heading', { name: 'Reception desk' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Approval baaki' })).toBeInTheDocument();
   });
 
   it('employee lands on own visits', async () => {
@@ -39,7 +39,7 @@ describe('login', () => {
     });
     renderApp('/login', server);
     await login(userEvent.setup());
-    expect(await screen.findByRole('heading', { name: 'Mere visitors' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Mere visitors' })).toBeInTheDocument();
   });
 
   it('wrong OTP shows message, keeps phone', async () => {
@@ -116,7 +116,7 @@ describe('login', () => {
     server.handlers['GET /visits'] = () => json(200, []);
     server.handlers['GET /me'] = () => json(200, { delegateId: null });
     await login(userEvent.setup());
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'Mere visitors' })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Mere visitors' })).toBeInTheDocument());
   });
 
   it('logout returns to login', async () => {

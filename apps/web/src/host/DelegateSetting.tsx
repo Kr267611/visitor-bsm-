@@ -28,8 +28,9 @@ export function DelegateSetting() {
   }
 
   return (
-    <section className="form-card">
-      <h2>Backup person</h2>
+    <>
+      <h1>Backup person</h1>
+      <section className="form-card">
       <p className="muted">Aap jawab na de payein to approval is person ko jayega.</p>
       {me.data?.delegateName && (
         <div className="row">
@@ -58,6 +59,7 @@ export function DelegateSetting() {
           {error}
         </p>
       )}
-    </section>
+      </section>
+    </>
   );
 }
