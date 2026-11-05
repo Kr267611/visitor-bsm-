@@ -6,7 +6,7 @@
 
 **Architecture:** pnpm monorepo mein ek modular monolith (`apps/api`) aur shared types/client (`packages/shared`). Har status change ek hi service (`VisitLifecycleService`) se guzarta hai, jo ek transaction mein visit update, audit event aur outbox entry likhta hai. API aur BullMQ worker Phase 1 mein ek hi process mein chalte hain.
 
-**Tech Stack:** TypeScript, Node 22+, NestJS, Prisma, PostgreSQL 16+, Redis + BullMQ, Socket.IO, S3-compatible storage (local par MinIO, production mein Supabase Storage), Jest + Supertest. Production database Supabase Pro, Mumbai region.
+**Tech Stack:** TypeScript, Node 22+, NestJS, Prisma, PostgreSQL 16+, Redis + BullMQ, Socket.IO, S3-compatible storage (local par MinIO, production bucket Task 13 mein), Jest + Supertest. Production database Render Postgres, Singapore region.
 
 **Spec:** `docs/design/visitor-bsm-design.html` (live: https://claude.ai/artifact/BGsH1ufXR7usY5nd5vwQ1T)
 
@@ -15,21 +15,18 @@
 ## Pehle se chahiye (developer ke bahar ka kaam)
 
 - SMS gateway account aur **DLT registration** (entity + har SMS template). Isme hafte lag sakte hain, isliye Task 1 ke saath shuru karein. Tab tak `SMS_PROVIDER=console` chalega.
-- Supabase Pro project, region Mumbai (`ap-south-1`).
-- Render account: API aur Redis ke liye region Singapore (Render par India region nahi hai). Domain aur Expo account bhi.
+- Render account: API, Postgres aur Redis ke liye region Singapore (Render par India region nahi hai). Domain aur Expo account bhi.
 - Vercel account web app ke liye. Yeh company ka kaam hai, isliye plan Vercel ke commercial use ke rules ke hisaab se chunein.
-- Backup ke liye Supabase ke bahar ek S3-compatible bucket.
+- Photos aur backup ke liye ek S3-compatible bucket, kyunki Render par object storage nahi hai. Provider Task 13 se pehle final hoga, code par asar nahi padega.
 
 ## Global Constraints
 
 - Scope sirf design ka Phase 1. **Phase 1 mein nahi:** WhatsApp, watchlist, offline sync, badge print, overstay alert, reports/CSV, emergency list, auto-delete job, app PIN, SSO, group invite API, admin se timer settings.
 - Assumptions (design ke): ek company, 1–5 sites, 50–500 visitors roz.
-- Hosting: PostgreSQL aur photos Supabase par. Browsers aur phones `supabase.co` se kabhi seedha baat nahi karenge, sab kuch hamare API se jayega, kyunki Feb 2026 mein Indian ISPs par `supabase.co` block hua tha.
-- Supabase ki Data API band rahegi aur photo bucket private rahega. Prisma ki tables par RLS nahi hoti, isliye Data API khuli rehne par data public ho sakta hai.
-- Supabase keys sirf server par rahengi, kisi client app mein nahi.
-- API aur Redis Render par, region Singapore. Web app Vercel par. Ek hi instance (`numInstances: 1`).
-- Render plan stage ke hisaab se. Development aur staging: Free web service + Free Key Value. Production: paid instance `0.5c-512mb` + Key Value 256 MB, memory kam pade to `1c-2g`. Free production ke liye nahi, kyunki Render khud mana karta hai: service 15 minute baad so jati hai, uthne mein lagbhag ek minute leti hai, kabhi bhi restart ho sakti hai, aur Free Key Value restart par saara data kho deta hai, jismein approval timers bhi hain.
-- Gate scan ka response staging par India se p95 2 second ke andar ho, kyunki API Singapore mein aur database Mumbai mein hai.
+- Hosting: API, Postgres aur Redis Render par, region Singapore. Web app Vercel par. Ek hi instance (`numInstances: 1`). Visitors ka personal data India ke bahar Singapore mein rahega, launch se pehle company se confirm karein.
+- Browsers aur phones sirf hamare API se baat karenge. Photo upload aur download bhi API se, bucket private, storage keys sirf server par.
+- Render plan stage ke hisaab se. Development aur staging: Free web service + Free Postgres + Free Key Value. Production: paid instance `0.5c-512mb` + paid Postgres + Key Value 256 MB, memory kam pade to `1c-2g`. Free production ke liye nahi, kyunki Render khud mana karta hai: service 15 minute baad so jati hai, uthne mein lagbhag ek minute leti hai, kabhi bhi restart ho sakti hai, Free Key Value restart par saara data kho deta hai, aur Free Postgres 30 din baad expire ho jata hai aur uska backup nahi hota. Asli visitors ka data kabhi free database par nahi.
+- Gate scan ka response staging par India se p95 2 second ke andar ho, kyunki API Singapore mein hai.
 - Poora ID number kabhi save nahi hoga. Sirf `id_type` aur `id_last4` (`/^\d{4}$/`).
 - QR mein koi naam ya phone nahi. Format `v1.<base64url payload>.<base64url signature>`, algorithm Ed25519.
 - `visit_events` append-only. DB trigger update aur delete ko rokega.
@@ -48,7 +45,7 @@
 4. Extra columns: `visits.invite_token_hash`, `visits.reception_call_requested_at`, `visitors.consent_version`, `outbox.vars`. Extra table: `refresh_tokens`.
 5. `PENDING_APPROVAL` bhi `valid_to` ke baad `EXPIRED` ho sakta hai, warna chhode gaye walk-ins hamesha pending rahenge.
 6. `GET /gate/today` Phase 2 mein aayega, kyunki woh offline cache ke liye hai. Phase 1 mein guard app `GET /dashboard/live` use karegi.
-7. Design mein photos signed URL se seedha storage par jati thin. Supabase ke block risk ki wajah se ab upload aur download dono hamare API se honge. Isse server par thoda load badhega, par 500 visitors roz par yeh chhota hai.
+7. Design mein photos signed URL se seedha storage par jati thin. Ab upload aur download dono hamare API se honge, taaki storage provider badalne par apps par asar na pade. Isse server par thoda load badhega, par 500 visitors roz par yeh chhota hai.
 
 ## Review Focus
 
@@ -324,7 +321,7 @@ it('unknown template var throws at enqueue', ...);
 - Produces: `POST /public/invites/:token/photo` (multipart, field `photo`) → `{key}`
 - Produces: `POST /public/invites/:token/register {name, company?, photoKey, idType?, idLast4?, consent}` → same shape as GET.
 - Produces: `POST /uploads/photo` (staff, Task 10 ke liye, multipart) → `{key}`
-- Produces: `StorageService.put(key: string, body: Buffer, contentType: string): Promise<void>` (`@aws-sdk/client-s3`, `S3_ENDPOINT` se MinIO ya Supabase).
+- Produces: `StorageService.put(key: string, body: Buffer, contentType: string): Promise<void>` (`@aws-sdk/client-s3`, `S3_ENDPOINT` se MinIO ya production bucket).
 - Produces: `StorageService.photoUrl(key: string, seconds = 300): string` → `${API_URL}/photos/<signed token>`, aur `GET /photos/:token` jo photo stream karta hai.
 - Values: Invite token 32 random bytes (base64url), DB mein SHA-256 hash, link `${PUBLIC_WEB_URL}/v/<token>`. `validTo` `validFrom` ke baad aur max 24 ghante door. Photo: API se upload, `image/jpeg` only (file ke magic bytes bhi check), max 1 MB, key `visitors/<visitId>/<uuid>.jpg`. `consent_version` env `CONSENT_VERSION`. Public routes par throttle 20 req/min per IP.
 
@@ -345,7 +342,7 @@ it('idLast4 "123456789012" rejected and never stored', ...);
 it('photoKey of another visit rejected', ...);                // 422
 it('photo over 1 MB rejected', ...);                          // 413
 it('PNG renamed as .jpg rejected by magic bytes', ...);       // 422
-it('photoUrl points to API host, never supabase.co', ...);
+it('photoUrl points to API host, not the storage host', ...);
 it('expired photo token rejected', ...);                      // 401
 it('register after validTo 410 INVITE_EXPIRED', ...);
 it('cancelled visit GET has status CANCELLED, pass null', ...);
@@ -518,6 +515,6 @@ it('timeout becomes NetworkError', ...);
 
 - [ ] **Step 1: Failing smoke test likhein:** poora flow API se: invite → register → scan IN → host ko event → scan OUT → `visit_events` mein types `CREATED, REGISTER, CHECK_IN, CHECK_OUT` is order mein. Aur: `/health/details` non-admin par 403.
 - [ ] **Step 2: Run karein:** `pnpm --filter api test:e2e smoke`. Expected: `/health/details` wala FAIL.
-- [ ] **Step 3: Health details, Sentry aur hardening likhein. Dockerfile aur `render.yaml` banayein.** Blueprint mein: web service `api` (Docker, `region: singapore`, plan Global Constraints ke hisaab se, `healthCheckPath: /health`, start command pehle `prisma migrate deploy` chalaye, kyunki ek hi instance hai aur free plan par pre-deploy pakka available nahi), Key Value `redis` (`region: singapore`, `maxmemoryPolicy: noeviction`, kyunki BullMQ ki jobs delete nahi honi chahiye). Saare secrets `sync: false`. `DATABASE_URL` Supabase ke session pooler se, migrations bhi isi se, kyunki direct connection IPv6 par hoti hai. Production par roz raat ek Render cron job `pg_dump` ko `BACKUP_S3_*` wale bucket mein save kare, taaki zaroorat par shift kar sakein. Staging par yeh job nahi chahiye. `runbook.md` mein: backup, restore test, key rotation, device revoke, aur Supabase block hone par kya karna hai.
-- [ ] **Step 4: Verify karein:** `pnpm --filter api test:e2e` poora PASS, aur Render staging par `curl https://<api-host>/health` par `{"status":"ok",...}`. Staging par: `curl https://<project>.supabase.co/rest/v1/visitors` data na de, photo bucket ka public URL na khule, Jio aur Airtel dono par poora flow chale, aur India se gate scan p95 2 second ke andar ho. Deploy ke dauran live list polling se chalti rahe.
+- [ ] **Step 3: Health details, Sentry aur hardening likhein. Dockerfile aur `render.yaml` banayein.** Blueprint mein: web service `api` (Docker, `region: singapore`, plan Global Constraints ke hisaab se, `healthCheckPath: /health`, start command pehle `prisma migrate deploy` chalaye, kyunki ek hi instance hai aur free plan par pre-deploy pakka available nahi), Key Value `redis` (`region: singapore`, `maxmemoryPolicy: noeviction`, kyunki BullMQ ki jobs delete nahi honi chahiye). Database `visitor-db` (`region: singapore`), aur `DATABASE_URL` uski internal connection string se (`fromDatabase`). Saare secrets `sync: false`. Production par roz raat ek Render cron job `pg_dump` ko `BACKUP_S3_*` wale bucket mein save kare, taaki zaroorat par shift kar sakein. Staging par yeh job nahi chahiye. `runbook.md` mein: backup, restore test, key rotation, device revoke.
+- [ ] **Step 4: Verify karein:** `pnpm --filter api test:e2e` poora PASS, aur Render staging par `curl https://<api-host>/health` par `{"status":"ok",...}`. Staging par: photo bucket ka public URL na khule, Jio aur Airtel dono par poora flow chale, aur India se gate scan p95 2 second ke andar ho. Deploy ke dauran live list polling se chalti rahe.
 - [ ] **Step 5: Commit:** `git commit -am "chore: production image, monitoring and smoke test"`

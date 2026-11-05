@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "types": ["jest", "node"],
+    "baseUrl": ".",
+    "paths": { "@visitor/shared": ["../../packages/shared/src"] }
+  },
+  "include": ["src", "test", "scripts", "prisma/seed.ts"]
+}

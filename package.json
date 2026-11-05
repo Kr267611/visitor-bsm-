@@ -2,8 +2,25 @@
   "name": "visitor-bsm",
   "private": true,
   "packageManager": "pnpm@10.34.9",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "services": "node scripts/dev-services.mjs"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "prisma",
+      "@prisma/client",
+      "@prisma/engines",
+      "embedded-postgres",
+      "@embedded-postgres/windows-x64",
+      "@nestjs/core",
+      "msgpackr-extract"
+    ]
+  },
+  "devDependencies": {
+    "embedded-postgres": "17.11.0-beta.19"
   }
 }

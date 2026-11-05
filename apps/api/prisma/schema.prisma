@@ -1,0 +1,210 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  guard
+  employee
+  reception
+  security
+  admin
+}
+
+enum VisitStatus {
+  INVITED
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+  EXPIRED
+}
+
+enum VisitType {
+  PRE
+  WALKIN
+}
+
+enum OutboxChannel {
+  PUSH
+  SMS
+}
+
+enum OutboxStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model Site {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  address   String?
+  timezone  String   @default("Asia/Kolkata")
+  createdAt DateTime @default(now()) @map("created_at")
+  gates     Gate[]
+  users     User[]
+  visits    Visit[]
+
+  @@map("sites")
+}
+
+model Gate {
+  id        String   @id @default(uuid()) @db.Uuid
+  siteId    String   @map("site_id") @db.Uuid
+  name      String
+  isActive  Boolean  @default(true) @map("is_active")
+  site      Site     @relation(fields: [siteId], references: [id])
+  devices   Device[]
+  visitsIn  Visit[]  @relation("InGate")
+  visitsOut Visit[]  @relation("OutGate")
+
+  @@map("gates")
+}
+
+model User {
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String
+  phone      String   @unique
+  email      String?
+  role       Role
+  department String?
+  siteId     String?  @map("site_id") @db.Uuid
+  delegateId String?  @map("delegate_id") @db.Uuid
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  site          Site?          @relation(fields: [siteId], references: [id])
+  delegate      User?          @relation("Delegate", fields: [delegateId], references: [id])
+  delegators    User[]         @relation("Delegate")
+  hostedVisits  Visit[]
+  devices       Device[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+model Visitor {
+  id             String    @id @default(uuid()) @db.Uuid
+  phone          String    @unique
+  name           String
+  company        String?
+  photoKey       String?   @map("photo_key")
+  idType         String?   @map("id_type")
+  idLast4        String?   @map("id_last4")
+  consentAt      DateTime? @map("consent_at")
+  consentVersion String?   @map("consent_version")
+  deleteAfter    DateTime? @map("delete_after")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  visits         Visit[]
+
+  @@map("visitors")
+}
+
+model Visit {
+  id                       String      @id @default(uuid()) @db.Uuid
+  code                     String      @unique
+  visitorId                String      @map("visitor_id") @db.Uuid
+  hostId                   String      @map("host_id") @db.Uuid
+  siteId                   String      @map("site_id") @db.Uuid
+  groupId                  String?     @map("group_id") @db.Uuid
+  type                     VisitType
+  purpose                  String
+  status                   VisitStatus
+  validFrom                DateTime    @map("valid_from")
+  validTo                  DateTime    @map("valid_to")
+  inGateId                 String?     @map("in_gate_id") @db.Uuid
+  outGateId                String?     @map("out_gate_id") @db.Uuid
+  checkedInAt              DateTime?   @map("checked_in_at")
+  checkedOutAt             DateTime?   @map("checked_out_at")
+  vehicleNo                String?     @map("vehicle_no")
+  inviteTokenHash          String?     @unique @map("invite_token_hash")
+  receptionCallRequestedAt DateTime?   @map("reception_call_requested_at")
+  createdAt                DateTime    @default(now()) @map("created_at")
+  updatedAt                DateTime    @updatedAt @map("updated_at")
+
+  visitor Visitor      @relation(fields: [visitorId], references: [id])
+  host    User         @relation(fields: [hostId], references: [id])
+  site    Site         @relation(fields: [siteId], references: [id])
+  inGate  Gate?        @relation("InGate", fields: [inGateId], references: [id])
+  outGate Gate?        @relation("OutGate", fields: [outGateId], references: [id])
+  events  VisitEvent[]
+  outbox  Outbox[]
+
+  @@index([siteId, status])
+  @@index([hostId, validFrom])
+  @@map("visits")
+}
+
+model VisitEvent {
+  id            String   @id @default(uuid()) @db.Uuid
+  visitId       String   @map("visit_id") @db.Uuid
+  type          String
+  actorId       String?  @map("actor_id") @db.Uuid
+  gateId        String?  @map("gate_id") @db.Uuid
+  deviceId      String?  @map("device_id") @db.Uuid
+  clientEventId String?  @unique @map("client_event_id")
+  occurredAt    DateTime @default(now()) @map("occurred_at")
+  receivedAt    DateTime @default(now()) @map("received_at")
+  meta          Json?
+
+  visit Visit @relation(fields: [visitId], references: [id])
+
+  @@index([visitId, occurredAt])
+  @@map("visit_events")
+}
+
+model Outbox {
+  id            String        @id @default(uuid()) @db.Uuid
+  visitId       String?       @map("visit_id") @db.Uuid
+  channel       OutboxChannel
+  template      String
+  recipient     String
+  vars          Json
+  status        OutboxStatus  @default(PENDING)
+  attempts      Int           @default(0)
+  nextRetryAt   DateTime      @default(now()) @map("next_retry_at")
+  providerMsgId String?       @map("provider_msg_id")
+  lastError     String?       @map("last_error")
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  visit Visit? @relation(fields: [visitId], references: [id])
+
+  @@index([status, nextRetryAt])
+  @@map("outbox")
+}
+
+model Device {
+  id            String         @id @default(uuid()) @db.Uuid
+  userId        String         @map("user_id") @db.Uuid
+  gateId        String?        @map("gate_id") @db.Uuid
+  name          String
+  pushToken     String?        @map("push_token")
+  lastSeenAt    DateTime?      @map("last_seen_at")
+  revokedAt     DateTime?      @map("revoked_at")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  user          User           @relation(fields: [userId], references: [id])
+  gate          Gate?          @relation(fields: [gateId], references: [id])
+  refreshTokens RefreshToken[]
+
+  @@map("devices")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  deviceId  String    @map("device_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  user      User      @relation(fields: [userId], references: [id])
+  device    Device    @relation(fields: [deviceId], references: [id])
+
+  @@map("refresh_tokens")
+}
