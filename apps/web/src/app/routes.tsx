@@ -4,6 +4,7 @@ import { useApi } from '../api';
 import { useAuth } from '../auth/AuthProvider';
 import { LoginPage } from '../auth/LoginPage';
 import { homeFor, RequireRole } from '../auth/RequireRole';
+import { DeskPage } from '../desk/DeskPage';
 import { Layout } from '../ui/Layout';
 import { InvitePage } from '../visitor/InvitePage';
 import { PrivacyPage } from '../visitor/PrivacyPage';
@@ -30,7 +31,7 @@ export function AppRoutes() {
         element={
           <RequireRole roles={['reception', 'security', 'guard', 'admin']}>
             <Layout>
-              <h1>Reception desk</h1>
+              <DeskPage />
             </Layout>
           </RequireRole>
         }
