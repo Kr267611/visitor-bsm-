@@ -25,6 +25,9 @@ services:
         value: v1
       - key: SMS_PROVIDER
         value: console
+      # Bucket milne tak: photos memory mein, server restart par chali jayengi. Asli launch se pehle hatayein.
+      - key: STORAGE_DRIVER
+        value: memory
       - key: QR_PRIVATE_KEY
         sync: false
       - key: QR_PUBLIC_KEY
