@@ -5,6 +5,8 @@ import { useAuth } from '../auth/AuthProvider';
 import { LoginPage } from '../auth/LoginPage';
 import { homeFor, RequireRole } from '../auth/RequireRole';
 import { Layout } from '../ui/Layout';
+import { InvitePage } from '../visitor/InvitePage';
+import { PrivacyPage } from '../visitor/PrivacyPage';
 
 function MyVisitsPlaceholder() {
   const api = useApi();
@@ -21,6 +23,8 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/v/:token" element={<InvitePage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
       <Route
         path="/desk"
         element={
