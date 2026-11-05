@@ -249,7 +249,7 @@ export function createApiClient(options: ApiClientOptions) {
     const code = await res
       .clone()
       .json()
-      .then((body: { error?: string }) => body.error)
+      .then((body) => (body as { error?: string }).error)
       .catch(() => undefined);
     if (code && code !== 'UNAUTHORIZED') return parse<T>(res);
 
