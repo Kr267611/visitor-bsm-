@@ -38,4 +38,4 @@ beforeEach(() => {
 });
 
 // Asli app jaisa React Native ka FormData, jo { uri, name, type } leta hai.
-global.FormData = jest.requireActual('react-native/Libraries/Network/FormData').default;
+(globalThis as any).FormData = jest.requireActual('react-native/Libraries/Network/FormData').default;

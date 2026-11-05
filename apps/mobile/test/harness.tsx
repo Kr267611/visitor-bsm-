@@ -46,7 +46,8 @@ export async function signIn(user: SessionUser) {
 
 export function renderScreen(ui: ReactElement, server: FakeServer) {
   const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    // gcTime Infinity: cache ke timer test khatam hone ke baad jest ko rokte nahi.
+    defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false, gcTime: Infinity } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
