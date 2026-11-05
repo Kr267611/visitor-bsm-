@@ -12,6 +12,8 @@ export type ErrorCode =
   | 'CONSENT_REQUIRED'
   | 'INVALID_OTP'
   | 'OTP_RATE_LIMITED'
+  | 'UNAUTHORIZED'
   | 'FORBIDDEN'
+  | 'INTERNAL'
   | 'NOT_FOUND'
   | 'VALIDATION_FAILED';

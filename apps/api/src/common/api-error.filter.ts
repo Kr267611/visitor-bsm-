@@ -4,7 +4,8 @@ import { ApiException } from './api-exception';
 
 const CODE_BY_STATUS: Record<number, { error: string; message: string }> = {
   400: { error: 'VALIDATION_FAILED', message: 'Bheji gayi jaankari sahi nahi hai.' },
-  401: { error: 'FORBIDDEN', message: 'Dobara login karein.' },
+  401: { error: 'UNAUTHORIZED', message: 'Dobara login karein.' },
+  422: { error: 'VALIDATION_FAILED', message: 'Bheji gayi jaankari sahi nahi hai.' },
   403: { error: 'FORBIDDEN', message: 'Aapko iski permission nahi hai.' },
   404: { error: 'NOT_FOUND', message: 'Yeh cheez nahi mili.' },
   413: { error: 'VALIDATION_FAILED', message: 'File bahut badi hai.' },

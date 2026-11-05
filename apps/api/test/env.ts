@@ -4,3 +4,4 @@ process.env.JWT_SECRET = 'test-secret';
 process.env.PUBLIC_WEB_URL = 'http://web.test';
 process.env.API_URL = 'http://api.test';
 process.env.CONSENT_VERSION = 'v1';
+process.env.SMS_PROVIDER = 'fake';
