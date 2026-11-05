@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { GateModule } from './gate/gate.module';
 import { HealthController } from './health/health.controller';
 import { JobsModule } from './jobs/jobs.service';
+import { LiveModule } from './live/live.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PassesModule } from './passes/passes.module';
 import { PrismaModule } from './prisma/prisma.service';
@@ -27,6 +28,7 @@ import { VisitsModule } from './visits/visits.module';
     StorageModule,
     VisitsModule,
     GateModule,
+    LiveModule,
   ],
   controllers: [HealthController, AdminController, ProfileController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

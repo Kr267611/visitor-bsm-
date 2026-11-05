@@ -15,6 +15,13 @@ export interface VisitSummary {
   checkedInAt: string | null;
 }
 
+export interface LiveDashboard {
+  inside: VisitSummary[];
+  expected: VisitSummary[];
+  pending: VisitSummary[];
+  needsCall: (VisitSummary & { hostPhone: string })[];
+}
+
 export type ErrorCode =
   | 'RATE_LIMITED'
   | 'INVALID_PASS'
