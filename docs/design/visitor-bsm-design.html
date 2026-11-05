@@ -1,0 +1,551 @@
+<title>Visitor BSM Design</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: an engineering spec with the visitor pass as its identity; the swimlanes are the centrepiece. */
+:root {
+  --bg: #F2F5F4; --surface: #FFFFFF; --ink: #13211D; --muted: #55665F; --line: #D5DDDA;
+  --accent: #0B6E5F; --accent-soft: #DCEFEA;
+  --visitor: #1F5FBF; --visitor-soft: #E3EDFA;
+  --guard: #915500; --guard-soft: #FAEFD9;
+  --system: #4B5563; --system-soft: #E9ECEF;
+  --host: #0B6E5F; --host-soft: #DCEFEA;
+  --alert: #B3261E; --code-bg: #E9EEEC;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101916; --surface: #17231F; --ink: #E8F0ED; --muted: #9DB0A9; --line: #2C3C36;
+    --accent: #4CC7AF; --accent-soft: #16352E;
+    --visitor: #8DB8F6; --visitor-soft: #18294A;
+    --guard: #E9B35A; --guard-soft: #3A2B10;
+    --system: #B9C3CC; --system-soft: #242D33;
+    --host: #4CC7AF; --host-soft: #16352E;
+    --alert: #F2857D; --code-bg: #1D2A26;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101916; --surface: #17231F; --ink: #E8F0ED; --muted: #9DB0A9; --line: #2C3C36;
+  --accent: #4CC7AF; --accent-soft: #16352E;
+  --visitor: #8DB8F6; --visitor-soft: #18294A;
+  --guard: #E9B35A; --guard-soft: #3A2B10;
+  --system: #B9C3CC; --system-soft: #242D33;
+  --host: #4CC7AF; --host-soft: #16352E;
+  --alert: #F2857D; --code-bg: #1D2A26;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.6; }
+.wrap { max-width: 1080px; margin: 0 auto; padding-block: 40px 72px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 56px; }
+.wrap > * { min-width: 0; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; line-height: 1.15; margin: 0; }
+h1 { font-size: clamp(2rem, 5vw, 3.1rem); letter-spacing: -0.02em; }
+h2 { font-size: 1.75rem; letter-spacing: -0.01em; }
+h3 { font-size: 1.15rem; }
+p { margin: 0; max-width: 68ch; }
+a { color: var(--accent); }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+code { font-family: var(--mono); font-size: 0.88em; background: var(--code-bg); padding: 1px 5px; border-radius: 3px; overflow-wrap: anywhere; }
+section { display: grid; gap: 20px; scroll-margin-top: 16px; }
+section > * { min-width: 0; }
+.lede { color: var(--muted); }
+.eyebrow { font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+
+/* Hero */
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 40px; align-items: start; }
+.hero-text { display: grid; gap: 16px; min-width: 0; }
+.toc { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.92rem; }
+.pass { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 0 18px 18px; display: grid; gap: 12px; justify-items: center; position: relative; }
+.pass::before { content: ""; width: 54px; height: 10px; border-radius: 0 0 8px 8px; background: var(--bg); border: 1px solid var(--line); border-top: 0; }
+.pass-head { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.pass-name { font-family: var(--display); font-weight: 700; font-size: 1.35rem; line-height: 1.1; text-align: center; }
+.qr { width: 136px; height: 136px; color: var(--ink); }
+.pass dl { width: 100%; margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 0.82rem; }
+.pass dt { color: var(--muted); }
+.pass dd { margin: 0; text-align: right; font-family: var(--mono); font-size: 0.76rem; }
+.pass-status { font-family: var(--mono); font-size: 0.74rem; font-weight: 500; color: var(--accent); background: var(--accent-soft); padding: 2px 10px; border-radius: 999px; }
+
+/* Decisions */
+.decisions { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 28px; padding: 0; margin: 0; list-style: none; }
+.decisions li { border-top: 2px solid var(--ink); padding-top: 10px; display: grid; gap: 4px; }
+.decisions strong { font-weight: 600; }
+.decisions span { color: var(--muted); font-size: 0.93rem; }
+
+/* Tables */
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 0.93rem; }
+th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+tr:last-child td { border-bottom: 0; }
+th { font-family: var(--mono); font-size: 0.72rem; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+td:first-child { font-weight: 500; }
+td.m, td.m code { font-family: var(--mono); font-size: 0.82rem; font-weight: 400; }
+td.m { white-space: nowrap; }
+
+/* Actors */
+.actors { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.actor { padding: 16px; border-radius: 8px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.actor ul { margin: 0; padding-left: 18px; font-size: 0.92rem; }
+.actor .surface { font-family: var(--mono); font-size: 0.76rem; }
+.a-visitor { background: var(--visitor-soft); } .a-visitor h3, .a-visitor .surface { color: var(--visitor); }
+.a-guard { background: var(--guard-soft); } .a-guard h3, .a-guard .surface { color: var(--guard); }
+.a-host { background: var(--host-soft); } .a-host h3, .a-host .surface { color: var(--host); }
+.a-system { background: var(--system-soft); } .a-system h3, .a-system .surface { color: var(--system); }
+
+/* Swimlane */
+.lane-title { display: grid; gap: 4px; }
+.lane { border: 1px solid var(--line); border-radius: 8px; background-color: var(--surface); background-image: linear-gradient(to right, var(--line) 1px, transparent 1px); background-size: 25% 100%; padding-bottom: 10px; }
+.lane-head, .step { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.lane-head { background: var(--surface); border-bottom: 1px solid var(--line); border-radius: 8px 8px 0 0; margin-bottom: 8px; }
+.lane-head div { padding: 9px 12px; font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 500; }
+.h1 { color: var(--visitor); } .h2 { color: var(--guard); } .h3 { color: var(--system); } .h4 { color: var(--host); }
+.step { padding: 3px 0; }
+.card { margin: 0 8px; padding: 8px 10px; border-radius: 6px; font-size: 0.87rem; line-height: 1.42; min-width: 0; }
+.card b { font-family: var(--mono); font-weight: 500; margin-right: 4px; }
+.card .who { display: none; font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 500; }
+.c1 { grid-column: 1; background: var(--visitor-soft); } .c1 b, .c1 .who { color: var(--visitor); }
+.c2 { grid-column: 2; background: var(--guard-soft); } .c2 b, .c2 .who { color: var(--guard); }
+.c3 { grid-column: 3; background: var(--system-soft); } .c3 b, .c3 .who { color: var(--system); }
+.c4 { grid-column: 4; background: var(--host-soft); } .c4 b, .c4 .who { color: var(--host); }
+
+.checkout { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 28px; }
+.checkout > div { display: grid; gap: 4px; border-top: 1px solid var(--line); padding-top: 10px; align-content: start; }
+.checkout p { font-size: 0.93rem; color: var(--muted); }
+
+/* Diagrams */
+.diagram { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 14px; }
+.diagram svg { display: block; width: 100%; min-width: 780px; height: auto; }
+.s-box { fill: var(--system-soft); stroke: var(--line); }
+.s-box.good { fill: var(--accent-soft); stroke: var(--accent); }
+.s-box.wait { fill: var(--guard-soft); stroke: var(--guard); }
+.s-box.end { fill: var(--surface); stroke: var(--muted); }
+.s-box.flag { fill: none; stroke: var(--alert); stroke-dasharray: 5 4; }
+.s-name { font-family: var(--mono); font-size: 12.5px; font-weight: 500; fill: var(--ink); text-anchor: middle; }
+.s-note { font-family: var(--body); font-size: 12px; fill: var(--muted); }
+.s-start { font-family: var(--mono); font-size: 11px; fill: var(--muted); letter-spacing: 0.04em; }
+.s-line { stroke: var(--muted); stroke-width: 1.4; fill: none; }
+.s-head { fill: var(--muted); }
+
+.arch { display: grid; gap: 6px; }
+.arch-row { display: grid; grid-template-columns: 124px minmax(0, 1fr); gap: 14px; align-items: stretch; }
+.arch-label { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding-top: 12px; }
+.arch-items { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.node { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; font-size: 0.87rem; line-height: 1.4; min-width: 0; }
+.node strong { display: block; font-weight: 600; font-size: 0.93rem; }
+.node span { color: var(--muted); }
+.node.core { background: var(--accent-soft); border-color: var(--accent); }
+.mods { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.mods i { font-style: normal; font-family: var(--mono); font-size: 0.74rem; padding: 2px 8px; border-radius: 4px; background: var(--surface); border: 1px solid var(--line); }
+.arch-link { margin-left: 138px; font-family: var(--mono); font-size: 0.74rem; color: var(--muted); }
+
+/* Data model */
+.schema { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 12px; }
+.tablecard { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.tablecard h3 { font-family: var(--mono); font-size: 0.92rem; font-weight: 500; color: var(--accent); }
+.tablecard p { font-family: var(--mono); font-size: 0.78rem; line-height: 1.55; overflow-wrap: anywhere; }
+.tablecard small { color: var(--muted); font-size: 0.84rem; line-height: 1.4; }
+
+pre { margin: 0; overflow-x: auto; background: var(--code-bg); border-radius: 8px; padding: 14px 16px; font-family: var(--mono); font-size: 0.82rem; line-height: 1.55; }
+
+.deep { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px 36px; }
+.deep > div { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.deep p, .deep li { font-size: 0.95rem; }
+.deep ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+
+.nums { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px 24px; }
+.num { display: grid; gap: 2px; }
+.num strong { font-family: var(--display); font-size: 1.6rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.num span { color: var(--muted); font-size: 0.87rem; line-height: 1.4; }
+
+.phases { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 12px; }
+.phase { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.phase .when { font-family: var(--mono); font-size: 0.76rem; color: var(--muted); }
+.phase ul { margin: 0; padding-left: 18px; font-size: 0.92rem; }
+
+.ask { margin: 0; padding-left: 20px; display: grid; gap: 8px; max-width: 72ch; }
+
+@media (max-width: 760px) {
+  .wrap { gap: 44px; padding-block: 24px 48px; }
+  .hero { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .pass { max-width: 290px; }
+  .lane { background-image: none; padding: 8px 0; }
+  .lane-head { display: none; }
+  .step { grid-template-columns: minmax(0, 1fr); }
+  .c1, .c2, .c3, .c4 { grid-column: 1; }
+  .card .who { display: block; }
+  .arch-row { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .arch-label { padding-top: 6px; }
+  .arch-link { margin-left: 0; }
+}
+</style>
+
+<div class="wrap">
+
+<header class="hero">
+  <div class="hero-text">
+    <div class="eyebrow">System design · Draft 1</div>
+    <h1>Visitor management system: poora design aur workflow</h1>
+    <p class="lede">Company ke liye ek system jismein visitor gate par register hota hai, host approve karta hai, aur har entry-exit ka record rehta hai. Ek mobile app, ek web app, ek backend.</p>
+    <nav class="toc" aria-label="Contents">
+      <a href="#users">Users</a><a href="#workflow">Workflow</a><a href="#states">Status flow</a><a href="#arch">Architecture</a><a href="#data">Database</a><a href="#api">API</a><a href="#deep">Deep dive</a><a href="#security">Security</a><a href="#scale">Scale</a><a href="#tradeoffs">Trade-offs</a><a href="#phases">Phases</a><a href="#questions">Sawaal</a>
+    </nav>
+  </div>
+  <aside class="pass" aria-label="Sample visitor pass">
+    <div class="pass-head">Sample visitor pass</div>
+    <div class="pass-name">Rahul Verma</div>
+    <svg class="qr" id="qr" viewBox="0 0 21 21" role="img" aria-label="Decorative sample QR code" shape-rendering="crispEdges"></svg>
+    <span class="pass-status">APPROVED</span>
+    <dl>
+      <dt>Visit</dt><dd>VIS-2026-00412</dd>
+      <dt>Host</dt><dd>A. Singh, Finance</dd>
+      <dt>Gate</dt><dd>Main Gate 1</dd>
+      <dt>Valid</dt><dd>10:00 – 13:00</dd>
+    </dl>
+  </aside>
+</header>
+
+<section>
+  <h2>Sabse zaroori faisle</h2>
+  <ul class="decisions">
+    <li><strong>Visitor ko app install nahi karna</strong><span>WhatsApp ya SMS par link aur QR pass milega. Ek baar aane wala banda app download nahi karega.</span></li>
+    <li><strong>Mobile app ek, roles do</strong><span>Login ke baad Guard ko gate screen dikhegi, Employee ko approve aur invite screen.</span></li>
+    <li><strong>Web app desk aur admin ke liye</strong><span>Reception, security aur HR ko badi screen par live list, reports aur settings chahiye.</span></li>
+    <li><strong>Ek backend, ek database</strong><span>Modular monolith. Is scale par microservices sirf kharcha aur complexity badhayenge.</span></li>
+    <li><strong>Gate internet ke bina bhi chalega</strong><span>QR digitally signed hoga, isliye guard app offline bhi verify kar sakti hai.</span></li>
+    <li><strong>Har action ka record</strong><span>Kisne, kab, kaunse gate se kya kiya: yeh ek append-only log mein jayega, edit nahi hoga.</span></li>
+  </ul>
+</section>
+
+<section id="assumptions">
+  <h2>Maine kya maan ke design kiya</h2>
+  <p class="lede">Aapne yeh details nahi batayi, isliye yeh numbers mere assumptions hain. Inmein se koi galat ho to aakhri column batata hai design mein kya badlega.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Cheez</th><th>Assumption</th><th>Alag ho to kya badlega</th></tr></thead>
+    <tbody>
+      <tr><td>Company</td><td>Ek company, 1 se 5 sites</td><td>Doosri companies ko bechna ho to multi-tenant banana padega</td></tr>
+      <tr><td>Visitors</td><td>Roz 50 se 500</td><td>10,000+ roz par read replica aur alag worker servers</td></tr>
+      <tr><td>Team</td><td>2 se 3 developers</td><td>Team Flutter ya Java jaanti ho to wahi stack lein</td></tr>
+      <tr><td>Hosting</td><td>Cloud, India region</td><td>On-premise zaroori ho to Docker Compose ya VM par same design chalega</td></tr>
+      <tr><td>Notifications</td><td>Push, WhatsApp, SMS</td><td>WhatsApp ke templates ko Meta approval aur SMS ko DLT registration chahiye. Dono ka time plan mein rakhein.</td></tr>
+      <tr><td>Hardware</td><td>Gate par Android phone ya tablet</td><td>Turnstile ya boom barrier ho to Phase 3 ka integration pehle aayega</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="users">
+  <h2>Kaun kya use karega</h2>
+  <div class="actors">
+    <div class="actor a-visitor"><h3>Visitor</h3><div class="surface">Browser link, koi install nahi</div><ul><li>Apni details aur photo bharna</li><li>QR pass dekhna</li><li>Consent dena</li></ul></div>
+    <div class="actor a-guard"><h3>Guard / Reception</h3><div class="surface">Mobile app + web desk</div><ul><li>QR scan</li><li>Walk-in entry, photo</li><li>Andar kaun hai ki live list</li><li>Check-out, badge print</li></ul></div>
+    <div class="actor a-host"><h3>Employee (Host)</h3><div class="surface">Mobile app + web</div><ul><li>Visitor ko invite karna</li><li>Approve ya reject</li><li>Backup person set karna</li><li>Apni visit history</li></ul></div>
+    <div class="actor a-system"><h3>Admin / HR / Security</h3><div class="surface">Web dashboard</div><ul><li>Users, sites, gates</li><li>Reports, CSV export</li><li>Watchlist</li><li>Emergency list, audit log</li></ul></div>
+  </div>
+</section>
+
+<section id="workflow">
+  <h2>Workflow</h2>
+
+  <div class="lane-title">
+    <h3>A. Pehle se invite kiya hua visitor</h3>
+    <p class="lede">Normal din ka main flow. Gate par 30 second se kam lagna chahiye.</p>
+  </div>
+  <div class="lane">
+    <div class="lane-head"><div class="h1">Visitor</div><div class="h2">Guard</div><div class="h3">System</div><div class="h4">Host</div></div>
+    <div class="step"><div class="card c4"><span class="who">Host</span><b>1</b>App ya web se invite banata hai: naam, mobile, date, time, kaam.</div></div>
+    <div class="step"><div class="card c3"><span class="who">System</span><b>2</b>Visit <code>INVITED</code> banta hai. Visitor ko WhatsApp ya SMS par link jata hai.</div></div>
+    <div class="step"><div class="card c1"><span class="who">Visitor</span><b>3</b>Link kholta hai. Details, photo, ID type aur last 4 digit bharta hai. Consent deta hai.</div></div>
+    <div class="step"><div class="card c3"><span class="who">System</span><b>4</b>Watchlist check. Clear ho to <code>APPROVED</code> aur signed QR pass bhejta hai.</div></div>
+    <div class="step"><div class="card c1"><span class="who">Visitor</span><b>5</b>Gate par phone se QR dikhata hai.</div></div>
+    <div class="step"><div class="card c2"><span class="who">Guard</span><b>6</b>QR scan karta hai. Screen par aayi photo se chehra match karta hai.</div></div>
+    <div class="step"><div class="card c3"><span class="who">System</span><b>7</b>Signature, time aur site check. Visit <code>CHECKED_IN</code>, event log mein save.</div></div>
+    <div class="step"><div class="card c4"><span class="who">Host</span><b>8</b>Notification: "Rahul Main Gate 1 par aa gaye hain."</div></div>
+    <div class="step"><div class="card c2"><span class="who">Guard</span><b>9</b>Badge deta hai ya digital pass dikha kar andar bhejta hai.</div></div>
+  </div>
+
+  <div class="lane-title">
+    <h3>B. Bina invite ke aaya visitor (walk-in)</h3>
+    <p class="lede">Isme host ka approval zaroori hai, aur visitor gate par khada intezaar kar raha hai. Isliye timeout rule sabse important hai.</p>
+  </div>
+  <div class="lane">
+    <div class="lane-head"><div class="h1">Visitor</div><div class="h2">Guard</div><div class="h3">System</div><div class="h4">Host</div></div>
+    <div class="step"><div class="card c1"><span class="who">Visitor</span><b>1</b>Gate par mobile number aur kisse milna hai batata hai.</div></div>
+    <div class="step"><div class="card c2"><span class="who">Guard</span><b>2</b>Number dalta hai. Purana visitor ho to details khud aa jati hain. Naya ho to naam, company, photo, host bharta hai.</div></div>
+    <div class="step"><div class="card c3"><span class="who">System</span><b>3</b>Visitor ke phone par OTP aur consent link bhejta hai.</div></div>
+    <div class="step"><div class="card c1"><span class="who">Visitor</span><b>4</b>OTP guard ko batata hai. Number verify ho jata hai.</div></div>
+    <div class="step"><div class="card c3"><span class="who">System</span><b>5</b>Watchlist check. <code>PENDING_APPROVAL</code>. Host ko notification. 3 minute ka timer shuru.</div></div>
+    <div class="step"><div class="card c4"><span class="who">Host</span><b>6</b>Approve ya reject. Chahe to note: "10 minute baithao."</div></div>
+    <div class="step"><div class="card c3"><span class="who">System</span><b>7</b>Jawab nahi aaya to reminder, phir backup person, phir reception ko call karne ka task.</div></div>
+    <div class="step"><div class="card c2"><span class="who">Guard</span><b>8</b>Screen par result turant dikhta hai. Approve par check-in aur badge. Reject par visitor ko bata deta hai.</div></div>
+  </div>
+
+  <h3>C. Check-out</h3>
+  <div class="checkout">
+    <div><strong>Gate par exit scan</strong><p>Normal tareeka. Guard QR ya badge scan karta hai, visit <code>CHECKED_OUT</code>.</p></div>
+    <div><strong>Time se zyada ruka</strong><p><code>valid_to</code> ke baad host aur security ko alert jata hai. Status wahi rehta hai, sirf overstay flag lagta hai.</p></div>
+    <div><strong>Din ke end mein bache log</strong><p>System khud check-out nahi karega. Security list dekh kar reason ke saath band karega, warna emergency list galat ho jayegi.</p></div>
+  </div>
+
+  <h3>D. Jab kuch gadbad ho</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Situation</th><th>System kya karega</th></tr></thead>
+    <tbody>
+      <tr><td>Watchlist match</td><td>Guard ko sirf dikhega "Security se baat karein". Security ko alert jayega. Reason visitor ke saamne screen par nahi aayega.</td></tr>
+      <tr><td>QR expired ya galat site</td><td>Saaf reason dikhega: "Yeh pass kal ke liye hai". Guard walk-in flow se entry kar sakta hai.</td></tr>
+      <tr><td>Same QR dobara scan</td><td>"10:42 par Gate 1 se andar ja chuke hain" dikhega. Doosri entry nahi banegi.</td></tr>
+      <tr><td>Gate par internet band</td><td>QR offline verify hoga. Entries phone mein queue hongi aur net aate hi sync. Walk-in ka approval phone call se, "manual" mark ke saath.</td></tr>
+      <tr><td>WhatsApp fail</td><td>Thodi der retry, phir SMS. Host ko push bhi jata hai.</td></tr>
+      <tr><td>Host chhutti par</td><td>Host pehle se backup person set karega. Invite aur approval dono usko jayenge.</td></tr>
+      <tr><td>Group visit</td><td>Ek invite mein kai log, <code>group_id</code> se jude. Har kisi ka alag QR aur alag check-in.</td></tr>
+      <tr><td>Aag ya emergency</td><td>Ek click mein abhi andar maujood logon ki list, photo aur host ke saath. Guard app mein offline bhi.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="states">
+  <h2>Visit ka status flow</h2>
+  <p class="lede">Har visit in states se guzarta hai. Backend galat transition reject karega, jaise <code>REJECTED</code> visit ka check-in.</p>
+  <div class="diagram">
+    <svg viewBox="0 0 860 300" role="img" aria-label="Visit status diagram. Invited goes to approved when the visitor fills the form. Pending approval goes to approved or rejected. Approved goes to checked in, then checked out. Invited or approved can expire or be cancelled.">
+      <defs><marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path class="s-head" d="M0,0 L8,4 L0,8 Z"/></marker></defs>
+
+      <text class="s-start" x="20" y="30">PRE-REGISTERED START</text>
+      <rect class="s-box" x="20" y="40" width="130" height="44" rx="6"/><text class="s-name" x="85" y="66">INVITED</text>
+      <rect class="s-box good" x="300" y="40" width="130" height="44" rx="6"/><text class="s-name" x="365" y="66">APPROVED</text>
+      <rect class="s-box good" x="510" y="40" width="130" height="44" rx="6"/><text class="s-name" x="575" y="66">CHECKED_IN</text>
+      <rect class="s-box end" x="710" y="40" width="130" height="44" rx="6"/><text class="s-name" x="775" y="66">CHECKED_OUT</text>
+
+      <text class="s-start" x="20" y="140">WALK-IN START</text>
+      <rect class="s-box wait" x="20" y="150" width="170" height="44" rx="6"/><text class="s-name" x="105" y="176">PENDING_APPROVAL</text>
+      <rect class="s-box end" x="20" y="244" width="170" height="44" rx="6"/><text class="s-name" x="105" y="270">REJECTED</text>
+      <rect class="s-box end" x="280" y="244" width="210" height="44" rx="6"/><text class="s-name" x="385" y="270">EXPIRED / CANCELLED</text>
+      <rect class="s-box flag" x="510" y="150" width="210" height="44" rx="6"/><text class="s-name" x="615" y="176">overstay flag</text>
+
+      <path class="s-line" d="M150,62 L298,62" marker-end="url(#arr)"/><text class="s-note" x="168" y="54">visitor ne form bhara</text>
+      <path class="s-line" d="M430,62 L508,62" marker-end="url(#arr)"/><text class="s-note" x="448" y="54">QR scan</text>
+      <path class="s-line" d="M640,62 L708,62" marker-end="url(#arr)"/><text class="s-note" x="648" y="54">exit scan</text>
+      <path class="s-line" d="M190,160 L318,86" marker-end="url(#arr)"/><text class="s-note" x="262" y="140">host approve</text>
+      <path class="s-line" d="M105,194 L105,242" marker-end="url(#arr)"/><text class="s-note" x="113" y="223">host reject</text>
+      <path class="s-line" d="M385,84 L385,242" marker-end="url(#arr)"/><text class="s-note" x="393" y="200">no-show, cancel</text>
+      <path class="s-line" stroke-dasharray="4 4" d="M575,84 L575,148" marker-end="url(#arr)"/><text class="s-note" x="583" y="122">valid_to ke baad</text>
+    </svg>
+  </div>
+  <p class="lede"><code>INVITED</code> se bhi visit expire ya cancel ho sakta hai. Overstay alag state nahi hai, kyunki visitor tab bhi andar hi hai.</p>
+</section>
+
+<section id="arch">
+  <h2>Architecture</h2>
+  <div class="arch">
+    <div class="arch-row"><div class="arch-label">Clients</div><div class="arch-items">
+      <div class="node"><strong>Visitor page</strong><span>Public link, phone browser</span></div>
+      <div class="node"><strong>Mobile app</strong><span>React Native. Guard + Host</span></div>
+      <div class="node"><strong>Web app</strong><span>React. Desk + Admin</span></div>
+    </div></div>
+    <div class="arch-link">↓ HTTPS REST &nbsp; ↑ WebSocket live updates</div>
+    <div class="arch-row"><div class="arch-label">Backend</div><div class="arch-items">
+      <div class="node core"><strong>API server: NestJS modular monolith</strong>
+        <div class="mods"><i>auth</i><i>visits</i><i>approvals</i><i>gate</i><i>visitors</i><i>watchlist</i><i>notifications</i><i>reports</i><i>admin</i></div>
+      </div>
+    </div></div>
+    <div class="arch-link">↓ reads, writes, background jobs</div>
+    <div class="arch-row"><div class="arch-label">Data</div><div class="arch-items">
+      <div class="node"><strong>PostgreSQL</strong><span>Visits, users, event log</span></div>
+      <div class="node"><strong>Redis + BullMQ</strong><span>Jobs, timers, OTP limits</span></div>
+      <div class="node"><strong>Object storage</strong><span>Photos, private, signed URLs</span></div>
+    </div></div>
+    <div class="arch-link">↓ background worker sends</div>
+    <div class="arch-row"><div class="arch-label">Bahar ki services</div><div class="arch-items">
+      <div class="node"><strong>FCM</strong><span>App push</span></div>
+      <div class="node"><strong>WhatsApp Business</strong><span>Link, pass, approval</span></div>
+      <div class="node"><strong>SMS gateway</strong><span>OTP, fallback</span></div>
+      <div class="node"><strong>Email</strong><span>Reports, invites</span></div>
+    </div></div>
+  </div>
+
+  <div class="tbl"><table>
+    <thead><tr><th>Layer</th><th>Choice</th><th>Kyun</th></tr></thead>
+    <tbody>
+      <tr><td>Mobile</td><td>React Native (Expo)</td><td>Android aur iOS ek code se. Web aur backend ke saath TypeScript share hoti hai.</td></tr>
+      <tr><td>Web</td><td>React + Vite</td><td>Login ke peeche ka tool hai, SEO ki zaroorat nahi. Next.js ki extra complexity nahi chahiye.</td></tr>
+      <tr><td>Backend</td><td>NestJS (TypeScript)</td><td>Modules ka structure built-in, validation aur WebSocket ready.</td></tr>
+      <tr><td>Database</td><td>PostgreSQL</td><td>Visits relational data hai, transactions chahiye, reports SQL se aasan.</td></tr>
+      <tr><td>Queue</td><td>Redis + BullMQ</td><td>3 minute ka timer, retries aur scheduled alerts sab isse ho jayenge.</td></tr>
+      <tr><td>Login</td><td>Company SSO ya phone OTP</td><td>Employee ke liye SSO agar company Google ya Microsoft use karti hai. Guard ke liye OTP plus device registration.</td></tr>
+      <tr><td>Monitoring</td><td>Sentry + uptime check</td><td>Errors, failed notifications, queue backlog aur offline sync backlog par alert.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="data">
+  <h2>Database design</h2>
+  <p class="lede"><code>visits</code> mein current status rehta hai, aur <code>visit_events</code> mein poori history. Visitor ek hi baar save hota hai, phone number se pehchana jata hai, isliye agli visit par details dobara nahi bharni.</p>
+  <div class="schema">
+    <div class="tablecard"><h3>visits</h3><p>id, code, visitor_id, host_id, site_id, group_id, type, purpose, status, valid_from, valid_to, in_gate_id, out_gate_id, checked_in_at, checked_out_at, vehicle_no</p><small>Main table. Index: (site_id, status), (host_id, valid_from).</small></div>
+    <div class="tablecard"><h3>visit_events</h3><p>id, visit_id, type, actor_id, gate_id, device_id, client_event_id UNIQUE, occurred_at, received_at, meta</p><small>Append-only audit log. Unique ID se offline sync mein duplicate nahi banega.</small></div>
+    <div class="tablecard"><h3>visitors</h3><p>id, phone UNIQUE, name, company, photo_key, id_type, id_last4, consent_at, delete_after</p><small>Poora ID number kabhi save nahi hoga.</small></div>
+    <div class="tablecard"><h3>users</h3><p>id, name, phone, email, role, department, site_id, delegate_id, is_active</p><small>Roles: guard, employee, reception, security, admin.</small></div>
+    <div class="tablecard"><h3>sites, gates</h3><p>sites: id, name, address, timezone<br>gates: id, site_id, name</p><small>Shuru se rakhein. Baad mein doosri site add karna aasan rahega.</small></div>
+    <div class="tablecard"><h3>watchlist</h3><p>id, phone, name, reason, added_by, active_until</p><small>Sirf security aur admin dekh sakte hain.</small></div>
+    <div class="tablecard"><h3>outbox</h3><p>id, visit_id, channel, template, recipient, status, attempts, next_retry_at, provider_msg_id</p><small>Har notification ka record aur retry state.</small></div>
+    <div class="tablecard"><h3>devices</h3><p>id, user_id, gate_id, fcm_token, last_seen_at, revoked_at</p><small>Guard ka phone kho jaye to yahin se block.</small></div>
+  </div>
+</section>
+
+<section id="api">
+  <h2>Main APIs</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Endpoint</th><th>Kaun</th><th>Kaam</th></tr></thead>
+    <tbody>
+      <tr><td class="m">POST /auth/otp/request, /verify</td><td>Staff</td><td>Login, rate limit ke saath</td></tr>
+      <tr><td class="m">POST /visits</td><td>Host</td><td>Invite banana</td></tr>
+      <tr><td class="m">GET /public/invites/:token</td><td>Visitor</td><td>Form ke liye visit details</td></tr>
+      <tr><td class="m">POST /public/invites/:token/register</td><td>Visitor</td><td>Details aur consent, phir pass</td></tr>
+      <tr><td class="m">GET /gate/today</td><td>Guard</td><td>Aaj ke visits, offline cache ke liye</td></tr>
+      <tr><td class="m">POST /gate/scan</td><td>Guard</td><td>QR verify, check-in ya check-out</td></tr>
+      <tr><td class="m">POST /gate/walk-ins</td><td>Guard</td><td>Walk-in entry, approval shuru</td></tr>
+      <tr><td class="m">POST /gate/sync</td><td>Guard</td><td>Offline events ka batch upload</td></tr>
+      <tr><td class="m">POST /visits/:id/approve, /reject</td><td>Host</td><td>Approval ka faisla</td></tr>
+      <tr><td class="m">GET /dashboard/live</td><td>Desk</td><td>Abhi andar kaun, kaun aane wala</td></tr>
+      <tr><td class="m">GET /reports/visits.csv</td><td>Admin</td><td>Date, site, host filter ke saath export</td></tr>
+      <tr><td class="m">GET /emergency/muster</td><td>Security</td><td>Abhi andar maujood logon ki list</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Example: gate scan</h3>
+<pre>POST /gate/scan
+{ "qr": "v1.eyJ2IjoiOGYy...sig", "gateId": "g_01", "clientEventId": "d9a1-4c..." }
+
+200 { "result": "CHECKED_IN", "visitor": { "name": "Rahul Verma", "photoUrl": "..." },
+      "host": "A. Singh", "validTo": "2026-11-05T13:00:00+05:30" }
+
+409 { "error": "ALREADY_CHECKED_IN", "at": "2026-11-05T10:42:00+05:30", "gate": "Main Gate 1" }
+422 { "error": "PASS_EXPIRED", "message": "Yeh pass 4 Nov ke liye tha" }</pre>
+</section>
+
+<section id="deep">
+  <h2>Deep dive: mushkil hisse</h2>
+  <div class="deep">
+    <div><h3>QR pass</h3>
+      <p>QR mein sirf visit ID, site aur valid time hota hai, naam ya phone nahi. Server private key se sign karta hai (Ed25519). Guard app ke paas public key hoti hai, isliye bina internet ke bhi nakli QR pakda jata hai.</p>
+    </div>
+    <div><h3>Offline gate</h3>
+      <ul>
+        <li>App aaj ke visits, watchlist aur photos cache rakhti hai.</li>
+        <li>Har scan phone mein <code>clientEventId</code> ke saath save hota hai.</li>
+        <li>Net aate hi <code>/gate/sync</code>. Same ID dobara aaye to server ignore karta hai.</li>
+        <li>Asli time <code>occurred_at</code> rehta hai, sync ka time <code>received_at</code>.</li>
+      </ul>
+    </div>
+    <div><h3>Notifications (outbox pattern)</h3>
+      <p>Status change aur notification ki entry ek hi database transaction mein save hoti hai. Worker baad mein bhejta hai aur fail hone par exponential backoff se retry karta hai. Isse WhatsApp down hone par check-in nahi rukta, aur koi message gum nahi hota.</p>
+    </div>
+    <div><h3>Approval timer</h3>
+      <p>Walk-in banate hi BullMQ mein delayed jobs lagte hain: 90 second par reminder, 3 minute par backup person, 5 minute par reception ka call task. Host jawab de de to baaki jobs cancel. Yeh timings settings mein admin badal sakta hai.</p>
+    </div>
+    <div><h3>Live screens</h3>
+      <p>Desk dashboard aur guard screen WebSocket se update hote hain, site ke room ke hisaab se. Connection toote to app 30 second wali polling par aa jati hai.</p>
+    </div>
+    <div><h3>Photos</h3>
+      <p>App photo ko compress karke seedha storage par upload karti hai, signed URL se. Database mein sirf key rehti hai. Photo dekhne ke liye short-lived URL banta hai.</p>
+    </div>
+  </div>
+</section>
+
+<section id="security">
+  <h2>Security aur privacy</h2>
+  <p class="lede">Yeh system logon ka naam, phone aur photo rakhta hai, isliye yeh features baad ke liye nahi chhodne.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Risk</th><th>Bachav</th></tr></thead>
+    <tbody>
+      <tr><td>ID ka misuse</td><td>Poora Aadhaar ya ID number aur uski photo save nahi karni. Sirf ID type aur last 4 digit.</td></tr>
+      <tr><td>Personal data law</td><td>DPDP Act 2023 ke hisaab se consent notice, data delete karne ka tareeka aur retention. Final wording company ke legal se confirm karwayein.</td></tr>
+      <tr><td>Data zyada din rakhna</td><td>Photo aur ID details 90 se 180 din baad automatic delete. Report ke liye anonymous count bacha rahega.</td></tr>
+      <tr><td>Galat banda data dekhe</td><td>Role-based access. Host sirf apne visits dekhega. Guard sirf apni site ke. Export ka bhi audit log.</td></tr>
+      <tr><td>Public link ka misuse</td><td>Lamba random token, expiry, ek visit tak limited. OTP aur form par rate limit.</td></tr>
+      <tr><td>Guard ka phone kho gaya</td><td>Device revoke, short-lived token, app PIN, local cache encrypted.</td></tr>
+      <tr><td>Record se chhed-chhad</td><td><code>visit_events</code> mein update aur delete ki permission hi nahi. Daily database backup.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="scale">
+  <h2>Scale ka hisaab</h2>
+  <p class="lede">500 visits roz ke assumption par. Ek visit mein lagbhag 15 API calls aur 200 KB ki ek photo maani hai.</p>
+  <div class="nums">
+    <div class="num"><strong>7,500</strong><span>API calls roz</span></div>
+    <div class="num"><strong>&lt; 1 req/s</strong><span>Peak hour mein (30% traffic ek ghante mein)</span></div>
+    <div class="num"><strong>100 MB</strong><span>Photos roz</span></div>
+    <div class="num"><strong>18 GB</strong><span>Photos, 180 din retention par maximum</span></div>
+  </div>
+  <p>Iska matlab ek chhota server (2 vCPU, 4 GB) aur managed PostgreSQL kaafi hai. Asli khatra load nahi hai. Asli khatra gate ka rukna hai, isliye daily backup, restore test, aur offline mode par dhyan dena hai.</p>
+</section>
+
+<section id="tradeoffs">
+  <h2>Trade-offs</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Faisla</th><th>Choose kiya</th><th>Chhoda</th><th>Iski keemat</th></tr></thead>
+    <tbody>
+      <tr><td>Backend structure</td><td>Modular monolith</td><td>Microservices</td><td>Ek module ko alag scale nahi kar sakte. Is scale par zaroorat bhi nahi.</td></tr>
+      <tr><td>Mobile</td><td>React Native</td><td>Flutter, native</td><td>Scanner aur offline ke liye native libraries par depend. Team Flutter jaanti ho to Flutter lein.</td></tr>
+      <tr><td>Database</td><td>PostgreSQL</td><td>Firebase</td><td>Realtime khud banana padega, par reports aur transactions kaafi behtar.</td></tr>
+      <tr><td>Visitor side</td><td>Web link</td><td>Visitor app</td><td>Visitor ko push nahi ja sakta, WhatsApp aur SMS ka per-message kharcha lagega.</td></tr>
+      <tr><td>QR</td><td>Signed + offline</td><td>Online-only random code</td><td>Offline mein same QR do alag gates par chal sakta hai jab tak sync na ho. Sync par alert aayega.</td></tr>
+      <tr><td>Walk-in verify</td><td>OTP</td><td>Bina verify</td><td>Entry mein 20 se 30 second badhenge, par number sahi milega.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="phases">
+  <h2>Build phases</h2>
+  <p class="lede">Time ka andaza 2 se 3 developers ke liye hai. Scope final hone par hi pakka hoga.</p>
+  <div class="phases">
+    <div class="phase"><h3>Phase 1: MVP</h3><div class="when">Lagbhag 8 hafte</div><ul><li>Login aur roles</li><li>Invite, walk-in, approval</li><li>Signed QR, check-in, check-out</li><li>Live desk dashboard</li><li>Push + SMS, audit log, consent</li></ul></div>
+    <div class="phase"><h3>Phase 2: Gate ke liye pakka</h3><div class="when">Lagbhag 4 se 6 hafte</div><ul><li>Offline mode aur sync</li><li>WhatsApp, badge printing</li><li>Watchlist, overstay alerts</li><li>Reports, emergency list</li><li>Auto-delete of old data</li></ul></div>
+    <div class="phase"><h3>Phase 3: Jab zaroorat ho</h3><div class="when">Demand ke hisaab se</div><ul><li>Self check-in kiosk</li><li>Contractor ke liye multi-day pass</li><li>HRMS se employee sync</li><li>Turnstile ya boom barrier</li><li>Multi-site analytics</li></ul></div>
+  </div>
+  <h3>System badhne par kya dobara dekhna hai</h3>
+  <ul class="ask">
+    <li>Doosri companies ko bechna ho: har table mein <code>org_id</code> aur data isolation.</li>
+    <li>Roz 10,000+ visits: reports ke liye read replica, workers alag server par, purane events ka partition.</li>
+    <li>Turnstile lagna ho: gate hardware ke liye alag service, kyunki uska response time aur reliability ki maang alag hai.</li>
+  </ul>
+</section>
+
+<section id="questions">
+  <h2>Aapse confirm karna hai</h2>
+  <ol class="ask">
+    <li>Kitni sites aur gates hain, aur roz lagbhag kitne visitors aate hain?</li>
+    <li>Aapki team kaunsi technology jaanti hai, aur kitne log banayenge?</li>
+    <li>Data cloud par rakh sakte hain, ya company ke apne server par hi rakhna hai?</li>
+    <li>Gate par kya hai: phone, tablet, badge printer, ya turnstile?</li>
+    <li>Kya ID dekhna zaroori hai? Laptop ya vehicle entry bhi record karni hai?</li>
+    <li>Kya sirf apni company ke liye hai, ya baad mein doosron ko bhi bechna hai?</li>
+  </ol>
+</section>
+
+</div>
+
+<script>
+(function () {
+  var svg = document.getElementById('qr');
+  if (!svg) return;
+  var n = 21, seed = 412, cells = '';
+  function finder(x, y) {
+    return '<path fill="currentColor" fill-rule="evenodd" d="M' + x + ',' + y + 'h7v7h-7z M' + (x + 1) + ',' + (y + 1) + 'v5h5v-5z"/>' +
+           '<rect fill="currentColor" x="' + (x + 2) + '" y="' + (y + 2) + '" width="3" height="3"/>';
+  }
+  function inFinder(x, y) {
+    return (x < 8 && y < 8) || (x > 12 && y < 8) || (x < 8 && y > 12);
+  }
+  for (var y = 0; y < n; y++) {
+    for (var x = 0; x < n; x++) {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      if (!inFinder(x, y) && (seed >> 16) % 2 === 0) {
+        cells += '<rect fill="currentColor" x="' + x + '" y="' + y + '" width="1" height="1"/>';
+      }
+    }
+  }
+  svg.innerHTML = cells + finder(0, 0) + finder(14, 0) + finder(0, 14);
+})();
+</script>
