@@ -16,16 +16,23 @@ bash scripts/setup-redis.sh
 pnpm services
 ```
 
-`pnpm services` Docker ke bina PostgreSQL (5433) aur Redis (6380) chalata hai. Docker ho to `docker compose up -d` bhi chalega. Ise chalta chhod kar doosre terminal mein:
+`pnpm services` Docker ke bina PostgreSQL (5433) aur Redis (6380) chalata hai, Windows par. Mac ya Linux par, ya Docker ho to, iski jagah `docker compose up -d` chalayein. Ise chalta chhod kar doosre terminal mein:
 
 ```bash
 cp .env.example apps/api/.env
 cd apps/api
 npx tsx scripts/gen-qr-keys.ts >> .env
+```
+
+Ab `apps/api/.env` mein `JWT_SECRET=change-me` ko koi lamba random text karein, warna server start nahi hoga. Phir:
+
+```bash
 npx prisma migrate deploy
 npx tsx prisma/seed.ts
 pnpm dev
 ```
+
+Web app ke liye doosre terminal mein `pnpm --filter web dev`, phir http://localhost:5173 kholein.
 
 Seed ke test accounts ke numbers `apps/api/prisma/seed.ts` mein hain. `SMS_PROVIDER=console` par OTP terminal mein dikhta hai.
 
