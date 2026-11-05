@@ -1,0 +1,20 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@visitor/shared": [
+        "../../packages/shared/src"
+      ]
+    },
+    "types": [
+      "jest"
+    ]
+  },
+  "include": [
+    "src",
+    "app",
+    "test",
+    "*.ts"
+  ]
+}

@@ -17,6 +17,9 @@
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node",
-    "roots": ["<rootDir>/src"]
-  }
+    "roots": [
+      "<rootDir>/src"
+    ]
+  },
+  "react-native": "src/index.ts"
 }

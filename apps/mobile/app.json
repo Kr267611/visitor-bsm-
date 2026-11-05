@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Visitor BSM",
+    "slug": "visitor-bsm",
+    "scheme": "visitorbsm",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-status-bar",
+      "expo-notifications",
+      [
+        "expo-camera",
+        { "cameraPermission": "Visitor ka QR scan karne ke liye camera chahiye." }
+      ],
+      [
+        "expo-image-picker",
+        { "cameraPermission": "Visitor ki photo lene ke liye camera chahiye." }
+      ]
+    ],
+    "android": { "package": "in.bsm.visitor" },
+    "ios": { "bundleIdentifier": "in.bsm.visitor" }
+  }
+}
