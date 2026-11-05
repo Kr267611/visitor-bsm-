@@ -46,4 +46,4 @@ pnpm --filter api test:e2e
 
 ## Deploy
 
-Backend Render par: `render.yaml` Blueprint se. Web app Vercel par. Asli launch se pehle [runbook](docs/runbook.md) ki Launch checklist poori karein.
+Render par `render.yaml` Blueprint se: API, web app, Postgres aur Redis sab ek saath banenge. Web app chaho to Vercel par bhi chal sakta hai (`apps/web/vercel.json`). Asli launch se pehle [runbook](docs/runbook.md) ki Launch checklist poori karein.

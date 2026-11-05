@@ -34,8 +34,6 @@ services:
         sync: false
       - key: PUBLIC_WEB_URL
         sync: false
-      - key: API_URL
-        sync: false
       - key: CORS_ORIGINS
         sync: false
       - key: S3_ENDPOINT
@@ -53,6 +51,26 @@ services:
       - key: SMS_SENDER
         sync: false
       - key: SENTRY_DSN
+        sync: false
+
+  # Web app. Isme VITE_API_URL ke bina build jaan-boojh kar fail hoti hai.
+  - type: web
+    name: visitor-web
+    runtime: static
+    buildCommand: npx pnpm@10.34.9 install --frozen-lockfile --filter web... && npx pnpm@10.34.9 --filter web build
+    staticPublishPath: apps/web/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /v/*
+        name: Referrer-Policy
+        value: no-referrer
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: VITE_API_URL
         sync: false
 
   - type: keyvalue

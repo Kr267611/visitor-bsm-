@@ -2,10 +2,11 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import * as Sentry from '@sentry/node';
 import { AppModule } from './app.module';
-import { assertRequiredEnv, configureApp } from './configure-app';
+import { applyPlatformDefaults, assertRequiredEnv, configureApp } from './configure-app';
 import { JobsService } from './jobs/jobs.service';
 
 async function bootstrap() {
+  applyPlatformDefaults(process.env);
   assertRequiredEnv(process.env);
   if (process.env.SENTRY_DSN) Sentry.init({ dsn: process.env.SENTRY_DSN });
 

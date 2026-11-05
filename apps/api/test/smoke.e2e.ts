@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { assertRequiredEnv, configureApp } from '../src/configure-app';
+import { applyPlatformDefaults, assertRequiredEnv, configureApp } from '../src/configure-app';
 import { seedSite, seedUser } from './factories';
 import { createTestApp, resetData, TestContext, tokenFor } from './setup';
 
@@ -122,6 +122,19 @@ describe('smoke', () => {
       const res = await request(app.getHttpServer()).get('/health').set('Origin', 'https://evil.vercel.app');
       expect(res.headers['access-control-allow-origin']).toBeUndefined();
       await app.close();
+    });
+  });
+
+  describe('applyPlatformDefaults', () => {
+    it('uses the Render URL when API_URL is not set', () => {
+      const env: Record<string, string | undefined> = { RENDER_EXTERNAL_URL: 'https://api.onrender.com' };
+      applyPlatformDefaults(env);
+      expect(env.API_URL).toBe('https://api.onrender.com');
+    });
+    it('keeps API_URL when it is set', () => {
+      const env: Record<string, string | undefined> = { API_URL: 'https://mine', RENDER_EXTERNAL_URL: 'https://other' };
+      applyPlatformDefaults(env);
+      expect(env.API_URL).toBe('https://mine');
     });
   });
 

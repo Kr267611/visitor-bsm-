@@ -14,6 +14,11 @@ const REQUIRED_ENV = [
   'CONSENT_VERSION',
 ];
 
+/** Render khud apna public URL deta hai, to API_URL alag se bharna zaroori nahi. */
+export function applyPlatformDefaults(env: Record<string, string | undefined>): void {
+  env.API_URL ??= env.RENDER_EXTERNAL_URL;
+}
+
 /** Server start hone se pehle zaroori settings check. Kami ho to saaf error, baad mein ajeeb crash nahi. */
 export function assertRequiredEnv(env: Record<string, string | undefined>): void {
   const missing = REQUIRED_ENV.filter((name) => !env[name]);
