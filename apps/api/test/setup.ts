@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/configure-app';
 import { FakeSmsProvider } from '../src/notifications/fake-sms.provider';
+import { FakePushProvider, PUSH_PROVIDER } from '../src/notifications/push.provider';
 import { SMS_PROVIDER } from '../src/notifications/sms.provider';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
@@ -13,6 +14,7 @@ export interface TestContext {
   prisma: PrismaService;
   redis: RedisService;
   sms: FakeSmsProvider;
+  push: FakePushProvider;
 }
 
 export async function createTestApp(): Promise<TestContext> {
@@ -25,6 +27,7 @@ export async function createTestApp(): Promise<TestContext> {
     prisma: app.get(PrismaService),
     redis: app.get(RedisService),
     sms: app.get(SMS_PROVIDER),
+    push: app.get(PUSH_PROVIDER),
   };
 }
 
@@ -42,4 +45,6 @@ export async function resetData(ctx: TestContext): Promise<void> {
   await ctx.redis.client.flushdb();
   ctx.sms.sent.length = 0;
   ctx.sms.failing = false;
+  ctx.push.sent.length = 0;
+  ctx.push.failing = false;
 }
