@@ -1,6 +1,22 @@
 export type Role = 'guard' | 'employee' | 'reception' | 'security' | 'admin';
 
+import type { VisitStatus } from './status';
+
+export interface VisitSummary {
+  id: string;
+  code: string;
+  status: VisitStatus;
+  visitorName: string;
+  company: string | null;
+  photoUrl: string | null;
+  hostName: string;
+  validFrom: string;
+  validTo: string;
+  checkedInAt: string | null;
+}
+
 export type ErrorCode =
+  | 'RATE_LIMITED'
   | 'INVALID_PASS'
   | 'WRONG_SITE'
   | 'PASS_NOT_YET_VALID'

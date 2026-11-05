@@ -9,6 +9,7 @@ const CODE_BY_STATUS: Record<number, { error: string; message: string }> = {
   403: { error: 'FORBIDDEN', message: 'Aapko iski permission nahi hai.' },
   404: { error: 'NOT_FOUND', message: 'Yeh cheez nahi mili.' },
   413: { error: 'VALIDATION_FAILED', message: 'File bahut badi hai.' },
+  429: { error: 'RATE_LIMITED', message: 'Bahut zyada requests aayi hain. Thodi der baad koshish karein.' },
 };
 
 @Catch()

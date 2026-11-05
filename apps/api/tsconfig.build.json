@@ -1,6 +1,6 @@
 {
   "extends": "./tsconfig.json",
-  "compilerOptions": { "paths": {}, "types": ["node"] },
+  "compilerOptions": { "paths": {}, "types": ["node", "multer"] },
   "include": ["src"],
   "exclude": ["**/*.spec.ts"]
 }

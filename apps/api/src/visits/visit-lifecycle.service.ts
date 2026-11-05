@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Prisma, Visit } from '@prisma/client';
 import { nextStatus, VisitAction } from '@visitor/shared';
 import { ApiException } from '../common/api-exception';
+import { istYear } from '../common/time';
 import { OutboxDraft, renderTemplate } from '../notifications/templates';
 import { PrismaService } from '../prisma/prisma.service';
 import { InvalidTransitionError } from './errors';
@@ -84,6 +85,51 @@ export class VisitLifecycleService {
         });
       }
       return tx.visit.findUniqueOrThrow({ where: { id: current.id } });
+    });
+
+    const event: VisitUpdatedEvent = { visitId: visit.id, siteId: visit.siteId, status: visit.status };
+    this.events.emit(VISIT_UPDATED, event);
+    return visit;
+  }
+
+  /** Naya visit: code, CREATED event aur outbox ek transaction mein. */
+  async create(input: {
+    data: Omit<Prisma.VisitUncheckedCreateInput, 'code'>;
+    actorId: string | null;
+    gateId?: string;
+    deviceId?: string;
+    clientEventId?: string;
+    notify?: OutboxDraft[];
+  }): Promise<Visit> {
+    const drafts = input.notify ?? [];
+    drafts.forEach((d) => renderTemplate(d.template, d.vars));
+
+    const visit = await this.prisma.$transaction(async (tx) => {
+      const [{ seq }] = await tx.$queryRaw<{ seq: bigint }[]>`SELECT nextval('visit_code_seq') AS seq`;
+      const code = `VIS-${istYear(new Date())}-${String(seq).padStart(5, '0')}`;
+      const created = await tx.visit.create({ data: { ...input.data, code } });
+      await tx.visitEvent.create({
+        data: {
+          visitId: created.id,
+          type: 'CREATED',
+          actorId: input.actorId,
+          gateId: input.gateId,
+          deviceId: input.deviceId,
+          clientEventId: input.clientEventId,
+        },
+      });
+      if (drafts.length) {
+        await tx.outbox.createMany({
+          data: drafts.map((d) => ({
+            visitId: created.id,
+            channel: d.channel,
+            template: d.template,
+            recipient: d.recipient,
+            vars: d.vars,
+          })),
+        });
+      }
+      return created;
     });
 
     const event: VisitUpdatedEvent = { visitId: visit.id, siteId: visit.siteId, status: visit.status };

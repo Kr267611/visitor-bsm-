@@ -21,7 +21,7 @@ export async function createTestApp(): Promise<TestContext> {
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
   const app = moduleRef.createNestApplication();
   configureApp(app);
-  await app.init();
+  await app.listen(0);
   return {
     app,
     prisma: app.get(PrismaService),

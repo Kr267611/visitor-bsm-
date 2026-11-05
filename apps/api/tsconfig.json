@@ -4,7 +4,7 @@
     "outDir": "dist",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "types": ["jest", "node"],
+    "types": ["jest", "node", "multer"],
     "baseUrl": ".",
     "paths": { "@visitor/shared": ["../../packages/shared/src"] }
   },

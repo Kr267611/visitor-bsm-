@@ -12,3 +12,5 @@ const qrKeys = generateKeyPairSync('ed25519');
 process.env.QR_PRIVATE_KEY = Buffer.from(qrKeys.privateKey.export({ type: 'pkcs8', format: 'pem' })).toString('base64');
 process.env.QR_PUBLIC_KEY = Buffer.from(qrKeys.publicKey.export({ type: 'spki', format: 'pem' })).toString('base64');
 process.env.PUSH_PROVIDER = 'fake';
+process.env.STORAGE_DRIVER = 'memory';
+process.env.PUBLIC_RATE_LIMIT = '100000';
