@@ -1,0 +1,13 @@
+{
+  "framework": "vite",
+  "installCommand": "cd ../.. && npm install -g pnpm@10.34.9 && pnpm install --frozen-lockfile --filter web...",
+  "buildCommand": "pnpm build",
+  "outputDirectory": "dist",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
+  "headers": [
+    {
+      "source": "/v/(.*)",
+      "headers": [{ "key": "Referrer-Policy", "value": "no-referrer" }]
+    }
+  ]
+}

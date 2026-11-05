@@ -1,4 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { DevicesPanel } from '../admin/DevicesPanel';
+import { SitesPage } from '../admin/SitesPage';
+import { UsersPage } from '../admin/UsersPage';
 import { useAuth } from '../auth/AuthProvider';
 import { LoginPage } from '../auth/LoginPage';
 import { homeFor, RequireRole } from '../auth/RequireRole';
@@ -46,11 +49,25 @@ export function AppRoutes() {
         }
       />
       <Route
+        path="/admin/devices"
+        element={
+          <RequireRole roles={['admin', 'security']}>
+            <Layout>
+              <DevicesPanel />
+            </Layout>
+          </RequireRole>
+        }
+      />
+      <Route
         path="/admin/*"
         element={
           <RequireRole roles={['admin']}>
             <Layout>
-              <h1>Admin</h1>
+              <Routes>
+                <Route index element={<Navigate to="users" replace />} />
+                <Route path="users" element={<UsersPage />} />
+                <Route path="sites" element={<SitesPage />} />
+              </Routes>
             </Layout>
           </RequireRole>
         }
