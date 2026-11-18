@@ -8,6 +8,7 @@ datasource db {
 }
 
 enum Role {
+  super_admin
   guard
   employee
   reception
@@ -42,57 +43,183 @@ enum OutboxStatus {
   FAILED
 }
 
-model Site {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String
-  address   String?
-  timezone  String   @default("Asia/Kolkata")
-  createdAt DateTime @default(now()) @map("created_at")
-  gates     Gate[]
-  users     User[]
-  visits    Visit[]
+enum PremisesCategory {
+  business
+  events
+  exhibition
+}
 
-  @@map("sites")
+model Plan {
+  id            String     @id @default(uuid()) @db.Uuid
+  code          String     @unique
+  name          String
+  features      String[]
+  visitLimit    Int?       @map("visit_limit")
+  premisesLimit Int?       @map("premises_limit")
+  memberLimit   Int?       @map("member_limit")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  businesses    Business[]
+
+  @@map("plans")
+}
+
+model Business {
+  id          String       @id @default(uuid()) @db.Uuid
+  name        String
+  slug        String       @unique
+  logoKey     String?      @map("logo_key")
+  planId      String       @map("plan_id") @db.Uuid
+  otpLogin    Boolean      @default(true) @map("otp_login")
+  isActive    Boolean      @default(true) @map("is_active")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  plan        Plan         @relation(fields: [planId], references: [id])
+  premises    Premises[]
+  users       User[]
+  departments Department[]
+  visitors    Visitor[]
+  visits      Visit[]
+
+  @@map("businesses")
+}
+
+model Premises {
+  id         String           @id @default(uuid()) @db.Uuid
+  businessId String           @map("business_id") @db.Uuid
+  name       String
+  code       String           @unique
+  webSlug    String           @map("web_slug")
+  address    String?
+  mobile     String?
+  email      String?
+  lat        Float?
+  lng        Float?
+  geofenceM  Int?             @map("geofence_m")
+  category   PremisesCategory @default(business)
+  isDefault  Boolean          @default(false) @map("is_default")
+  purposes   String[]         @default(["Enquiry", "Casual Meet", "Appointment", "Meeting", "Visitor"])
+  timezone   String           @default("Asia/Kolkata")
+  createdAt  DateTime         @default(now()) @map("created_at")
+  business   Business         @relation(fields: [businessId], references: [id])
+  setting    PremisesSetting?
+  gates      Gate[]
+  members    UserPremises[]
+  visits     Visit[]
+
+  @@unique([businessId, webSlug])
+  @@index([businessId])
+  @@map("premises")
+}
+
+model PremisesSetting {
+  premisesId        String   @id @map("premises_id") @db.Uuid
+  businessId        String   @map("business_id") @db.Uuid
+  visitStart        String?  @map("visit_start")
+  visitEnd          String?  @map("visit_end")
+  checkinOnApproval Boolean  @default(true) @map("checkin_on_approval")
+  onlyCheckin       Boolean  @default(false) @map("only_checkin")
+  autoCheckoutHrs   Int?     @map("auto_checkout_hrs")
+  overstayMin       Int?     @map("overstay_min")
+  waitingMin        Int?     @map("waiting_min")
+  defaultVisitMin   Int      @default(240) @map("default_visit_min")
+  slotMin           Int      @default(30) @map("slot_min")
+  delayAlertMin     Int?     @map("delay_alert_min")
+  onlyMemberCheckin Boolean  @default(false) @map("only_member_checkin")
+  reportEmails      String[] @default([]) @map("report_emails")
+  reportSchedule    String?  @map("report_schedule")
+  googleReviewUrl   String?  @map("google_review_url")
+  exitPlanKey       String?  @map("exit_plan_key")
+  premises          Premises @relation(fields: [premisesId], references: [id], onDelete: Cascade)
+
+  @@map("premises_settings")
+}
+
+model Department {
+  id         String   @id @default(uuid()) @db.Uuid
+  businessId String   @map("business_id") @db.Uuid
+  name       String
+  createdAt  DateTime @default(now()) @map("created_at")
+  business   Business @relation(fields: [businessId], references: [id])
+  users      User[]
+
+  @@unique([businessId, name])
+  @@map("departments")
+}
+
+model UserPremises {
+  userId     String   @map("user_id") @db.Uuid
+  premisesId String   @map("premises_id") @db.Uuid
+  businessId String   @map("business_id") @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  premises   Premises @relation(fields: [premisesId], references: [id], onDelete: Cascade)
+
+  @@id([userId, premisesId])
+  @@index([premisesId])
+  @@map("user_premises")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  businessId String?  @map("business_id") @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid
+  entity     String
+  entityId   String   @map("entity_id")
+  action     String
+  before     Json?
+  after      Json?
+  at         DateTime @default(now())
+
+  @@index([businessId, entity, entityId])
+  @@map("audit_logs")
 }
 
 model Gate {
-  id        String   @id @default(uuid()) @db.Uuid
-  siteId    String   @map("site_id") @db.Uuid
-  name      String
-  isActive  Boolean  @default(true) @map("is_active")
-  site      Site     @relation(fields: [siteId], references: [id])
-  devices   Device[]
-  visitsIn  Visit[]  @relation("InGate")
-  visitsOut Visit[]  @relation("OutGate")
+  id         String   @id @default(uuid()) @db.Uuid
+  businessId String   @map("business_id") @db.Uuid
+  premisesId String   @map("premises_id") @db.Uuid
+  name       String
+  isActive   Boolean  @default(true) @map("is_active")
+  premises   Premises @relation(fields: [premisesId], references: [id])
+  devices    Device[]
+  visitsIn   Visit[]  @relation("InGate")
+  visitsOut  Visit[]  @relation("OutGate")
 
   @@map("gates")
 }
 
 model User {
-  id         String   @id @default(uuid()) @db.Uuid
-  name       String
-  phone      String   @unique
-  email      String?
-  role       Role
-  department String?
-  siteId     String?  @map("site_id") @db.Uuid
-  delegateId String?  @map("delegate_id") @db.Uuid
-  isActive   Boolean  @default(true) @map("is_active")
-  createdAt  DateTime @default(now()) @map("created_at")
+  id           String    @id @default(uuid()) @db.Uuid
+  businessId   String?   @map("business_id") @db.Uuid
+  name         String
+  phone        String
+  email        String?
+  role         Role
+  departmentId String?   @map("department_id") @db.Uuid
+  designation  String?
+  joiningDate  DateTime? @map("joining_date")
+  isHost       Boolean   @default(true) @map("is_host")
+  passwordHash String?   @map("password_hash")
+  delegateId   String?   @map("delegate_id") @db.Uuid
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at")
 
-  site          Site?          @relation(fields: [siteId], references: [id])
+  business      Business?      @relation(fields: [businessId], references: [id])
+  department    Department?    @relation(fields: [departmentId], references: [id])
+  premises      UserPremises[]
   delegate      User?          @relation("Delegate", fields: [delegateId], references: [id])
   delegators    User[]         @relation("Delegate")
   hostedVisits  Visit[]
   devices       Device[]
   refreshTokens RefreshToken[]
 
+  @@unique([businessId, phone])
+  @@unique([businessId, email])
   @@map("users")
 }
 
 model Visitor {
   id             String    @id @default(uuid()) @db.Uuid
-  phone          String    @unique
+  businessId     String    @map("business_id") @db.Uuid
+  phone          String
   name           String
   company        String?
   photoKey       String?   @map("photo_key")
@@ -102,8 +229,10 @@ model Visitor {
   consentVersion String?   @map("consent_version")
   deleteAfter    DateTime? @map("delete_after")
   createdAt      DateTime  @default(now()) @map("created_at")
+  business       Business  @relation(fields: [businessId], references: [id])
   visits         Visit[]
 
+  @@unique([businessId, phone])
   @@map("visitors")
 }
 
@@ -112,7 +241,8 @@ model Visit {
   code                     String      @unique
   visitorId                String      @map("visitor_id") @db.Uuid
   hostId                   String      @map("host_id") @db.Uuid
-  siteId                   String      @map("site_id") @db.Uuid
+  businessId               String      @map("business_id") @db.Uuid
+  premisesId               String      @map("premises_id") @db.Uuid
   groupId                  String?     @map("group_id") @db.Uuid
   type                     VisitType
   purpose                  String
@@ -130,15 +260,17 @@ model Visit {
   createdAt                DateTime    @default(now()) @map("created_at")
   updatedAt                DateTime    @updatedAt @map("updated_at")
 
-  visitor Visitor      @relation(fields: [visitorId], references: [id])
-  host    User         @relation(fields: [hostId], references: [id])
-  site    Site         @relation(fields: [siteId], references: [id])
-  inGate  Gate?        @relation("InGate", fields: [inGateId], references: [id])
-  outGate Gate?        @relation("OutGate", fields: [outGateId], references: [id])
-  events  VisitEvent[]
-  outbox  Outbox[]
+  visitor  Visitor      @relation(fields: [visitorId], references: [id])
+  host     User         @relation(fields: [hostId], references: [id])
+  business Business     @relation(fields: [businessId], references: [id])
+  premises Premises     @relation(fields: [premisesId], references: [id])
+  inGate   Gate?        @relation("InGate", fields: [inGateId], references: [id])
+  outGate  Gate?        @relation("OutGate", fields: [outGateId], references: [id])
+  events   VisitEvent[]
+  outbox   Outbox[]
 
-  @@index([siteId, status])
+  @@index([premisesId, status])
+  @@index([businessId, createdAt])
   @@index([hostId, validFrom])
   @@map("visits")
 }
@@ -146,6 +278,7 @@ model Visit {
 model VisitEvent {
   id            String   @id @default(uuid()) @db.Uuid
   visitId       String   @map("visit_id") @db.Uuid
+  businessId    String   @map("business_id") @db.Uuid
   type          String
   actorId       String?  @map("actor_id") @db.Uuid
   gateId        String?  @map("gate_id") @db.Uuid
@@ -164,6 +297,7 @@ model VisitEvent {
 model Outbox {
   id            String        @id @default(uuid()) @db.Uuid
   visitId       String?       @map("visit_id") @db.Uuid
+  businessId    String?       @map("business_id") @db.Uuid
   channel       OutboxChannel
   template      String
   recipient     String

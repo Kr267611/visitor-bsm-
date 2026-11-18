@@ -1,3 +1,4 @@
+import { randomInt } from 'node:crypto';
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
@@ -9,39 +10,59 @@ import { PrismaService } from '../prisma/prisma.service';
 const roleSchema = z.enum(['guard', 'employee', 'reception', 'security', 'admin']);
 const uuid = z.string().uuid();
 
-const siteCreate = z.object({ name: z.string().min(1), address: z.string().optional() });
-const siteUpdate = siteCreate.partial();
-const gateCreate = z.object({ siteId: uuid, name: z.string().min(1) });
+const premisesCreate = z.object({
+  name: z.string().trim().min(1),
+  address: z.string().optional(),
+  mobile: z.string().optional(),
+  email: z.string().email().optional(),
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
+  geofenceM: z.number().int().positive().optional(),
+  category: z.enum(['business', 'events', 'exhibition']).optional(),
+  isDefault: z.boolean().optional(),
+});
+const premisesUpdate = premisesCreate.partial();
+const gateCreate = z.object({ premisesId: uuid, name: z.string().min(1) });
 const gateUpdate = z.object({ name: z.string().min(1), isActive: z.boolean() }).partial();
+const departmentCreate = z.object({ name: z.string().trim().min(1).max(100) });
 const userCreate = z.object({
   name: z.string().min(1),
   phone: z.string(),
   role: roleSchema,
-  siteId: uuid,
+  premisesIds: z.array(uuid).min(1),
   email: z.string().email().optional(),
-  department: z.string().optional(),
+  departmentId: uuid.optional(),
+  designation: z.string().optional(),
+  isHost: z.boolean().optional(),
 });
 const userUpdate = z
   .object({
     name: z.string().min(1),
     role: roleSchema,
-    siteId: uuid,
+    premisesIds: z.array(uuid).min(1),
     email: z.string().email().nullable(),
-    department: z.string().nullable(),
+    departmentId: uuid.nullable(),
+    designation: z.string().nullable(),
+    isHost: z.boolean(),
     isActive: z.boolean(),
   })
   .partial();
 
-const USER_FIELDS = {
+export const USER_FIELDS = {
   id: true,
   name: true,
   phone: true,
   email: true,
   role: true,
-  department: true,
-  siteId: true,
+  departmentId: true,
+  designation: true,
+  isHost: true,
   isActive: true,
+  premises: { select: { premisesId: true } },
 } as const;
+
+type UserRow = Prisma.UserGetPayload<{ select: typeof USER_FIELDS }>;
+const toUser = ({ premises, ...u }: UserRow) => ({ ...u, premisesIds: premises.map((p) => p.premisesId) });
 
 /** Prisma ke unique/foreign-key errors ko saaf 422 mein badalta hai. */
 async function friendly<T>(work: Promise<T>): Promise<T> {
@@ -49,70 +70,167 @@ async function friendly<T>(work: Promise<T>): Promise<T> {
     return await work;
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError) {
-      if (e.code === 'P2002') throw new ApiException(422, 'VALIDATION_FAILED', 'Yeh mobile number pehle se hai.');
-      if (e.code === 'P2003') throw new ApiException(422, 'VALIDATION_FAILED', 'Chuni gayi site ya gate nahi mili.');
+      if (e.code === 'P2002') throw new ApiException(422, 'VALIDATION_FAILED', 'Yeh pehle se maujood hai.');
+      if (e.code === 'P2003') throw new ApiException(422, 'VALIDATION_FAILED', 'Chuna gaya premises, gate ya department nahi mila.');
       if (e.code === 'P2025') throw new ApiException(404, 'NOT_FOUND', 'Yeh record nahi mila.');
     }
     throw e;
   }
 }
 
+const KIOSK_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const kioskCode = () => Array.from({ length: 6 }, () => KIOSK_ALPHABET[randomInt(KIOSK_ALPHABET.length)]).join('');
+const slugify = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40) || 'premises';
+
+const notFound = () => new ApiException(404, 'NOT_FOUND', 'Yeh record nahi mila.');
+
 @Roles('admin')
 @Controller('admin')
 export class AdminController {
   constructor(private readonly prisma: PrismaService) {}
 
-  @Get('sites')
-  sites() {
-    return this.prisma.site.findMany({ orderBy: { name: 'asc' } });
+  private businessOf(user: AuthUser): string {
+    if (!user.businessId) throw new ApiException(403, 'FORBIDDEN', 'Aapko iski permission nahi hai.');
+    return user.businessId;
   }
 
-  @Post('sites')
-  createSite(@Body() body: unknown) {
-    return this.prisma.site.create({ data: parseBody(siteCreate, body) });
+  /** Diye gaye premises sab isi business ke hon. */
+  private async assertPremises(businessId: string, ids: string[]) {
+    const found = await this.prisma.premises.count({ where: { businessId, id: { in: ids } } });
+    if (found !== new Set(ids).size) throw new ApiException(422, 'VALIDATION_FAILED', 'Chuna gaya premises nahi mila.');
   }
 
-  @Patch('sites/:id')
-  updateSite(@Param('id', ParseUUIDPipe) id: string, @Body() body: unknown) {
-    return friendly(this.prisma.site.update({ where: { id }, data: parseBody(siteUpdate, body) }));
+  private async assertDepartment(businessId: string, id: string | null | undefined) {
+    if (!id) return;
+    if (!(await this.prisma.department.count({ where: { businessId, id } }))) {
+      throw new ApiException(422, 'VALIDATION_FAILED', 'Chuna gaya department nahi mila.');
+    }
   }
 
-  @Get('gates')
-  gates() {
-    return this.prisma.gate.findMany({ orderBy: { name: 'asc' } });
+  @Get('premises')
+  premises(@CurrentUser() user: AuthUser) {
+    return this.prisma.premises.findMany({
+      where: { businessId: this.businessOf(user) },
+      orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
+    });
   }
 
-  @Post('gates')
-  createGate(@Body() body: unknown) {
-    return friendly(this.prisma.gate.create({ data: parseBody(gateCreate, body) }));
-  }
-
-  @Patch('gates/:id')
-  updateGate(@Param('id', ParseUUIDPipe) id: string, @Body() body: unknown) {
-    return friendly(this.prisma.gate.update({ where: { id }, data: parseBody(gateUpdate, body) }));
-  }
-
-  @Get('users')
-  users() {
-    return this.prisma.user.findMany({ select: USER_FIELDS, orderBy: { name: 'asc' } });
-  }
-
-  @Post('users')
-  createUser(@Body() body: unknown) {
-    const data = parseBody(userCreate, body);
+  @Post('premises')
+  async createPremises(@CurrentUser() user: AuthUser, @Body() body: unknown) {
+    const businessId = this.businessOf(user);
+    const data = parseBody(premisesCreate, body);
+    const taken = await this.prisma.premises.count({ where: { businessId, webSlug: { startsWith: slugify(data.name) } } });
+    const webSlug = taken ? `${slugify(data.name)}-${taken + 1}` : slugify(data.name);
+    const isFirst = !(await this.prisma.premises.count({ where: { businessId } }));
     return friendly(
-      this.prisma.user.create({
-        data: { ...data, phone: requirePhone(data.phone) },
-        select: USER_FIELDS,
+      this.prisma.$transaction(async (tx) => {
+        if (data.isDefault) await tx.premises.updateMany({ where: { businessId }, data: { isDefault: false } });
+        const premises = await tx.premises.create({
+          data: { ...data, businessId, code: kioskCode(), webSlug, isDefault: data.isDefault ?? isFirst },
+        });
+        await tx.premisesSetting.create({ data: { premisesId: premises.id, businessId } });
+        return premises;
       }),
     );
   }
 
-  @Patch('users/:id')
-  updateUser(@Param('id', ParseUUIDPipe) id: string, @Body() body: unknown) {
-    return friendly(
-      this.prisma.user.update({ where: { id }, data: parseBody(userUpdate, body), select: USER_FIELDS }),
+  @Patch('premises/:id')
+  async updatePremises(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body() body: unknown) {
+    const businessId = this.businessOf(user);
+    const data = parseBody(premisesUpdate, body);
+    if (!(await this.prisma.premises.count({ where: { id, businessId } }))) throw notFound();
+    return this.prisma.$transaction(async (tx) => {
+      if (data.isDefault) await tx.premises.updateMany({ where: { businessId }, data: { isDefault: false } });
+      return tx.premises.update({ where: { id }, data });
+    });
+  }
+
+  @Get('gates')
+  gates(@CurrentUser() user: AuthUser) {
+    return this.prisma.gate.findMany({ where: { businessId: this.businessOf(user) }, orderBy: { name: 'asc' } });
+  }
+
+  @Post('gates')
+  async createGate(@CurrentUser() user: AuthUser, @Body() body: unknown) {
+    const businessId = this.businessOf(user);
+    const data = parseBody(gateCreate, body);
+    await this.assertPremises(businessId, [data.premisesId]);
+    return this.prisma.gate.create({ data: { ...data, businessId } });
+  }
+
+  @Patch('gates/:id')
+  async updateGate(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body() body: unknown) {
+    const businessId = this.businessOf(user);
+    if (!(await this.prisma.gate.count({ where: { id, businessId } }))) throw notFound();
+    return this.prisma.gate.update({ where: { id }, data: parseBody(gateUpdate, body) });
+  }
+
+  @Get('departments')
+  departments(@CurrentUser() user: AuthUser) {
+    return this.prisma.department.findMany({ where: { businessId: this.businessOf(user) }, orderBy: { name: 'asc' } });
+  }
+
+  @Post('departments')
+  createDepartment(@CurrentUser() user: AuthUser, @Body() body: unknown) {
+    const businessId = this.businessOf(user);
+    return friendly(this.prisma.department.create({ data: { ...parseBody(departmentCreate, body), businessId } }));
+  }
+
+  @Get('users')
+  async users(@CurrentUser() user: AuthUser) {
+    const rows = await this.prisma.user.findMany({
+      where: { businessId: this.businessOf(user) },
+      select: USER_FIELDS,
+      orderBy: { name: 'asc' },
+    });
+    return rows.map(toUser);
+  }
+
+  @Post('users')
+  async createUser(@CurrentUser() user: AuthUser, @Body() body: unknown) {
+    const businessId = this.businessOf(user);
+    const { premisesIds, ...data } = parseBody(userCreate, body);
+    await this.assertPremises(businessId, premisesIds);
+    await this.assertDepartment(businessId, data.departmentId);
+    const created = await friendly(
+      this.prisma.user.create({
+        data: {
+          ...data,
+          businessId,
+          phone: requirePhone(data.phone),
+          premises: { create: premisesIds.map((premisesId) => ({ premisesId, businessId })) },
+        },
+        select: USER_FIELDS,
+      }),
     );
+    return toUser(created);
+  }
+
+  @Patch('users/:id')
+  async updateUser(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body() body: unknown) {
+    const businessId = this.businessOf(user);
+    const { premisesIds, ...data } = parseBody(userUpdate, body);
+    if (!(await this.prisma.user.count({ where: { id, businessId } }))) throw notFound();
+    if (premisesIds) await this.assertPremises(businessId, premisesIds);
+    await this.assertDepartment(businessId, data.departmentId);
+    const updated = await friendly(
+      this.prisma.user.update({
+        where: { id },
+        data: {
+          ...data,
+          ...(premisesIds && {
+            premises: { deleteMany: {}, create: premisesIds.map((premisesId) => ({ premisesId, businessId })) },
+          }),
+        },
+        select: USER_FIELDS,
+      }),
+    );
+    return toUser(updated);
   }
 }
 
@@ -122,54 +240,81 @@ const meUpdate = z.object({ delegateId: uuid.nullable() });
 export class ProfileController {
   constructor(private readonly prisma: PrismaService) {}
 
-  private async profile(id: string) {
-    const { delegate, ...user } = await this.prisma.user.findUniqueOrThrow({
-      where: { id },
-      select: { ...USER_FIELDS, delegateId: true, delegate: { select: { name: true } } },
+  private async profile(user: AuthUser) {
+    const { delegate, premises, business, ...me } = await this.prisma.user.findUniqueOrThrow({
+      where: { id: user.id },
+      select: {
+        ...USER_FIELDS,
+        delegateId: true,
+        delegate: { select: { name: true } },
+        business: { select: { id: true, name: true, slug: true } },
+      },
     });
-    return { ...user, delegateName: delegate?.name ?? null };
+    const premisesList = await this.prisma.premises.findMany({
+      where: { id: { in: user.premisesIds } },
+      select: { id: true, name: true, isDefault: true },
+      orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
+    });
+    return {
+      ...me,
+      premisesIds: premises.map((p) => p.premisesId),
+      delegateName: delegate?.name ?? null,
+      business,
+      premises: premisesList,
+      activePremisesId: user.premisesId,
+    };
   }
 
   @Get('me')
   me(@CurrentUser() user: AuthUser) {
-    return this.profile(user.id);
+    return this.profile(user);
   }
 
   @Patch('me')
   async updateMe(@CurrentUser() user: AuthUser, @Body() body: unknown) {
     const { delegateId } = parseBody(meUpdate, body);
     if (delegateId) {
-      const delegate = await this.prisma.user.findUnique({ where: { id: delegateId } });
-      if (delegateId === user.id || !delegate?.isActive || delegate.siteId !== user.siteId) {
-        throw new ApiException(422, 'VALIDATION_FAILED', 'Backup person apni site ka active employee hona chahiye.');
+      const delegate = await this.prisma.user.findFirst({
+        where: {
+          id: delegateId,
+          businessId: user.businessId ?? undefined,
+          isActive: true,
+          premises: { some: { premisesId: { in: user.premisesIds } } },
+        },
+      });
+      if (delegateId === user.id || !delegate) {
+        throw new ApiException(422, 'VALIDATION_FAILED', 'Backup person apne premises ka active employee hona chahiye.');
       }
     }
     await this.prisma.user.update({ where: { id: user.id }, data: { delegateId } });
-    return this.profile(user.id);
+    return this.profile(user);
   }
 
   @Get('gates')
   gates(@CurrentUser() user: AuthUser) {
     return this.prisma.gate.findMany({
-      where: { siteId: user.siteId ?? undefined, isActive: true },
+      where: { premisesId: user.premisesId ?? '', businessId: user.businessId ?? '', isActive: true },
       orderBy: { name: 'asc' },
-      select: { id: true, name: true, siteId: true },
+      select: { id: true, name: true, premisesId: true },
     });
   }
 
   @Roles('guard', 'reception', 'employee', 'security', 'admin')
   @Get('users/hosts')
-  hosts(@CurrentUser() user: AuthUser, @Query('q') q = '') {
-    return this.prisma.user.findMany({
+  async hosts(@CurrentUser() user: AuthUser, @Query('q') q = '') {
+    const rows = await this.prisma.user.findMany({
       where: {
-        siteId: user.siteId,
+        businessId: user.businessId ?? '',
         isActive: true,
+        isHost: true,
         name: { contains: q, mode: 'insensitive' },
         role: { in: ['employee', 'reception', 'security', 'admin'] },
+        premises: { some: { premisesId: user.premisesId ?? '' } },
       },
-      select: { id: true, name: true, department: true },
+      select: { id: true, name: true, department: { select: { name: true } } },
       orderBy: { name: 'asc' },
       take: 20,
     });
+    return rows.map((r) => ({ id: r.id, name: r.name, department: r.department?.name ?? null }));
   }
 }
