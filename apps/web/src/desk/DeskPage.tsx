@@ -226,16 +226,19 @@ export function DeskPage({ section }: { section: DeskSection }) {
             ))}
           </section>
         )}
-        <section className="panel">
-          {pending.length === 0 && calls.length === 0 && (
-            <EmptyState title="No approvals pending." hint="New walk-ins will appear here." />
-          )}
-          {pending.map((visit) => (
-            <VisitRow key={visit.id} visit={visit}>
-              {canDecide && <DecisionActions visit={visit} />}
-            </VisitRow>
-          ))}
-        </section>
+        {/* Only host calls waiting: no empty list underneath. */}
+        {(pending.length > 0 || calls.length === 0) && (
+          <section className="panel">
+            {pending.length === 0 && calls.length === 0 && (
+              <EmptyState title="No approvals pending." hint="New walk-ins will appear here." />
+            )}
+            {pending.map((visit) => (
+              <VisitRow key={visit.id} visit={visit}>
+                {canDecide && <DecisionActions visit={visit} />}
+              </VisitRow>
+            ))}
+          </section>
+        )}
       </>
     );
   } else if (data && section === 'expected') {
