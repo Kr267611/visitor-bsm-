@@ -34,22 +34,22 @@ function ActiveToggle({ member }: { member: AdminUser }) {
     <div className="row">
       {!member.isActive ? (
         <>
-          <span className="badge badge-neutral">Band hai</span>
+          <span className="badge badge-neutral">Inactive</span>
           <button type="button" onClick={() => void setActive(true)}>
-            Chalu karein
+            Activate
           </button>
         </>
       ) : !confirming ? (
         <button type="button" onClick={() => setConfirming(true)}>
-          Band karein
+          Deactivate
         </button>
       ) : (
         <>
           <button type="button" className="danger" onClick={() => void setActive(false)}>
-            Haan, band karein
+            Yes, deactivate
           </button>
           <button type="button" onClick={() => setConfirming(false)}>
-            Nahi
+            No
           </button>
         </>
       )}
@@ -62,7 +62,7 @@ function ActiveToggle({ member }: { member: AdminUser }) {
   );
 }
 
-/** Admin naya password set kare: member ke saare devices logout. */
+/** Admin sets a new password; the member is signed out of all devices. */
 function PasswordReset({ member }: { member: AdminUser }) {
   const api = useApi();
   const [open, setOpen] = useState(false);
@@ -75,7 +75,7 @@ function PasswordReset({ member }: { member: AdminUser }) {
       await api.admin.users.resetPassword(member.id, password);
       setPassword('');
       setOpen(false);
-      setMessage({ ok: true, text: 'Naya password set. Member ke purane devices logout ho gaye.' });
+      setMessage({ ok: true, text: 'New password set. The member has been signed out of other devices.' });
     } catch (e) {
       setMessage({ ok: false, text: errorMessage(e) });
     }
@@ -87,16 +87,16 @@ function PasswordReset({ member }: { member: AdminUser }) {
         <form className="row" onSubmit={save}>
           <input
             type="password"
-            aria-label={`${member.name} ka naya password`}
+            aria-label={`New password for ${member.name}`}
             autoComplete="new-password"
             minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-          <button type="submit">Set karein</button>
+          <button type="submit">Set</button>
           <button type="button" onClick={() => setOpen(false)}>
-            Rehne dein
+            Cancel
           </button>
         </form>
       ) : (
@@ -141,7 +141,7 @@ export function MembersPage() {
   async function create(event: FormEvent) {
     event.preventDefault();
     setError(null);
-    if (!premisesIds.length) return setError('Kam se kam ek premises chunein.');
+    if (!premisesIds.length) return setError('Select at least one premises.');
     const body: MemberInput = {
       name: form.name.trim(),
       phone: form.phone,
@@ -171,19 +171,19 @@ export function MembersPage() {
     <>
       <PageHeader
         title="Members"
-        subtitle="Aapke business ke log: guard, reception, employees aur admin. Har member ko kam se kam ek premises chahiye."
+        subtitle="People in your business: guards, reception, employees and admins. Each member needs at least one premises."
         actions={
           <button type="button" className="primary" aria-expanded={adding} onClick={() => setAdding(!adding)}>
-            {adding ? 'Form band karein' : '+ Naya member'}
+            {adding ? 'Close form' : '+ New member'}
           </button>
         }
       />
       {adding && (
         <form className="form-card" onSubmit={create}>
-          <h2>Naya member</h2>
+          <h2>New member</h2>
           <div className="form-grid">
             <div>
-              <label htmlFor="m-name">Naam</label>
+              <label htmlFor="m-name">Name</label>
               <input id="m-name" value={form.name} onChange={(e) => set({ name: e.target.value })} required />
             </div>
             <div>
@@ -207,7 +207,7 @@ export function MembersPage() {
             <div>
               <label htmlFor="m-dept">Department</label>
               <select id="m-dept" value={form.departmentId} onChange={(e) => set({ departmentId: e.target.value })}>
-                <option value="">Koi nahi</option>
+                <option value="">None</option>
                 {departments.data?.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name}
@@ -242,7 +242,7 @@ export function MembersPage() {
           </fieldset>
           <label className="row">
             <input type="checkbox" checked={form.isHost} onChange={(e) => set({ isHost: e.target.checked })} />
-            Visitor isse milne aa sakte hain (host)
+            Visitors can meet this person (host)
           </label>
           {error && (
             <p role="alert" className="error">
@@ -251,10 +251,10 @@ export function MembersPage() {
           )}
           <div className="form-actions">
             <button type="submit" className="primary" disabled={busy}>
-              Member banayein
+              Create member
             </button>
             <button type="button" onClick={() => setAdding(false)}>
-              Rehne dein
+              Cancel
             </button>
           </div>
         </form>
@@ -262,11 +262,11 @@ export function MembersPage() {
 
       <div className="toolbar">
         <div className="search">
-          <label htmlFor="m-search">Member dhoondein</label>
+          <label htmlFor="m-search">Search members</label>
           <input
             id="m-search"
             type="search"
-            placeholder="Naam, mobile ya email"
+            placeholder="Name, mobile or email"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -285,7 +285,7 @@ export function MembersPage() {
         <table>
           <thead>
             <tr>
-              <th>Naam</th>
+              <th>Name</th>
               <th>Mobile</th>
               <th>Role</th>
               <th>Department</th>
@@ -318,7 +318,7 @@ export function MembersPage() {
           </tbody>
         </table>
         {members.data && shown.length === 0 && (
-          <EmptyState title={q ? 'Is naam ya number ka koi member nahi mila.' : 'Abhi koi member nahi hai.'} />
+          <EmptyState title={q ? 'No member matches that name or number.' : 'No members yet.'} />
         )}
       </section>
     </>

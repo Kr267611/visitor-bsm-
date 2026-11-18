@@ -1,22 +1,22 @@
-/** Yeh draft hai. Launch se pehle company ke legal se confirm karwana hai (docs/runbook.md). */
+/** Draft text. Must be confirmed by the company's legal team before launch (docs/runbook.md). */
 export function PrivacyPage() {
   return (
     <main className="visitor-page">
       <article className="visitor-card form-card">
         <h1>Privacy notice</h1>
-        <p>Aapki entry record karne aur company ki suraksha ke liye hum yeh jaankari save karte hain:</p>
+        <p>To record your entry and keep the premises secure, we store the following:</p>
         <ul>
-          <li>Naam, mobile number aur company</li>
+          <li>Name, mobile number and company</li>
           <li>Photo</li>
-          <li>ID ka type aur uske aakhri 4 digit, agar aap dein</li>
-          <li>Kis se milne aaye, aur andar aane aur bahar jaane ka time</li>
+          <li>ID type and its last 4 digits, if you provide them</li>
+          <li>Who you visited, and your entry and exit times</li>
         </ul>
-        <p>Hum poora ID number save nahi karte.</p>
+        <p>We never store your full ID number.</p>
         <p>
-          Yeh jaankari sirf company ke zaroori staff dekh sakte hain. Photo aur ID ki details 180 din baad delete kar
-          di jati hain.
+          Only authorised company staff can see this information. Photos and ID details are deleted after 180
+          days.
         </p>
-        <p>Apna data dekhne, theek karwane ya hatwane ke liye apne host ya reception se baat karein.</p>
+        <p>To see, correct or delete your data, please contact your host or reception.</p>
       </article>
     </main>
   );

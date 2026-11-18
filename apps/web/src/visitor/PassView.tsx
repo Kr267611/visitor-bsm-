@@ -11,18 +11,18 @@ export function PassView({ invite }: { invite: PublicInvite }) {
     <div className="pass-card">
       <div className="eyebrow">Visitor pass</div>
       <div className="pass-name">{invite.visitorName}</div>
-      <div className="pass-qr" role="img" aria-label="Visitor pass ka QR code">
+      <div className="pass-qr" role="img" aria-label="Visitor pass QR code">
         <QRCodeSVG value={invite.pass ?? ''} size={224} level="M" />
       </div>
       {invite.status === 'CHECKED_IN' ? (
-        <p>Aap andar hain. Jaate waqt yeh QR gate par dikhayein.</p>
+        <p>You are checked in. Show this QR at the gate when you leave.</p>
       ) : (
-        <p>Gate par yeh QR guard ko dikhayein.</p>
+        <p>Show this QR to the guard at the gate.</p>
       )}
       <dl className="pass-meta">
         <dt>Host</dt>
         <dd>{invite.hostName}</dd>
-        <dt>Site</dt>
+        <dt>Premises</dt>
         <dd>{invite.siteName}</dd>
         <dt>Time</dt>
         <dd>

@@ -27,11 +27,11 @@ export function InviteForm() {
     event.preventDefault();
     setError(null);
     if (!normalizeIndianPhone(phone)) {
-      setError('Mobile number sahi nahi hai. 10 digit ka number daalein.');
+      setError('Enter a valid 10-digit mobile number.');
       return;
     }
     if (end <= start) {
-      setError('Kab tak ka time "Kab se" ke baad ka hona chahiye.');
+      setError('"Until" must be later than "From".');
       return;
     }
     setBusy(true);
@@ -55,18 +55,18 @@ export function InviteForm() {
   return (
     <>
       <PageHeader
-        title="Naya invite"
-        subtitle="Visitor ko SMS par link jayega. Woh apni photo aur details bharega, phir use QR pass milega."
-        actions={<Link to="/my">Wapas</Link>}
+        title="New invite"
+        subtitle="The visitor gets an SMS link to add a photo and details, then receives a QR pass."
+        actions={<Link to="/my">Back</Link>}
       />
       <form className="form-card" onSubmit={submit}>
         <div className="form-grid">
           <div>
-            <label htmlFor="invite-name">Visitor ka naam</label>
+            <label htmlFor="invite-name">Visitor name</label>
             <input id="invite-name" value={name} onChange={(e) => setName(e.target.value)} required />
           </div>
           <div>
-            <label htmlFor="invite-phone">Visitor ka mobile</label>
+            <label htmlFor="invite-phone">Visitor mobile</label>
             <input id="invite-phone" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required />
           </div>
           <div>
@@ -74,15 +74,15 @@ export function InviteForm() {
             <input id="invite-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
           </div>
           <div>
-            <label htmlFor="invite-start">Kab se</label>
+            <label htmlFor="invite-start">From</label>
             <input id="invite-start" type="time" value={start} onChange={(e) => setStart(e.target.value)} required />
           </div>
           <div>
-            <label htmlFor="invite-end">Kab tak</label>
+            <label htmlFor="invite-end">Until</label>
             <input id="invite-end" type="time" value={end} onChange={(e) => setEnd(e.target.value)} required />
           </div>
           <div>
-            <label htmlFor="invite-purpose">Kaam</label>
+            <label htmlFor="invite-purpose">Purpose</label>
             <input id="invite-purpose" value={purpose} onChange={(e) => setPurpose(e.target.value)} required />
           </div>
         </div>
@@ -92,7 +92,7 @@ export function InviteForm() {
           </p>
         )}
         <button type="submit" className="primary" disabled={busy}>
-          Invite bhejein
+          Send invite
         </button>
       </form>
     </>

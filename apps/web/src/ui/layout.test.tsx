@@ -45,21 +45,21 @@ const groups = () => within(menu()).getAllByRole('heading', { level: 2 }).map((h
 describe('side menu', () => {
   beforeEach(() => localStorage.clear());
 
-  it('reception sees Gate desk and Mere visitors groups', async () => {
+  it('reception sees Gate desk and My visitors groups', async () => {
     signIn(USERS.reception);
     renderApp('/desk/pending', server());
-    await screen.findByRole('heading', { level: 1, name: 'Approval baaki' });
-    expect(groups()).toEqual(['Gate desk', 'Mere visitors']);
+    await screen.findByRole('heading', { level: 1, name: 'Awaiting approval' });
+    expect(groups()).toEqual(['Gate desk', 'My visitors']);
     expect(within(menu()).queryByRole('link', { name: 'Users' })).toBeNull();
   });
 
-  it('employee sees only Mere visitors, with no live connection needed', async () => {
+  it('employee sees only My visitors, with no live connection needed', async () => {
     signIn(USERS.employee);
     const s = server();
     renderApp('/my', s);
-    await screen.findByRole('heading', { level: 1, name: 'Mere visitors' });
-    expect(groups()).toEqual(['Mere visitors']);
-    expect(within(menu()).getByRole('link', { name: 'Naya invite' })).toHaveAttribute('href', '/my/invite');
+    await screen.findByRole('heading', { level: 1, name: 'My visitors' });
+    expect(groups()).toEqual(['My visitors']);
+    expect(within(menu()).getByRole('link', { name: 'New invite' })).toHaveAttribute('href', '/my/invite');
     expect(within(menu()).getByRole('link', { name: 'Backup person' })).toHaveAttribute('href', '/my/backup');
     expect(s.calls.some((c) => c.key === 'GET /dashboard/live')).toBe(false);
   });
@@ -68,8 +68,8 @@ describe('side menu', () => {
     signIn(USERS.admin);
     renderApp('/admin/members', server());
     await screen.findByRole('heading', { level: 1, name: 'Members' });
-    expect(groups()).toEqual(['Gate desk', 'Mere visitors', 'Admin']);
-    expect(within(menu()).getByRole('link', { name: 'Premises aur gates' })).toBeInTheDocument();
+    expect(groups()).toEqual(['Gate desk', 'My visitors', 'Admin']);
+    expect(within(menu()).getByRole('link', { name: 'Premises & gates' })).toBeInTheDocument();
     expect(within(menu()).getByRole('link', { name: 'Departments' })).toBeInTheDocument();
     expect(within(menu()).getByRole('link', { name: 'Devices' })).toBeInTheDocument();
   });
@@ -77,7 +77,7 @@ describe('side menu', () => {
   it('guard sees only the desk group', async () => {
     signIn(USERS.guard);
     renderApp('/desk/inside', server());
-    await screen.findByRole('heading', { level: 1, name: 'Andar hain' });
+    await screen.findByRole('heading', { level: 1, name: 'Inside' });
     expect(groups()).toEqual(['Gate desk']);
   });
 
@@ -92,17 +92,17 @@ describe('side menu', () => {
   it('counts show next to each desk page, calls included in approvals', async () => {
     signIn(USERS.reception);
     renderApp('/desk/inside', server());
-    expect(await within(menu()).findByRole('link', { name: 'Approval baaki 2' })).toBeInTheDocument();
-    expect(within(menu()).getByRole('link', { name: 'Aane wale 2' })).toBeInTheDocument();
-    expect(within(menu()).getByRole('link', { name: 'Andar hain 1' })).toBeInTheDocument();
+    expect(await within(menu()).findByRole('link', { name: 'Awaiting approval 2' })).toBeInTheDocument();
+    expect(within(menu()).getByRole('link', { name: 'Expected 2' })).toBeInTheDocument();
+    expect(within(menu()).getByRole('link', { name: 'Inside 1' })).toBeInTheDocument();
   });
 
   it('current page is marked in the menu', async () => {
     signIn(USERS.employee);
     renderApp('/my/invite', server());
-    await screen.findByRole('heading', { level: 1, name: 'Naya invite' });
-    expect(within(menu()).getByRole('link', { name: 'Naya invite' })).toHaveAttribute('aria-current', 'page');
-    expect(within(menu()).getByRole('link', { name: 'Visitors ki list' })).not.toHaveAttribute('aria-current');
+    await screen.findByRole('heading', { level: 1, name: 'New invite' });
+    expect(within(menu()).getByRole('link', { name: 'New invite' })).toHaveAttribute('aria-current', 'page');
+    expect(within(menu()).getByRole('link', { name: 'Visitor list' })).not.toHaveAttribute('aria-current');
   });
 
   it('phone: Menu button opens the menu and choosing a page closes it', async () => {
@@ -113,22 +113,22 @@ describe('side menu', () => {
     expect(button).toHaveAttribute('aria-expanded', 'false');
     await user.click(button);
     expect(button).toHaveAttribute('aria-expanded', 'true');
-    await user.click(within(menu()).getByRole('link', { name: 'Naya invite' }));
-    expect(await screen.findByRole('heading', { level: 1, name: 'Naya invite' })).toBeInTheDocument();
+    await user.click(within(menu()).getByRole('link', { name: 'New invite' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'New invite' })).toBeInTheDocument();
     expect(button).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('backup person has its own page, not on the list page', async () => {
     signIn(USERS.employee);
     renderApp('/my', server());
-    await screen.findByRole('heading', { level: 1, name: 'Mere visitors' });
-    expect(screen.queryByLabelText('Backup person dhoondein')).not.toBeInTheDocument();
+    await screen.findByRole('heading', { level: 1, name: 'My visitors' });
+    expect(screen.queryByLabelText('Search for a backup person')).not.toBeInTheDocument();
   });
 
   it('backup page opens from its route', async () => {
     signIn(USERS.employee);
     renderApp('/my/backup', server());
-    expect(await screen.findByLabelText('Backup person dhoondein')).toBeInTheDocument();
+    expect(await screen.findByLabelText('Search for a backup person')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: 'Backup person' })).toBeInTheDocument();
   });
 
@@ -156,7 +156,7 @@ describe('side menu', () => {
       const before = s.calls.length;
       await userEvent.setup().selectOptions(select, 'p2');
       expect(localStorage.getItem('visitor.premises')).toBe('"p2"');
-      await screen.findByRole('heading', { level: 1, name: 'Approval baaki' });
+      await screen.findByRole('heading', { level: 1, name: 'Awaiting approval' });
       await vi.waitFor(() => {
         const later = s.calls.slice(before).find((c) => c.key === 'GET /dashboard/live');
         expect((later?.init.headers as Record<string, string>)['X-Premises-Id']).toBe('p2');
@@ -173,9 +173,9 @@ describe('side menu', () => {
     it('modules not in the plan are hidden from the menu', async () => {
       signIn(USERS.reception);
       renderApp('/my', server({ 'GET /me': () => json(200, profile({ features: ['visitor_desk'] })) }));
-      await screen.findByRole('heading', { level: 1, name: 'Mere visitors' });
-      await vi.waitFor(() => expect(groups()).toEqual(['Mere visitors']));
-      expect(within(menu()).queryByRole('link', { name: 'Naya invite' })).toBeNull();
+      await screen.findByRole('heading', { level: 1, name: 'My visitors' });
+      await vi.waitFor(() => expect(groups()).toEqual(['My visitors']));
+      expect(within(menu()).queryByRole('link', { name: 'New invite' })).toBeNull();
     });
   });
 });

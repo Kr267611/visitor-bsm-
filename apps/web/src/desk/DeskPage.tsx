@@ -14,26 +14,26 @@ const GATE_KEY = 'visitor.gate';
 export type DeskSection = 'pending' | 'expected' | 'inside';
 
 const TITLES: Record<DeskSection, string> = {
-  pending: 'Approval baaki',
-  expected: 'Aane wale',
-  inside: 'Andar hain',
+  pending: 'Awaiting approval',
+  expected: 'Expected',
+  inside: 'Inside',
 };
 
 const SUBTITLES: Record<DeskSection, string> = {
-  pending: 'Walk-in visitors jinke host ne abhi jawab nahi diya. Der ho to host ko call karein.',
-  expected: 'Aaj ke invited visitors. Pass na ho to yahin se check-in karein.',
-  inside: 'Jo abhi premises ke andar hain. Jaate waqt check-out karein.',
+  pending: 'Walk-in visitors whose host has not responded yet. If it takes too long, call the host.',
+  expected: "Today's invited visitors. If someone has no pass, check them in from here.",
+  inside: 'Visitors currently on the premises. Check them out when they leave.',
 };
 
-/** Teeno lists ki ginti; mobile par yahi section badalne ka raasta hai. */
+/** Counts for the three lists; on mobile this is how you switch sections. */
 function DeskStats({ section, counts }: { section: DeskSection; counts?: Record<DeskSection, number> & { calls: number } }) {
   const tiles: { key: DeskSection; label: string }[] = [
-    { key: 'pending', label: 'Approval ke liye' },
-    { key: 'expected', label: 'Aaj aane hain' },
-    { key: 'inside', label: 'Abhi andar' },
+    { key: 'pending', label: 'Need approval' },
+    { key: 'expected', label: 'Due today' },
+    { key: 'inside', label: 'Inside now' },
   ];
   return (
-    <nav aria-label="Aaj ka haal" className="stats">
+    <nav aria-label="Today's summary" className="stats">
       {tiles.map((t) => (
         <Link
           key={t.key}
@@ -61,11 +61,11 @@ function rememberGate(id: string): void {
   try {
     localStorage.setItem(GATE_KEY, id);
   } catch {
-    // Storage na mile to har baar gate chunna padega, bas.
+    // Without storage the guard simply picks the gate each time.
   }
 }
 
-/** Ek kaam ki ek id, taaki network retry par doosri entry na bane. */
+/** One id per action, so a network retry never creates a second entry. */
 function useEventId() {
   const id = useRef<string | null>(null);
   return {
@@ -128,10 +128,10 @@ function CheckOutAction({ visit, gateId }: { visit: VisitSummary; gateId: string
           if (ok) eventId.done();
         }}
       >
-        Haan, check-out karein
+        Yes, check out
       </button>
       <button type="button" onClick={() => setConfirming(false)}>
-        Nahi
+        No
       </button>
       <ActionError message={error} />
     </div>
@@ -208,7 +208,7 @@ export function DeskPage({ section }: { section: DeskSection }) {
         {calls.length > 0 && (
           <section className="panel panel-urgent">
             <h2>
-              <span>Host ko call karein</span>
+              <span>Call the host</span>
               <span className="mono">{calls.length}</span>
             </h2>
             {calls.map((visit) => (
@@ -217,7 +217,7 @@ export function DeskPage({ section }: { section: DeskSection }) {
                 visit={visit}
                 note={
                   <span>
-                    {visit.hostName} ko call karein: <span className="mono">{visit.hostPhone}</span>
+                    Call {visit.hostName}: <span className="mono">{visit.hostPhone}</span>
                   </span>
                 }
               >
@@ -228,7 +228,7 @@ export function DeskPage({ section }: { section: DeskSection }) {
         )}
         <section className="panel">
           {pending.length === 0 && calls.length === 0 && (
-            <EmptyState title="Koi approval baaki nahi hai." hint="Naya walk-in aate hi yahan dikhega." />
+            <EmptyState title="No approvals pending." hint="New walk-ins will appear here." />
           )}
           {pending.map((visit) => (
             <VisitRow key={visit.id} visit={visit}>
@@ -242,7 +242,7 @@ export function DeskPage({ section }: { section: DeskSection }) {
     const rows = filter(data.expected);
     body = (
       <section className="panel">
-        {rows.length === 0 && <EmptyState title="Aaj aur koi visitor aane wala nahi hai." />}
+        {rows.length === 0 && <EmptyState title="No more visitors expected today." />}
         {rows.map((visit) => (
           <VisitRow key={visit.id} visit={visit}>
             {canGate && visit.status === 'APPROVED' && <CheckInAction visit={visit} gateId={gateId} />}
@@ -254,7 +254,7 @@ export function DeskPage({ section }: { section: DeskSection }) {
     const rows = filter(data.inside);
     body = (
       <section className="panel">
-        {rows.length === 0 && <EmptyState title="Abhi koi visitor andar nahi hai." />}
+        {rows.length === 0 && <EmptyState title="No visitors inside right now." />}
         {rows.map((visit) => (
           <VisitRow key={visit.id} visit={visit}>
             {canGate && <CheckOutAction visit={visit} gateId={gateId} />}
@@ -276,7 +276,7 @@ export function DeskPage({ section }: { section: DeskSection }) {
           gates.data.length > 1 &&
           canGate && (
             <div className="row">
-              <label htmlFor="desk-gate">Aapka gate</label>
+              <label htmlFor="desk-gate">Your gate</label>
               <select
                 id="desk-gate"
                 style={{ width: 'auto' }}
@@ -311,10 +311,10 @@ export function DeskPage({ section }: { section: DeskSection }) {
 
       {section !== 'pending' && callsWaiting > 0 && (
         <Link to="/desk/pending" className="notice notice-link">
-          {callsWaiting} host ko call karna baaki hai. Dekhein
+          Hosts waiting for a call: {callsWaiting}. View
         </Link>
       )}
-      {!connected && <p className="notice">Live nahi hai. List har 30 second mein update ho rahi hai.</p>}
+      {!connected && <p className="notice">Live updates are off. The list refreshes every 30 seconds.</p>}
       {query.isError && (
         <p role="alert" className="error">
           {errorMessage(query.error)}
@@ -322,11 +322,11 @@ export function DeskPage({ section }: { section: DeskSection }) {
       )}
 
       <div className="stack">
-        <label htmlFor="desk-search">Naam ya code se dhoondein</label>
+        <label htmlFor="desk-search">Search by name or code</label>
         <input
           id="desk-search"
           type="search"
-          placeholder="Jaise Rahul ya VIS-2026-00012"
+          placeholder="e.g. Rahul or VIS-2026-00012"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />

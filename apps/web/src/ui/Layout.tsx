@@ -37,13 +37,13 @@ function MenuGroup({ title, children }: { title: string; children: ReactNode }) 
   );
 }
 
-/** Profile (business, premises, plan ke modules). Ek hi query poore app mein. */
+/** Profile (business, premises, plan modules). One query for the whole app. */
 export function useProfile() {
   const api = useApi();
   return useQuery<Profile>({ queryKey: ['me'], queryFn: () => api.me.get() });
 }
 
-/** Plan mein module hai? Profile na mile to menu chhupate nahi; server khud 403 deta hai. */
+/** Is the module in the plan? Without a profile we keep the menu; the server still answers 403. */
 export function useFeature() {
   const profile = useProfile();
   const features = profile.data?.features;
@@ -107,22 +107,22 @@ function Shell() {
         <nav aria-label="Main">
           {DESK_ROLES.includes(role) && has('dashboard') && (
             <MenuGroup title="Gate desk">
-              <MenuLink to="/desk/pending" label="Approval baaki" count={approvals} urgent={!!data?.needsCall.length} onPick={close} />
-              <MenuLink to="/desk/expected" label="Aane wale" count={data?.expected.length} onPick={close} />
-              <MenuLink to="/desk/inside" label="Andar hain" count={data?.inside.length} onPick={close} />
+              <MenuLink to="/desk/pending" label="Awaiting approval" count={approvals} urgent={!!data?.needsCall.length} onPick={close} />
+              <MenuLink to="/desk/expected" label="Expected" count={data?.expected.length} onPick={close} />
+              <MenuLink to="/desk/inside" label="Inside" count={data?.inside.length} onPick={close} />
             </MenuGroup>
           )}
           {HOST_ROLES.includes(role) && (
-            <MenuGroup title="Mere visitors">
-              <MenuLink to="/my" end label="Visitors ki list" onPick={close} />
-              {role !== 'security' && has('invites') && <MenuLink to="/my/invite" label="Naya invite" onPick={close} />}
+            <MenuGroup title="My visitors">
+              <MenuLink to="/my" end label="Visitor list" onPick={close} />
+              {role !== 'security' && has('invites') && <MenuLink to="/my/invite" label="New invite" onPick={close} />}
               <MenuLink to="/my/backup" label="Backup person" onPick={close} />
             </MenuGroup>
           )}
           {(role === 'admin' || role === 'security') && (
             <MenuGroup title="Admin">
               {role === 'admin' && <MenuLink to="/admin/members" label="Members" onPick={close} />}
-              {role === 'admin' && <MenuLink to="/admin/premises" label="Premises aur gates" onPick={close} />}
+              {role === 'admin' && <MenuLink to="/admin/premises" label="Premises & gates" onPick={close} />}
               {role === 'admin' && <MenuLink to="/admin/departments" label="Departments" onPick={close} />}
               <MenuLink to="/admin/devices" label="Devices" onPick={close} />
             </MenuGroup>
@@ -141,7 +141,7 @@ function Shell() {
               Password
             </NavLink>
             <button type="button" className="link" onClick={() => void logout()}>
-              Logout
+              Log out
             </button>
           </div>
         </div>
@@ -156,7 +156,7 @@ function Shell() {
 
 export function Layout() {
   const { user, premisesId } = useAuth();
-  // Premises badle to live connection bhi naye premises ka (naya socket).
+  // A premises change also needs a new live connection for that premises.
   return user && DESK_ROLES.includes(user.role) ? (
     <LiveSiteProvider key={premisesId ?? 'default'}>
       <Shell />

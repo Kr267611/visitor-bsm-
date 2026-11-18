@@ -19,18 +19,18 @@ export function useLiveSite(): {
   useEffect(() => {
     const socket = io(`${web.apiUrl}/live`, {
       transports: ['websocket'],
-      // Har reconnect par naya token.
+      // Fresh token on every reconnect.
       auth: (callback) => callback({ token: accessToken(), premisesId: loadPremisesId() ?? undefined }),
     });
     let retry: ReturnType<typeof setTimeout> | null = null;
     socket.on('ready', () => {
       setConnected(true);
-      // Connection tootne ke beech jo badla, woh bhi dikhe.
+      // Show anything that changed while the connection was down.
       void queryClient.invalidateQueries({ queryKey: DASHBOARD_KEY });
     });
     socket.on('disconnect', (reason: string) => {
       setConnected(false);
-      // Server ne token expire hone par nikala: library khud reconnect nahi karti.
+      // The server dropped us because the token expired; the library does not reconnect by itself.
       if (reason === 'io server disconnect') {
         retry = setTimeout(() => {
           void web.client.me.get().catch(() => undefined).finally(() => socket.connect());

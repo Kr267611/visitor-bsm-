@@ -59,12 +59,12 @@ describe('desk pages', () => {
 
   it('/desk opens the approval page', async () => {
     renderApp('/desk', server());
-    expect(await screen.findByRole('heading', { level: 1, name: 'Approval baaki' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Awaiting approval' })).toBeInTheDocument();
   });
 
   it('each page shows only its own list', async () => {
     renderApp('/desk/inside', server());
-    expect(await screen.findByRole('heading', { level: 1, name: 'Andar hain' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Inside' })).toBeInTheDocument();
     expect(await within(main()).findByText('Visitor in1')).toBeInTheDocument();
     expect(within(main()).queryByText('Visitor ex1')).not.toBeInTheDocument();
     expect(within(main()).queryByText('Visitor pe1')).not.toBeInTheDocument();
@@ -76,7 +76,7 @@ describe('desk pages', () => {
     const user = userEvent.setup();
     expect(await within(main()).findByText('Visitor pe1')).toBeInTheDocument();
     const before = liveCalls(s);
-    await user.click(screen.getByRole('link', { name: /Aane wale/ }));
+    await user.click(screen.getByRole('link', { name: /Expected/ }));
     expect(await within(main()).findByText('Visitor ex1')).toBeInTheDocument();
     expect(within(main()).queryByText('Visitor pe1')).not.toBeInTheDocument();
     expect(liveCalls(s)).toBe(before);
@@ -84,30 +84,30 @@ describe('desk pages', () => {
 
   it('approval page puts host calls first with host name and phone', async () => {
     renderApp('/desk/pending', server());
-    const call = (await screen.findByRole('heading', { name: /Host ko call karein/ })).closest('section') as HTMLElement;
-    expect(within(call).getByText(/Anita Singh ko call karein/)).toBeInTheDocument();
+    const call = (await screen.findByRole('heading', { name: /Call the host/ })).closest('section') as HTMLElement;
+    expect(within(call).getByText(/Call Anita Singh/)).toBeInTheDocument();
     expect(within(call).getByText(/\+919811111111/)).toBeInTheDocument();
     const headings = within(main()).getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
-    expect(headings[0]).toMatch(/Host ko call karein/);
+    expect(headings[0]).toMatch(/Call the host/);
   });
 
   it('call section hidden when nobody needs a call', async () => {
     renderApp('/desk/pending', server({ 'GET /dashboard/live': () => json(200, { ...dashboard, needsCall: [] }) }));
     await within(main()).findByText('Visitor pe1');
-    expect(screen.queryByRole('heading', { name: /Host ko call karein/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /Call the host/ })).not.toBeInTheDocument();
   });
 
   it('other pages warn when a host call is waiting', async () => {
     const user = userEvent.setup();
     renderApp('/desk/inside', server());
-    const notice = await screen.findByRole('link', { name: /1 host ko call karna baaki hai/ });
+    const notice = await screen.findByRole('link', { name: /Hosts waiting for a call: 1/ });
     await user.click(notice);
-    expect(await screen.findByRole('heading', { level: 1, name: 'Approval baaki' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Awaiting approval' })).toBeInTheDocument();
   });
 
   it('empty page says so', async () => {
     renderApp('/desk/inside', server({ 'GET /dashboard/live': () => json(200, { ...dashboard, inside: [] }) }));
-    expect(await screen.findByText('Abhi koi visitor andar nahi hai.')).toBeInTheDocument();
+    expect(await screen.findByText('No visitors inside right now.')).toBeInTheDocument();
   });
 
   it('visit.updated refetches dashboard', async () => {
@@ -119,12 +119,12 @@ describe('desk pages', () => {
     await waitFor(() => expect(liveCalls(s)).toBeGreaterThan(before));
   });
 
-  it('socket down: shows "Live nahi hai" and polls every 30s', async () => {
+  it('socket down: shows "Live updates are off" and polls every 30s', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const s = server();
     renderApp('/desk/inside', s);
     await within(main()).findByText('Visitor in1');
-    expect(screen.getByText(/Live nahi hai/)).toBeInTheDocument();
+    expect(screen.getByText(/Live updates are off/)).toBeInTheDocument();
     const before = liveCalls(s);
     await act(async () => {
       await vi.advanceTimersByTimeAsync(30_000);
@@ -136,9 +136,9 @@ describe('desk pages', () => {
     renderApp('/desk/inside', server());
     await within(main()).findByText('Visitor in1');
     act(() => socket.fire('ready'));
-    expect(screen.queryByText(/Live nahi hai/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Live updates are off/)).not.toBeInTheDocument();
     act(() => socket.fire('disconnect'));
-    expect(screen.getByText(/Live nahi hai/)).toBeInTheDocument();
+    expect(screen.getByText(/Live updates are off/)).toBeInTheDocument();
   });
 
   it('ready refetches, so changes during the gap are not missed', async () => {
@@ -170,8 +170,8 @@ describe('desk pages', () => {
   });
 
   it('dashboard failure shows the message', async () => {
-    renderApp('/desk/inside', server({ 'GET /dashboard/live': () => json(500, { error: 'INTERNAL', message: 'Server mein dikkat hai.' }) }));
-    expect(await within(main()).findByRole('alert')).toHaveTextContent('Server mein dikkat hai.');
+    renderApp('/desk/inside', server({ 'GET /dashboard/live': () => json(500, { error: 'INTERNAL', message: 'The server ran into a problem.' }) }));
+    expect(await within(main()).findByRole('alert')).toHaveTextContent('The server ran into a problem.');
   });
 
   it('manual check-out confirms in page, then updates list', async () => {
@@ -181,7 +181,7 @@ describe('desk pages', () => {
     await user.click(await within(main()).findByRole('button', { name: 'Check-out' }));
     expect(s.calls.some((c) => c.key === 'POST /visits/in1/check-out')).toBe(false);
     s.handlers['GET /dashboard/live'] = () => json(200, { ...dashboard, inside: [] });
-    await user.click(within(main()).getByRole('button', { name: 'Haan, check-out karein' }));
+    await user.click(within(main()).getByRole('button', { name: 'Yes, check out' }));
     await waitFor(() => expect(screen.queryByText('Visitor in1')).not.toBeInTheDocument());
     const call = s.calls.find((c) => c.key === 'POST /visits/in1/check-out')!;
     expect(call.body.gateId).toBe('g1');
@@ -193,20 +193,20 @@ describe('desk pages', () => {
     renderApp('/desk/inside', s);
     const user = userEvent.setup();
     await user.click(await within(main()).findByRole('button', { name: 'Check-out' }));
-    await user.click(within(main()).getByRole('button', { name: 'Nahi' }));
+    await user.click(within(main()).getByRole('button', { name: 'No' }));
     expect(within(main()).getByRole('button', { name: 'Check-out' })).toBeInTheDocument();
     expect(s.calls.some((c) => c.key.includes('check-out'))).toBe(false);
   });
 
   it('check-out conflict shows server message', async () => {
     const s = server({
-      'POST /visits/in1/check-out': () => json(409, { error: 'NOT_CHECKED_IN', message: 'Yeh visitor andar nahi hai.' }),
+      'POST /visits/in1/check-out': () => json(409, { error: 'NOT_CHECKED_IN', message: 'This visitor is not checked in.' }),
     });
     renderApp('/desk/inside', s);
     const user = userEvent.setup();
     await user.click(await within(main()).findByRole('button', { name: 'Check-out' }));
-    await user.click(within(main()).getByRole('button', { name: 'Haan, check-out karein' }));
-    expect(await within(main()).findByRole('alert')).toHaveTextContent('Yeh visitor andar nahi hai.');
+    await user.click(within(main()).getByRole('button', { name: 'Yes, check out' }));
+    expect(await within(main()).findByRole('alert')).toHaveTextContent('This visitor is not checked in.');
   });
 
   it('check-in only for registered visitors', async () => {
@@ -243,7 +243,7 @@ describe('desk pages', () => {
     renderApp('/desk/inside', server({ 'GET /dashboard/live': () => json(200, twoInside) }));
     const user = userEvent.setup();
     await within(main()).findByText('Visitor in1');
-    await user.type(screen.getByLabelText('Naam ya code se dhoondein'), 'in2');
+    await user.type(screen.getByLabelText('Search by name or code'), 'in2');
     expect(within(main()).getByText('Visitor in2')).toBeInTheDocument();
     expect(within(main()).queryByText('Visitor in1')).not.toBeInTheDocument();
   });
@@ -258,9 +258,9 @@ describe('desk pages', () => {
     });
     const { unmount } = renderApp('/desk/inside', s);
     const user = userEvent.setup();
-    await user.selectOptions(await screen.findByLabelText('Aapka gate'), 'g2');
+    await user.selectOptions(await screen.findByLabelText('Your gate'), 'g2');
     unmount();
     renderApp('/desk/inside', s);
-    expect(await screen.findByLabelText('Aapka gate')).toHaveValue('g2');
+    expect(await screen.findByLabelText('Your gate')).toHaveValue('g2');
   });
 });

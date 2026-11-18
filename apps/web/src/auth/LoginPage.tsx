@@ -7,26 +7,26 @@ import { homeFor } from './RequireRole';
 
 const DEVICE = 'Web browser';
 
-/** Sirf apni site ke andar ka raasta, bahar ka link nahi. */
+/** Only paths inside this app, never an external link. */
 function safeNext(next: string | null): string | null {
   return next && next.startsWith('/') && !next.startsWith('//') ? next : null;
 }
 
 type Mode = 'password' | 'otp';
 
-/** Login ke bagal mein product ka parichay (mobile par chhota). */
+/** Product intro next to the sign-in form (compact on mobile). */
 function AuthFrame({ children }: { children: ReactNode }) {
   return (
     <main className="auth-split">
       <section className="auth-brand" aria-label="Visitor BSM">
         <div className="stack">
           <span className="eyebrow">Visitor BSM</span>
-          <h2>Har visitor ka hisaab, gate se reception tak.</h2>
+          <h2>Every visitor accounted for, from the gate to reception.</h2>
         </div>
         <ul>
-          <li>Pre-invite se visitor ko QR pass, gate par ek scan.</li>
-          <li>Walk-in ke liye host ki approval seedha phone par.</li>
-          <li>Kaun andar hai, kaun aane wala hai: live.</li>
+          <li>Pre-invited visitors get a QR pass and a single scan at the gate.</li>
+          <li>Walk-in approvals go straight to the host's phone.</li>
+          <li>See who is inside and who is expected, live.</li>
         </ul>
       </section>
       <div className="auth-side">
@@ -52,7 +52,7 @@ export function LoginPage() {
 
   if (user) return <Navigate to={safeNext(params.get('next')) ?? homeFor(user.role)} replace />;
 
-  /** Login ka koi bhi raasta: session mile to andar, kai businesses hon to list dikhao. */
+  /** Any sign-in path: a session signs the user in; several businesses show the picker. */
   async function attempt(work: () => Promise<Session>, onFail?: () => void) {
     setError(null);
     setBusy(true);
@@ -88,7 +88,7 @@ export function LoginPage() {
     setError(null);
     const normalized = normalizeIndianPhone(phone);
     if (!normalized) {
-      setError('Mobile number sahi nahi hai. 10 digit ka number daalein.');
+      setError('Enter a valid 10-digit mobile number.');
       return;
     }
     setBusy(true);
@@ -115,7 +115,7 @@ export function LoginPage() {
     const token = choice.selectionToken;
     void attempt(
       () => api.auth.selectBusiness({ selectionToken: token, businessId, deviceName: DEVICE }),
-      // Token ek hi baar chalta hai: galti par dobara login.
+      // The selection token works only once: on failure, start the sign-in again.
       () => setChoice(null),
     );
   }
@@ -129,8 +129,8 @@ export function LoginPage() {
   if (choice) {
     return (
       <AuthFrame>
-        <h1>Business chunein</h1>
-        <p className="muted">Aapka account in businesses mein hai. Kismein login karna hai?</p>
+        <h1>Choose a business</h1>
+        <p className="muted">Your account belongs to these businesses. Which one do you want to sign in to?</p>
         <div className="stack">
           {choice.businesses.map((b) => (
             <button key={b.id ?? 'platform'} type="button" disabled={busy} onClick={() => choose(b.id)}>
@@ -139,7 +139,7 @@ export function LoginPage() {
           ))}
         </div>
         <button type="button" className="link" onClick={() => setChoice(null)}>
-          Wapas
+          Back
         </button>
         {alert}
       </AuthFrame>
@@ -149,10 +149,10 @@ export function LoginPage() {
   return (
     <AuthFrame>
       <div className="stack" style={{ gap: 4 }}>
-        <h1>Login</h1>
-        <p className="muted">Apne office account se andar aayein.</p>
+        <h1>Sign in</h1>
+        <p className="muted">Use your work account.</p>
       </div>
-      <div className="tabs" role="tablist" aria-label="Login ka tareeka">
+      <div className="tabs" role="tablist" aria-label="Sign-in method">
         <button
           type="button"
           role="tab"
@@ -173,7 +173,7 @@ export function LoginPage() {
 
       {mode === 'password' ? (
         <form onSubmit={passwordLogin} className="stack">
-          <label htmlFor="identifier">Mobile ya email</label>
+          <label htmlFor="identifier">Mobile or email</label>
           <input
             id="identifier"
             autoComplete="username"
@@ -191,7 +191,7 @@ export function LoginPage() {
             required
           />
           <button type="submit" className="primary" disabled={busy}>
-            Login karein
+            Sign in
           </button>
         </form>
       ) : sentTo === null ? (
@@ -206,12 +206,12 @@ export function LoginPage() {
             required
           />
           <button type="submit" className="primary" disabled={busy}>
-            OTP bhejein
+            Send OTP
           </button>
         </form>
       ) : (
         <form onSubmit={verify} className="stack">
-          <p className="muted">{sentTo} par OTP bheja gaya hai.</p>
+          <p className="muted">OTP sent to {sentTo}.</p>
           <label htmlFor="otp">OTP</label>
           <input
             id="otp"
@@ -223,10 +223,10 @@ export function LoginPage() {
             required
           />
           <button type="submit" className="primary" disabled={busy || otp.length !== 6}>
-            Login karein
+            Sign in
           </button>
           <button type="button" className="link" onClick={() => setSentTo(null)}>
-            Number badlein
+            Change number
           </button>
         </form>
       )}

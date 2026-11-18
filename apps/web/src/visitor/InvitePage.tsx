@@ -6,11 +6,11 @@ import { PassView } from './PassView';
 import { VisitorForm } from './VisitorForm';
 
 const MESSAGES: Partial<Record<VisitStatus, string>> = {
-  CHECKED_OUT: 'Aapki visit poori ho gayi. Dhanyavaad.',
-  CANCELLED: 'Yeh visit cancel ho gayi hai. Apne host se baat karein.',
-  EXPIRED: 'Is link ka time khatam ho gaya hai. Apne host se naya link maangein.',
-  REJECTED: 'Yeh visit approve nahi hui. Apne host se baat karein.',
-  PENDING_APPROVAL: 'Host ke jawab ka intezaar hai. Guard aapko batayenge.',
+  CHECKED_OUT: 'Your visit is complete. Thank you.',
+  CANCELLED: 'This visit has been cancelled. Please contact your host.',
+  EXPIRED: 'This link has expired. Please ask your host for a new one.',
+  REJECTED: 'This visit was not approved. Please contact your host.',
+  PENDING_APPROVAL: 'Waiting for your host to respond. The guard will let you know.',
 };
 
 export function InvitePage() {
@@ -27,18 +27,18 @@ export function InvitePage() {
 
   let body;
   if (query.isPending) {
-    body = <p className="page-message">Load ho raha hai…</p>;
+    body = <p className="page-message">Loading…</p>;
   } else if (query.isError) {
     body =
       query.error instanceof ApiError && query.error.status === 404 ? (
-        <p className="page-message">Yeh link sahi nahi hai. Apne host se naya link maangein.</p>
+        <p className="page-message">This link is not valid. Please ask your host for a new one.</p>
       ) : (
         <div className="stack">
           <p role="alert" className="error">
             {errorMessage(query.error)}
           </p>
           <button type="button" onClick={() => void query.refetch()}>
-            Dobara koshish karein
+            Try again
           </button>
         </div>
       );

@@ -4,9 +4,9 @@ import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv } from 'vite';
 
 export default defineConfig(({ command, mode }) => {
-  // API URL build mein hi jud jata hai. Iske bina site localhost se baat karti aur chupchap toot jati.
+  // The API URL is baked in at build time. Without it the site would call localhost and break silently.
   if (command === 'build' && !loadEnv(mode, process.cwd(), '').VITE_API_URL) {
-    throw new Error('VITE_API_URL set karein: Render par bani API ka URL.');
+    throw new Error('Set VITE_API_URL to the URL of the API deployed on Render.');
   }
   return {
     plugins: [react()],

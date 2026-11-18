@@ -19,14 +19,14 @@ function write(key: string, value: unknown): void {
     if (value === null) localStorage.removeItem(key);
     else localStorage.setItem(key, JSON.stringify(value));
   } catch {
-    // Private window mein storage na mile to bhi app chale.
+    // Keep working even when storage is unavailable (private window).
   }
 }
 
 export const loadUser = () => read<SessionUser>(USER_KEY);
 export const saveUser = (user: SessionUser | null) => write(USER_KEY, user);
 export const saveTokens = (tokens: Tokens | null) => write(TOKENS_KEY, tokens);
-/** Side menu mein chuna gaya premises; har request par X-Premises-Id. */
+/** Premises chosen in the side menu; sent as X-Premises-Id on every request. */
 export const loadPremisesId = () => read<string>(PREMISES_KEY);
 export const savePremisesId = (id: string | null) => write(PREMISES_KEY, id);
 
@@ -74,8 +74,8 @@ export function useWebClient(): WebClient {
 
 export const useApi = (): ApiClient => useWebClient().client;
 
-/** Har error ka user ko dikhne wala message. */
+/** User-facing message for any error. */
 export function errorMessage(error: unknown): string {
   if (error instanceof ApiError || error instanceof NetworkError) return error.message;
-  return 'Kuch gadbad ho gayi. Dobara koshish karein.';
+  return 'Something went wrong. Please try again.';
 }

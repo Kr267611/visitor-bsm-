@@ -1,3 +1,5 @@
+import type { VisitStatus } from '@visitor/shared';
+import { STATUS_LABEL } from '../ui/StatusBadge';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -41,25 +43,25 @@ describe('host screens', () => {
   it('lists own visitors with status and a link', async () => {
     renderApp('/my', server());
     expect(await screen.findByRole('link', { name: /Rahul Verma/ })).toHaveAttribute('href', '/my/visits/v1');
-    expect(screen.getByText('INVITED')).toBeInTheDocument();
+    expect(screen.getByText('Invited')).toBeInTheDocument();
   });
 
   it('empty list explains the next step', async () => {
     renderApp('/my', server({ 'GET /visits': () => json(200, []) }));
-    expect(await screen.findByText(/Abhi koi visitor nahi hai/)).toBeInTheDocument();
+    expect(await screen.findByText(/No visitors yet/)).toBeInTheDocument();
   });
 
   describe('invite form', () => {
     async function fill(user: ReturnType<typeof userEvent.setup>, over: { phone?: string; start?: string; end?: string } = {}) {
-      await user.type(await screen.findByLabelText('Visitor ka naam'), 'Rahul Verma');
-      await user.type(screen.getByLabelText('Visitor ka mobile'), over.phone ?? '98765 43210');
+      await user.type(await screen.findByLabelText('Visitor name'), 'Rahul Verma');
+      await user.type(screen.getByLabelText('Visitor mobile'), over.phone ?? '98765 43210');
       await user.clear(screen.getByLabelText('Date'));
       await user.type(screen.getByLabelText('Date'), '2026-11-06');
-      await user.clear(screen.getByLabelText('Kab se'));
-      await user.type(screen.getByLabelText('Kab se'), over.start ?? '10:00');
-      await user.clear(screen.getByLabelText('Kab tak'));
-      await user.type(screen.getByLabelText('Kab tak'), over.end ?? '13:00');
-      await user.type(screen.getByLabelText('Kaam'), 'Meeting');
+      await user.clear(screen.getByLabelText('From'));
+      await user.type(screen.getByLabelText('From'), over.start ?? '10:00');
+      await user.clear(screen.getByLabelText('Until'));
+      await user.type(screen.getByLabelText('Until'), over.end ?? '13:00');
+      await user.type(screen.getByLabelText('Purpose'), 'Meeting');
     }
 
     it('invite form validates phone with normalizeIndianPhone', async () => {
@@ -67,18 +69,18 @@ describe('host screens', () => {
       renderApp('/my/invite', s);
       const user = userEvent.setup();
       await fill(user, { phone: '123' });
-      await user.click(screen.getByRole('button', { name: 'Invite bhejein' }));
-      expect(await screen.findByRole('alert')).toHaveTextContent('Mobile number sahi nahi hai');
+      await user.click(screen.getByRole('button', { name: 'Send invite' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('Enter a valid 10-digit mobile number');
       expect(s.calls.some((c) => c.key === 'POST /visits')).toBe(false);
     });
 
-    it('end time before start blocked', async () => {
+    it('end time before start is blocked', async () => {
       const s = server();
       renderApp('/my/invite', s);
       const user = userEvent.setup();
       await fill(user, { start: '13:00', end: '10:00' });
-      await user.click(screen.getByRole('button', { name: 'Invite bhejein' }));
-      expect(await screen.findByRole('alert')).toHaveTextContent('Kab tak ka time');
+      await user.click(screen.getByRole('button', { name: 'Send invite' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('"Until" must be later');
       expect(s.calls.some((c) => c.key === 'POST /visits')).toBe(false);
     });
 
@@ -87,8 +89,8 @@ describe('host screens', () => {
       renderApp('/my/invite', s);
       const user = userEvent.setup();
       await fill(user);
-      await user.click(screen.getByRole('button', { name: 'Invite bhejein' }));
-      await screen.findByRole('heading', { level: 1, name: 'Mere visitors' });
+      await user.click(screen.getByRole('button', { name: 'Send invite' }));
+      await screen.findByRole('heading', { level: 1, name: 'My visitors' });
       const body = s.calls.find((c) => c.key === 'POST /visits')!.body;
       expect(body).toEqual({
         visitorName: 'Rahul Verma',
@@ -100,13 +102,13 @@ describe('host screens', () => {
     });
 
     it('server error keeps the form filled', async () => {
-      const s = server({ 'POST /visits': () => json(422, { error: 'VALIDATION_FAILED', message: 'Ek pass 24 ghante se zyada ka nahi ho sakta.' }) });
+      const s = server({ 'POST /visits': () => json(422, { error: 'VALIDATION_FAILED', message: 'A pass cannot be longer than 24 hours.' }) });
       renderApp('/my/invite', s);
       const user = userEvent.setup();
       await fill(user);
-      await user.click(screen.getByRole('button', { name: 'Invite bhejein' }));
-      expect(await screen.findByRole('alert')).toHaveTextContent('24 ghante');
-      expect(screen.getByLabelText('Visitor ka naam')).toHaveValue('Rahul Verma');
+      await user.click(screen.getByRole('button', { name: 'Send invite' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('24 hours');
+      expect(screen.getByLabelText('Visitor name')).toHaveValue('Rahul Verma');
     });
   });
 
@@ -123,9 +125,9 @@ describe('host screens', () => {
       });
       renderApp('/my/visits/v1', s);
       const user = userEvent.setup();
-      await user.type(await screen.findByLabelText('Guard ke liye note'), '10 minute baithao');
+      await user.type(await screen.findByLabelText('Note for the guard'), '10 minute baithao');
       await user.click(screen.getByRole('button', { name: 'Approve' }));
-      expect(await screen.findByText('APPROVED')).toBeInTheDocument();
+      expect(await screen.findByText('Approved')).toBeInTheDocument();
       expect(s.calls.find((c) => c.key === 'POST /visits/v1/approve')!.body).toEqual({ note: '10 minute baithao' });
     });
 
@@ -136,17 +138,17 @@ describe('host screens', () => {
       });
       renderApp('/my/visits/v1', s);
       const user = userEvent.setup();
-      await user.type(await screen.findByLabelText('Guard ke liye note'), 'Aaj nahi');
+      await user.type(await screen.findByLabelText('Note for the guard'), 'Not today');
       await user.click(screen.getByRole('button', { name: 'Reject' }));
       await waitFor(() =>
-        expect(s.calls.find((c) => c.key === 'POST /visits/v1/reject')?.body).toEqual({ reason: 'Aaj nahi' }),
+        expect(s.calls.find((c) => c.key === 'POST /visits/v1/reject')?.body).toEqual({ reason: 'Not today' }),
       );
     });
 
     it('already decided visit shows the current status, no buttons', async () => {
-      renderApp('/my/visits/v1', server({ 'GET /visits/v1': () => json(200, pending({ status: 'REJECTED', decisionNote: 'Aaj nahi' })) }));
-      expect(await screen.findByText('REJECTED')).toBeInTheDocument();
-      expect(screen.getByText(/Aaj nahi/)).toBeInTheDocument();
+      renderApp('/my/visits/v1', server({ 'GET /visits/v1': () => json(200, pending({ status: 'REJECTED', decisionNote: 'Not today' })) }));
+      expect(await screen.findByText('Rejected')).toBeInTheDocument();
+      expect(screen.getByText(/Not today/)).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument();
     });
 
@@ -155,13 +157,13 @@ describe('host screens', () => {
         'GET /visits/v1': () => json(200, pending()),
         'POST /visits/v1/approve': () => {
           s.handlers['GET /visits/v1'] = () => json(200, pending({ status: 'REJECTED' }));
-          return json(409, { error: 'INVALID_TRANSITION', message: 'Yeh visit abhi REJECTED hai, yeh kaam nahi ho sakta.', status: 'REJECTED' });
+          return json(409, { error: 'INVALID_TRANSITION', message: 'This visit is REJECTED; this action is not allowed.', status: 'REJECTED' });
         },
       });
       renderApp('/my/visits/v1', s);
       await userEvent.setup().click(await screen.findByRole('button', { name: 'Approve' }));
       expect(await screen.findByRole('alert')).toHaveTextContent('REJECTED');
-      expect(await screen.findByText('REJECTED')).toBeInTheDocument();
+      expect(await screen.findByText('Rejected')).toBeInTheDocument();
       await waitFor(() => expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument());
     });
 
@@ -177,19 +179,19 @@ describe('host screens', () => {
       const user = userEvent.setup();
       await user.click(await screen.findByRole('tab', { name: 'OTP' }));
       await user.type(await screen.findByLabelText('Mobile number'), '9876543210');
-      await user.click(screen.getByRole('button', { name: 'OTP bhejein' }));
+      await user.click(screen.getByRole('button', { name: 'Send OTP' }));
       await user.type(await screen.findByLabelText('OTP'), '123456');
-      await user.click(screen.getByRole('button', { name: 'Login karein' }));
+      await user.click(screen.getByRole('button', { name: 'Sign in' }));
       expect(await screen.findByRole('button', { name: 'Approve' })).toBeInTheDocument();
     });
 
     it('failed SMS is shown to the host', async () => {
       renderApp('/my/visits/v1', server({ 'GET /visits/v1': () => json(200, detail({ deliveryFailed: true })) }));
-      expect(await screen.findByText(/SMS nahi pahunch paya/)).toBeInTheDocument();
+      expect(await screen.findByText(/The SMS could not be delivered/)).toBeInTheDocument();
     });
 
     it('no permission shows message', async () => {
-      renderApp('/my/visits/v1', server({ 'GET /visits/v1': () => json(403, { error: 'FORBIDDEN', message: 'Aapko iski permission nahi hai.' }) }));
+      renderApp('/my/visits/v1', server({ 'GET /visits/v1': () => json(403, { error: 'FORBIDDEN', message: 'You do not have permission to do this.' }) }));
       expect(await screen.findByRole('alert')).toHaveTextContent('permission');
     });
 
@@ -200,17 +202,17 @@ describe('host screens', () => {
       ['CHECKED_OUT', false],
     ])('cancel for %s available: %s', async (status, available) => {
       renderApp('/my/visits/v1', server({ 'GET /visits/v1': () => json(200, detail({ status })) }));
-      await screen.findByText(status as string);
-      expect(screen.queryByRole('button', { name: 'Visit cancel karein' }) !== null).toBe(available);
+      await screen.findByText(STATUS_LABEL[status as VisitStatus]);
+      expect(screen.queryByRole('button', { name: 'Cancel visit' }) !== null).toBe(available);
     });
 
     it('cancel confirms in page first', async () => {
       const s = server({ 'POST /visits/v1/cancel': () => json(200, { id: 'v1', status: 'CANCELLED' }) });
       renderApp('/my/visits/v1', s);
       const user = userEvent.setup();
-      await user.click(await screen.findByRole('button', { name: 'Visit cancel karein' }));
+      await user.click(await screen.findByRole('button', { name: 'Cancel visit' }));
       expect(s.calls.some((c) => c.key === 'POST /visits/v1/cancel')).toBe(false);
-      await user.click(screen.getByRole('button', { name: 'Haan, cancel karein' }));
+      await user.click(screen.getByRole('button', { name: 'Yes, cancel' }));
       await waitFor(() => expect(s.calls.some((c) => c.key === 'POST /visits/v1/cancel')).toBe(true));
     });
 
@@ -218,8 +220,8 @@ describe('host screens', () => {
       const s = server({ 'POST /visits/v1/resend-invite': () => json(204) });
       renderApp('/my/visits/v1', s);
       const user = userEvent.setup();
-      await user.click(await screen.findByRole('button', { name: 'Link dobara bhejein' }));
-      expect(await screen.findByText(/Naya link bhej diya/)).toBeInTheDocument();
+      await user.click(await screen.findByRole('button', { name: 'Resend link' }));
+      expect(await screen.findByText(/New link sent/)).toBeInTheDocument();
     });
   });
 
@@ -232,12 +234,12 @@ describe('host screens', () => {
       });
       renderApp('/my/backup', s);
       const user = userEvent.setup();
-      await user.type(await screen.findByLabelText('Backup person dhoondein'), 'ravi');
+      await user.type(await screen.findByLabelText('Search for a backup person'), 'ravi');
       await user.click(await screen.findByRole('button', { name: /Ravi Kumar/ }));
-      expect(await screen.findByText(/Abhi backup: Ravi Kumar/)).toBeInTheDocument();
+      expect(await screen.findByText(/Current backup: Ravi Kumar/)).toBeInTheDocument();
       expect(s.calls.find((c) => c.key === 'PATCH /me')!.body).toEqual({ delegateId: 'u2' });
-      await user.click(screen.getByRole('button', { name: 'Backup hatayein' }));
-      await waitFor(() => expect(screen.queryByText(/Abhi backup/)).not.toBeInTheDocument());
+      await user.click(screen.getByRole('button', { name: 'Remove backup' }));
+      await waitFor(() => expect(screen.queryByText(/Current backup/)).not.toBeInTheDocument());
     });
 
     it('does not offer self as backup', async () => {
@@ -245,7 +247,7 @@ describe('host screens', () => {
         'GET /users/hosts': () => json(200, [{ id: USERS.employee.id, name: 'Anita', department: null }]),
       });
       renderApp('/my/backup', s);
-      await userEvent.setup().type(await screen.findByLabelText('Backup person dhoondein'), 'an');
+      await userEvent.setup().type(await screen.findByLabelText('Search for a backup person'), 'an');
       await waitFor(() => expect(s.calls.some((c) => c.key === 'GET /users/hosts')).toBe(true));
       expect(screen.queryByRole('button', { name: /Anita/ })).not.toBeInTheDocument();
     });

@@ -23,15 +23,15 @@ export function MyVisitsPage() {
   const canInvite = user?.role !== 'security' && has('invites');
   const inviteButton = canInvite ? (
     <Link to="/my/invite" className="button-link">
-      + Naya invite
+      + New invite
     </Link>
   ) : null;
 
   return (
     <>
       <PageHeader
-        title="Mere visitors"
-        subtitle="Jinhe aapne bulaya hai ya jo aapse milne aaye. Naam par click karke detail aur approval."
+        title="My visitors"
+        subtitle="People you invited or who came to meet you. Open a name for details and approval."
         actions={inviteButton}
       />
 
@@ -45,8 +45,8 @@ export function MyVisitsPage() {
         <section className="panel">
           {visits.data.length === 0 && (
             <EmptyState
-              title="Abhi koi visitor nahi hai."
-              hint="Kisi ko bulana hai? Invite bhejiye; unhe SMS par link milega aur gate par QR pass."
+              title="No visitors yet."
+              hint="Expecting someone? Send an invite: they get an SMS link and a QR pass for the gate."
               action={inviteButton}
             />
           )}

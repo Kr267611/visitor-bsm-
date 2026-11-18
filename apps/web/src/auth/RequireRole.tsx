@@ -11,7 +11,7 @@ export function RequireRole({ roles, children }: { roles: Role[]; children: Reac
     return <Navigate to={`/login?next=${next}`} replace />;
   }
   if (!roles.includes(user.role)) {
-    return <p className="page-message">Is page ki permission aapko nahi hai.</p>;
+    return <p className="page-message">You do not have access to this page.</p>;
   }
   return <>{children}</>;
 }

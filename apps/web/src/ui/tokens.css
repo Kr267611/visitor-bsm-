@@ -137,7 +137,7 @@ button.link { border: 0; background: none; color: var(--accent); padding: 4px; m
 button.link:hover:not(:disabled) { background: none; }
 .link { color: var(--accent); }
 
-.badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-family: var(--mono); font-size: 0.72rem; font-weight: 500; white-space: nowrap; }
+.badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 0.78rem; font-weight: 500; white-space: nowrap; }
 .badge-good { background: var(--accent-soft); color: var(--accent); }
 .badge-wait { background: var(--wait-soft); color: var(--wait); }
 .badge-bad { background: var(--bad-soft); color: var(--bad); }

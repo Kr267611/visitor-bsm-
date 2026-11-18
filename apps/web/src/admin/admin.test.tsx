@@ -80,8 +80,8 @@ describe('admin', () => {
       });
       renderApp('/admin/members', s);
       const user = userEvent.setup();
-      await user.click(await screen.findByRole('button', { name: '+ Naya member' }));
-      await user.type(await screen.findByLabelText('Naam'), 'Ravi Kumar');
+      await user.click(await screen.findByRole('button', { name: '+ New member' }));
+      await user.type(await screen.findByLabelText('Name'), 'Ravi Kumar');
       await user.type(screen.getByLabelText('Mobile'), '9876543210');
       await user.selectOptions(screen.getByLabelText('Role'), 'employee');
       await user.selectOptions(await screen.findByLabelText('Department'), 'd-fin');
@@ -89,7 +89,7 @@ describe('admin', () => {
       const premisesBox = screen.getByRole('group', { name: 'Premises' });
       await user.click(within(premisesBox).getByLabelText('Head Office'));
       await user.click(within(premisesBox).getByLabelText('Plant 2'));
-      await user.click(screen.getByRole('button', { name: 'Member banayein' }));
+      await user.click(screen.getByRole('button', { name: 'Create member' }));
       const row = (await screen.findByText('Ravi Kumar')).closest('tr') as HTMLElement;
       expect(within(row).getByText('Finance')).toBeInTheDocument();
       expect(within(row).getByText('Head Office, Plant 2')).toBeInTheDocument();
@@ -102,33 +102,33 @@ describe('admin', () => {
         departmentId: 'd-fin',
         password: 'Ravi@2026x',
       });
-      // Ban jaane par form band, list saamne.
-      expect(screen.queryByLabelText('Naam')).toBeNull();
+      // Once created, the form closes and the list is in front.
+      expect(screen.queryByLabelText('Name')).toBeNull();
     });
 
     it('search filters the list by name or phone', async () => {
       renderApp('/admin/members', server({ 'GET /admin/users': () => json(200, [person(), person({ id: 'u2', name: 'Kavita Rao', phone: '+919855500001' })]) }));
       const user = userEvent.setup();
       await screen.findByText('Kavita Rao');
-      await user.type(screen.getByLabelText('Member dhoondein'), 'kavita');
+      await user.type(screen.getByLabelText('Search members'), 'kavita');
       expect(screen.queryByText('Amit Guard')).toBeNull();
       expect(screen.getByText('1 / 2 members')).toBeInTheDocument();
-      await user.clear(screen.getByLabelText('Member dhoondein'));
-      await user.type(screen.getByLabelText('Member dhoondein'), '98555');
+      await user.clear(screen.getByLabelText('Search members'));
+      await user.type(screen.getByLabelText('Search members'), '98555');
       expect(screen.getByText('Kavita Rao')).toBeInTheDocument();
-      await user.type(screen.getByLabelText('Member dhoondein'), '9');
-      expect(await screen.findByText('Is naam ya number ka koi member nahi mila.')).toBeInTheDocument();
+      await user.type(screen.getByLabelText('Search members'), '9');
+      expect(await screen.findByText('No member matches that name or number.')).toBeInTheDocument();
     });
 
     it('needs at least one premises before calling the server', async () => {
       const s = server();
       renderApp('/admin/members', s);
       const user = userEvent.setup();
-      await user.click(await screen.findByRole('button', { name: '+ Naya member' }));
-      await user.type(await screen.findByLabelText('Naam'), 'Ravi');
+      await user.click(await screen.findByRole('button', { name: '+ New member' }));
+      await user.type(await screen.findByLabelText('Name'), 'Ravi');
       await user.type(screen.getByLabelText('Mobile'), '9876543210');
-      await user.click(screen.getByRole('button', { name: 'Member banayein' }));
-      expect(await screen.findByRole('alert')).toHaveTextContent('ek premises');
+      await user.click(screen.getByRole('button', { name: 'Create member' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('at least one premises');
       expect(s.calls.some((c) => c.key === 'POST /admin/users')).toBe(false);
     });
 
@@ -137,17 +137,17 @@ describe('admin', () => {
         '/admin/members',
         server({
           'POST /admin/users': () =>
-            json(422, { error: 'PLAN_LIMIT', message: 'Aapke plan mein active members ki limit (5) poori ho gayi.' }),
+            json(422, { error: 'PLAN_LIMIT', message: 'Your plan allows 5 active members, and that limit has been reached.' }),
         }),
       );
       const user = userEvent.setup();
-      await user.click(await screen.findByRole('button', { name: '+ Naya member' }));
-      await user.type(await screen.findByLabelText('Naam'), 'Ravi');
+      await user.click(await screen.findByRole('button', { name: '+ New member' }));
+      await user.type(await screen.findByLabelText('Name'), 'Ravi');
       await user.type(screen.getByLabelText('Mobile'), '9876543210');
       await user.click(within(await screen.findByRole('group', { name: 'Premises' })).getByLabelText('Head Office'));
-      await user.click(screen.getByRole('button', { name: 'Member banayein' }));
-      expect(await screen.findByRole('alert')).toHaveTextContent('limit (5)');
-      expect(screen.getByLabelText('Naam')).toHaveValue('Ravi');
+      await user.click(screen.getByRole('button', { name: 'Create member' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('allows 5 active members');
+      expect(screen.getByLabelText('Name')).toHaveValue('Ravi');
     });
 
     it('deactivate confirms in page, then marks inactive', async () => {
@@ -160,10 +160,10 @@ describe('admin', () => {
       renderApp('/admin/members', s);
       const user = userEvent.setup();
       const row = (await screen.findByText('Amit Guard')).closest('tr') as HTMLElement;
-      await user.click(within(row).getByRole('button', { name: 'Band karein' }));
+      await user.click(within(row).getByRole('button', { name: 'Deactivate' }));
       expect(s.calls.some((c) => c.key === 'PATCH /admin/users/u1')).toBe(false);
-      await user.click(within(row).getByRole('button', { name: 'Haan, band karein' }));
-      expect(await screen.findByText('Band hai')).toBeInTheDocument();
+      await user.click(within(row).getByRole('button', { name: 'Yes, deactivate' }));
+      expect(await screen.findByText('Inactive')).toBeInTheDocument();
       expect(s.calls.find((c) => c.key === 'PATCH /admin/users/u1')!.body).toEqual({ isActive: false });
     });
 
@@ -173,7 +173,7 @@ describe('admin', () => {
         'PATCH /admin/users/u1': () => json(200, person()),
       });
       renderApp('/admin/members', s);
-      await userEvent.setup().click(await screen.findByRole('button', { name: 'Chalu karein' }));
+      await userEvent.setup().click(await screen.findByRole('button', { name: 'Activate' }));
       await waitFor(() => expect(s.calls.find((c) => c.key === 'PATCH /admin/users/u1')?.body).toEqual({ isActive: true }));
     });
 
@@ -183,9 +183,9 @@ describe('admin', () => {
       const user = userEvent.setup();
       const row = (await screen.findByText('Amit Guard')).closest('tr') as HTMLElement;
       await user.click(within(row).getByRole('button', { name: 'Password reset' }));
-      await user.type(within(row).getByLabelText('Amit Guard ka naya password'), 'Fresh@2026x');
-      await user.click(within(row).getByRole('button', { name: 'Set karein' }));
-      expect(await within(row).findByRole('status')).toHaveTextContent('logout');
+      await user.type(within(row).getByLabelText('New password for Amit Guard'), 'Fresh@2026x');
+      await user.click(within(row).getByRole('button', { name: 'Set' }));
+      expect(await within(row).findByRole('status')).toHaveTextContent('signed out');
       expect(s.calls.find((c) => c.key === 'PUT /admin/users/u1/password')!.body).toEqual({ password: 'Fresh@2026x' });
     });
 
@@ -203,15 +203,15 @@ describe('admin', () => {
       });
       renderApp('/admin/premises', s);
       const user = userEvent.setup();
-      await user.type(await screen.findByLabelText('Premises ka naam'), 'Warehouse');
-      await user.type(screen.getByLabelText('Pata'), 'Surat');
-      await user.click(screen.getByRole('button', { name: 'Premises jodein' }));
+      await user.type(await screen.findByLabelText('Premises name'), 'Warehouse');
+      await user.type(screen.getByLabelText('Address'), 'Surat');
+      await user.click(screen.getByRole('button', { name: 'Add premises' }));
       await waitFor(() =>
         expect(s.calls.find((c) => c.key === 'POST /admin/premises')?.body).toEqual({ name: 'Warehouse', address: 'Surat' }),
       );
-      await user.selectOptions(await screen.findByLabelText('Gate ka premises'), 'p1');
-      await user.type(screen.getByLabelText('Gate ka naam'), 'Gate 2');
-      await user.click(screen.getByRole('button', { name: 'Gate jodein' }));
+      await user.selectOptions(await screen.findByLabelText('Gate premises'), 'p1');
+      await user.type(screen.getByLabelText('Gate name'), 'Gate 2');
+      await user.click(screen.getByRole('button', { name: 'Add gate' }));
       await waitFor(() =>
         expect(s.calls.find((c) => c.key === 'POST /admin/gates')?.body).toEqual({ premisesId: 'p1', name: 'Gate 2' }),
       );
@@ -232,11 +232,11 @@ describe('admin', () => {
       const row = (await screen.findByRole('cell', { name: /^Head Office/ })).closest('tr') as HTMLElement;
       await user.click(within(row).getByRole('button', { name: 'Settings' }));
       const form = await screen.findByRole('form', { name: 'Head Office settings' });
-      expect(within(form).getByLabelText('Visit shuru (HH:MM)')).toHaveValue('09:00');
-      await user.type(within(form).getByLabelText('Overstay alert (minute)'), '30');
-      await user.click(within(form).getByLabelText('Approval ke baad hi check-in'));
-      await user.click(within(form).getByRole('button', { name: 'Settings save karein' }));
-      expect(await within(form).findByRole('status')).toHaveTextContent('save ho gayin');
+      expect(within(form).getByLabelText('Visiting hours start')).toHaveValue('09:00');
+      await user.type(within(form).getByLabelText('Overstay alert (minutes)'), '30');
+      await user.click(within(form).getByLabelText('Check-in only after approval'));
+      await user.click(within(form).getByRole('button', { name: 'Save settings' }));
+      expect(await within(form).findByRole('status')).toHaveTextContent('Settings saved');
       expect(s.calls.find((c) => c.key === 'PUT /admin/premises/p1/settings')!.body).toEqual({
         visitStart: '09:00',
         visitEnd: null,
@@ -249,15 +249,15 @@ describe('admin', () => {
     it('settings error from server is shown', async () => {
       const s = server({
         'PUT /admin/premises/p1/settings': () =>
-          json(422, { error: 'VALIDATION_FAILED', message: 'Visit ka end time start ke baad ka hona chahiye.' }),
+          json(422, { error: 'VALIDATION_FAILED', message: 'Visiting hours must end after they start.' }),
       });
       renderApp('/admin/premises', s);
       const user = userEvent.setup();
       const row = (await screen.findByRole('cell', { name: /^Head Office/ })).closest('tr') as HTMLElement;
       await user.click(within(row).getByRole('button', { name: 'Settings' }));
       const form = await screen.findByRole('form', { name: 'Head Office settings' });
-      await user.click(within(form).getByRole('button', { name: 'Settings save karein' }));
-      expect(await within(form).findByRole('alert')).toHaveTextContent('end time');
+      await user.click(within(form).getByRole('button', { name: 'Save settings' }));
+      expect(await within(form).findByRole('alert')).toHaveTextContent('must end after they start');
     });
   });
 
@@ -270,14 +270,14 @@ describe('admin', () => {
       });
       renderApp('/admin/departments', s);
       const user = userEvent.setup();
-      await user.type(await screen.findByLabelText('Department ka naam'), 'HR');
-      await user.click(screen.getByRole('button', { name: 'Department jodein' }));
+      await user.type(await screen.findByLabelText('Department name'), 'HR');
+      await user.click(screen.getByRole('button', { name: 'Add department' }));
       await waitFor(() => expect(s.calls.find((c) => c.key === 'POST /admin/departments')?.body).toEqual({ name: 'HR' }));
 
       const row = (await screen.findByText('Finance')).closest('tr') as HTMLElement;
       expect(within(row).getByText('1')).toBeInTheDocument();
-      await user.click(within(row).getByRole('button', { name: 'Naam badlein' }));
-      const input = within(row).getByLabelText('Finance ka naya naam');
+      await user.click(within(row).getByRole('button', { name: 'Rename' }));
+      const input = within(row).getByLabelText('New name for Finance');
       await user.clear(input);
       await user.type(input, 'Accounts');
       await user.click(within(row).getByRole('button', { name: 'Save' }));
@@ -285,21 +285,21 @@ describe('admin', () => {
         expect(s.calls.find((c) => c.key === 'PATCH /admin/departments/d-fin')?.body).toEqual({ name: 'Accounts' }),
       );
 
-      await user.click(within(row).getByRole('button', { name: 'Hatayein' }));
+      await user.click(within(row).getByRole('button', { name: 'Delete' }));
       expect(s.calls.some((c) => c.key === 'DELETE /admin/departments/d-fin')).toBe(false);
-      await user.click(within(row).getByRole('button', { name: 'Haan, hatayein' }));
+      await user.click(within(row).getByRole('button', { name: 'Yes, delete' }));
       await waitFor(() => expect(s.calls.some((c) => c.key === 'DELETE /admin/departments/d-fin')).toBe(true));
     });
 
     it('duplicate name shows server message', async () => {
       renderApp(
         '/admin/departments',
-        server({ 'POST /admin/departments': () => json(422, { error: 'VALIDATION_FAILED', message: 'Yeh pehle se maujood hai.' }) }),
+        server({ 'POST /admin/departments': () => json(422, { error: 'VALIDATION_FAILED', message: 'This already exists.' }) }),
       );
       const user = userEvent.setup();
-      await user.type(await screen.findByLabelText('Department ka naam'), 'Finance');
-      await user.click(screen.getByRole('button', { name: 'Department jodein' }));
-      expect(await screen.findByRole('alert')).toHaveTextContent('pehle se maujood');
+      await user.type(await screen.findByLabelText('Department name'), 'Finance');
+      await user.click(screen.getByRole('button', { name: 'Add department' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('already exists');
     });
   });
 
@@ -307,9 +307,9 @@ describe('admin', () => {
     const s = server({ 'POST /admin/devices/d1/revoke': () => json(204) });
     renderApp('/admin/devices', s);
     const user = userEvent.setup();
-    await user.click(await screen.findByRole('button', { name: 'Block karein' }));
+    await user.click(await screen.findByRole('button', { name: 'Block' }));
     expect(s.calls.some((c) => c.key === 'POST /admin/devices/d1/revoke')).toBe(false);
-    await user.click(screen.getByRole('button', { name: 'Haan, block karein' }));
+    await user.click(screen.getByRole('button', { name: 'Yes, block' }));
     await waitFor(() => expect(s.calls.some((c) => c.key === 'POST /admin/devices/d1/revoke')).toBe(true));
   });
 
@@ -322,13 +322,13 @@ describe('admin', () => {
   it('security cannot open members', async () => {
     signIn(USERS.security);
     renderApp('/admin/members', server());
-    expect(await screen.findByText('Is page ki permission aapko nahi hai.')).toBeInTheDocument();
+    expect(await screen.findByText('You do not have access to this page.')).toBeInTheDocument();
   });
 
   it('non-admin cannot open /admin', async () => {
     signIn(USERS.employee);
     renderApp('/admin', server());
-    expect(await screen.findByText('Is page ki permission aapko nahi hai.')).toBeInTheDocument();
+    expect(await screen.findByText('You do not have access to this page.')).toBeInTheDocument();
   });
 
   it('vercel config keeps SPA routes and protects invite links', () => {

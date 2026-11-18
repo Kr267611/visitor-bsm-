@@ -36,10 +36,10 @@ function DepartmentRow({ dept, onError }: { dept: Department; onError(message: s
               void run(() => api.admin.departments.update(dept.id, { name: name.trim() }));
             }}
           >
-            <input aria-label={`${dept.name} ka naya naam`} value={name} onChange={(e) => setName(e.target.value)} required />
+            <input aria-label={`New name for ${dept.name}`} value={name} onChange={(e) => setName(e.target.value)} required />
             <button type="submit">Save</button>
             <button type="button" onClick={() => setEditing(false)}>
-              Rehne dein
+              Cancel
             </button>
           </form>
         ) : (
@@ -51,19 +51,19 @@ function DepartmentRow({ dept, onError }: { dept: Department; onError(message: s
         {!editing && (
           <div className="row">
             <button type="button" onClick={() => setEditing(true)}>
-              Naam badlein
+              Rename
             </button>
             {!confirming ? (
               <button type="button" onClick={() => setConfirming(true)}>
-                Hatayein
+                Delete
               </button>
             ) : (
               <>
                 <button type="button" className="danger" onClick={() => void run(() => api.admin.departments.remove(dept.id))}>
-                  Haan, hatayein
+                  Yes, delete
                 </button>
                 <button type="button" onClick={() => setConfirming(false)}>
-                  Nahi
+                  No
                 </button>
               </>
             )}
@@ -95,16 +95,16 @@ export function DepartmentsPage() {
 
   return (
     <>
-      <PageHeader title="Departments" subtitle="Members ko department mein rakhein; reports aur host search mein kaam aata hai." />
+      <PageHeader title="Departments" subtitle="Group members by department. Used in reports and host search." />
       <form className="form-card" onSubmit={add}>
         <div className="stack">
-          <label htmlFor="dept-name">Department ka naam</label>
+          <label htmlFor="dept-name">Department name</label>
           <input id="dept-name" value={name} onChange={(e) => setName(e.target.value)} required />
         </div>
         <button type="submit" className="primary">
-          Department jodein
+          Add department
         </button>
-        <p className="muted small">Department hatane par uske members bina department ke reh jaate hain; unka account nahi hatta.</p>
+        <p className="muted small">Deleting a department keeps its members; they are simply left without a department.</p>
       </form>
       {error && (
         <p role="alert" className="error">
@@ -125,7 +125,7 @@ export function DepartmentsPage() {
           </tbody>
         </table>
         {departments.data?.length === 0 && (
-          <EmptyState title="Abhi koi department nahi." hint="Upar naam likh kar pehla department jodein, jaise Finance ya HR." />
+          <EmptyState title="No departments yet." hint="Add your first department above, for example Finance or HR." />
         )}
       </section>
     </>

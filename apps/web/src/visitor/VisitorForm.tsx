@@ -45,7 +45,7 @@ export function VisitorForm({ token, invite, onDone }: Props) {
       setPhoto(compressed);
       setPreview(URL.createObjectURL(compressed));
     } catch (e) {
-      setError(e instanceof PhotoError ? e.message : 'Yeh photo nahi chal rahi. Camera se nayi photo lein.');
+      setError(e instanceof PhotoError ? e.message : 'This photo cannot be used. Please take a new one with the camera.');
     }
   }
 
@@ -56,7 +56,7 @@ export function VisitorForm({ token, invite, onDone }: Props) {
     setBusy(true);
     setError(null);
     try {
-      // Dobara koshish par photo phir se upload nahi.
+      // On retry, do not upload the photo again.
       uploadedKey.current ??= (await api.publicInvites.uploadPhoto(token, photo)).key;
       const result = await api.publicInvites.register(token, {
         name: name.trim(),
@@ -82,12 +82,12 @@ export function VisitorForm({ token, invite, onDone }: Props) {
     <form className="form-card" onSubmit={submit}>
       <div>
         <div className="eyebrow">{invite.siteName}</div>
-        <h1>Apni details bharein</h1>
-        <p className="muted">{invite.hostName} ne aapko bulaya hai.</p>
+        <h1>Fill in your details</h1>
+        <p className="muted">{invite.hostName} has invited you.</p>
       </div>
 
       <div className="stack">
-        <label htmlFor="visitor-name">Aapka naam</label>
+        <label htmlFor="visitor-name">Your name</label>
         <input id="visitor-name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" required />
       </div>
 
@@ -97,24 +97,24 @@ export function VisitorForm({ token, invite, onDone }: Props) {
       </div>
 
       <div className="stack">
-        <label htmlFor="visitor-photo">Aapki photo</label>
+        <label htmlFor="visitor-photo">Your photo</label>
         <input id="visitor-photo" type="file" accept="image/*" capture="user" onChange={choosePhoto} />
-        {preview && <img src={preview} alt="Chuni gayi photo" className="photo-preview" />}
-        <p className="muted">Guard gate par isse aapko pehchanega.</p>
+        {preview && <img src={preview} alt="Selected photo" className="photo-preview" />}
+        <p className="muted">The guard uses this to recognise you at the gate.</p>
       </div>
 
       <div className="form-grid">
         <div>
           <label htmlFor="visitor-id-type">ID type</label>
           <select id="visitor-id-type" value={idType} onChange={(e) => setIdType(e.target.value)}>
-            <option value="">Nahi batana</option>
+            <option value="">Prefer not to say</option>
             {ID_TYPES.map((type) => (
               <option key={type}>{type}</option>
             ))}
           </select>
         </div>
         <div>
-          <label htmlFor="visitor-id-last4">ID ke aakhri 4 digit</label>
+          <label htmlFor="visitor-id-last4">Last 4 digits of ID</label>
           <input
             id="visitor-id-last4"
             inputMode="numeric"
@@ -124,12 +124,12 @@ export function VisitorForm({ token, invite, onDone }: Props) {
           />
         </div>
       </div>
-      <p className="muted">Poora ID number kabhi na daalein. Sirf aakhri 4 digit save hote hain.</p>
+      <p className="muted">Never enter your full ID number. Only the last 4 digits are stored.</p>
 
       <label className="check">
         <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
         <span>
-          Main sahmat hoon ki meri details aur photo visitor record ke liye save hongi.{' '}
+          I agree that my details and photo will be stored for the visitor record.{' '}
           <Link to="/privacy">Privacy notice</Link>
         </span>
       </label>
@@ -141,7 +141,7 @@ export function VisitorForm({ token, invite, onDone }: Props) {
       )}
 
       <button type="submit" className="primary" disabled={!canSubmit}>
-        {busy ? 'Ho raha hai…' : 'Pass banayein'}
+        {busy ? 'Please wait…' : 'Get my pass'}
       </button>
     </form>
   );

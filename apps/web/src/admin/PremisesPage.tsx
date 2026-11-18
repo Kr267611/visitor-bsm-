@@ -6,7 +6,7 @@ import { PageHeader } from '../ui/Page';
 
 const toNumber = (v: string) => (v.trim() === '' ? null : Number(v));
 
-/** Settings ke basic hisse; baaki (reports, review link) baad ke phase mein. */
+/** Basic settings only; the rest (reports, review link) comes in a later phase. */
 function SettingsForm({ premises }: { premises: Premises }) {
   const api = useApi();
   const queryClient = useQueryClient();
@@ -48,7 +48,7 @@ function SettingsForm({ premises }: { premises: Premises }) {
   }
 
   if (settings.isError) return <p role="alert" className="error">{errorMessage(settings.error)}</p>;
-  if (!settings.data) return <p className="muted">Settings aa rahi hain...</p>;
+  if (!settings.data) return <p className="muted">Loading settings…</p>;
   const set = (patch: Partial<typeof form>) => setForm({ ...form, ...patch });
 
   return (
@@ -56,15 +56,15 @@ function SettingsForm({ premises }: { premises: Premises }) {
       <h2>{premises.name}: settings</h2>
       <div className="form-grid">
         <div>
-          <label htmlFor="set-start">Visit shuru (HH:MM)</label>
+          <label htmlFor="set-start">Visiting hours start</label>
           <input id="set-start" type="time" value={form.visitStart} onChange={(e) => set({ visitStart: e.target.value })} />
         </div>
         <div>
-          <label htmlFor="set-end">Visit khatam (HH:MM)</label>
+          <label htmlFor="set-end">Visiting hours end</label>
           <input id="set-end" type="time" value={form.visitEnd} onChange={(e) => set({ visitEnd: e.target.value })} />
         </div>
         <div>
-          <label htmlFor="set-default">Visit ka default time (minute)</label>
+          <label htmlFor="set-default">Default visit length (minutes)</label>
           <input
             id="set-default"
             type="number"
@@ -76,7 +76,7 @@ function SettingsForm({ premises }: { premises: Premises }) {
           />
         </div>
         <div>
-          <label htmlFor="set-overstay">Overstay alert (minute)</label>
+          <label htmlFor="set-overstay">Overstay alert (minutes)</label>
           <input
             id="set-overstay"
             type="number"
@@ -93,16 +93,16 @@ function SettingsForm({ premises }: { premises: Premises }) {
           checked={form.checkinOnApproval}
           onChange={(e) => set({ checkinOnApproval: e.target.checked })}
         />
-        Approval ke baad hi check-in
+        Check-in only after approval
       </label>
       {error && (
         <p role="alert" className="error">
           {error}
         </p>
       )}
-      {saved && <p role="status">Settings save ho gayin.</p>}
+      {saved && <p role="status">Settings saved.</p>}
       <button type="submit" className="primary">
-        Settings save karein
+        Save settings
       </button>
     </form>
   );
@@ -126,7 +126,7 @@ export function PremisesPage() {
       await work();
       reset();
       await queryClient.invalidateQueries({ queryKey: ['admin'] });
-      // Side menu ka premises switcher bhi naya premises dikhaye.
+      // The premises switcher in the side menu should show the new premises too.
       await queryClient.invalidateQueries({ queryKey: ['me'] });
     } catch (e) {
       setError(errorMessage(e));
@@ -154,8 +154,8 @@ export function PremisesPage() {
   return (
     <>
       <PageHeader
-        title="Premises aur gates"
-        subtitle="Har office, plant ya site ek premises hai. Kiosk code se visitor kiosk us premises ko pehchanta hai."
+        title="Premises & gates"
+        subtitle="Each office, plant or site is a premises. A visitor kiosk identifies its premises by the kiosk code."
       />
       {error && (
         <p role="alert" className="error">
@@ -164,31 +164,31 @@ export function PremisesPage() {
       )}
       <div className="desk-grid">
         <form className="form-card" onSubmit={addPremises}>
-          <h2>Naya premises</h2>
+          <h2>New premises</h2>
           <div className="stack">
-            <label htmlFor="premises-name">Premises ka naam</label>
+            <label htmlFor="premises-name">Premises name</label>
             <input id="premises-name" value={name} onChange={(e) => setName(e.target.value)} required />
-            <label htmlFor="premises-address">Pata</label>
+            <label htmlFor="premises-address">Address</label>
             <input id="premises-address" value={address} onChange={(e) => setAddress(e.target.value)} />
           </div>
-          <button type="submit">Premises jodein</button>
+          <button type="submit">Add premises</button>
         </form>
         <form className="form-card" onSubmit={addGate}>
-          <h2>Naya gate</h2>
+          <h2>New gate</h2>
           <div className="stack">
-            <label htmlFor="gate-premises">Gate ka premises</label>
+            <label htmlFor="gate-premises">Gate premises</label>
             <select id="gate-premises" value={gatePremises} onChange={(e) => setGatePremises(e.target.value)} required>
-              <option value="">Chunein</option>
+              <option value="">Select</option>
               {premises.data?.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
                 </option>
               ))}
             </select>
-            <label htmlFor="gate-name">Gate ka naam</label>
+            <label htmlFor="gate-name">Gate name</label>
             <input id="gate-name" value={gateName} onChange={(e) => setGateName(e.target.value)} required />
           </div>
-          <button type="submit">Gate jodein</button>
+          <button type="submit">Add gate</button>
         </form>
       </div>
       <section className="panel table-scroll">
@@ -216,7 +216,7 @@ export function PremisesPage() {
                 </td>
                 <td>
                   <button type="button" onClick={() => setSelected(selected === p.id ? null : p.id)}>
-                    {selected === p.id ? 'Settings band' : 'Settings'}
+                    {selected === p.id ? 'Hide settings' : 'Settings'}
                   </button>
                 </td>
               </tr>

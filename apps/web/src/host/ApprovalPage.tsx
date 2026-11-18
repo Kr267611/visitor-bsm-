@@ -36,13 +36,13 @@ export function ApprovalPage() {
       setError(errorMessage(e));
     } finally {
       setBusy(false);
-      // Galti par bhi: ho sakta hai kisi aur ne pehle faisla kar liya ho.
+      // Refresh even on error: someone else may have decided first.
       await queryClient.invalidateQueries({ queryKey: key });
       await queryClient.invalidateQueries({ queryKey: ['visits'] });
     }
   }
 
-  if (visit.isPending) return <p className="page-message">Load ho raha hai…</p>;
+  if (visit.isPending) return <p className="page-message">Loading…</p>;
   if (visit.isError) {
     return (
       <p role="alert" className="error">
@@ -60,7 +60,7 @@ export function ApprovalPage() {
     <>
       <div className="spread">
         <h1>{v.visitorName}</h1>
-        <Link to="/my">Wapas</Link>
+        <Link to="/my">Back</Link>
       </div>
       <section className="form-card">
         <div className="row">
@@ -71,20 +71,20 @@ export function ApprovalPage() {
         <dl className="pass-meta">
           <dt>Company</dt>
           <dd>{v.company ?? '-'}</dd>
-          <dt>Kaam</dt>
+          <dt>Purpose</dt>
           <dd>{v.purpose}</dd>
-          <dt>Kab se</dt>
+          <dt>From</dt>
           <dd>{WHEN.format(new Date(v.validFrom))}</dd>
-          <dt>Kab tak</dt>
+          <dt>Until</dt>
           <dd>{WHEN.format(new Date(v.validTo))}</dd>
         </dl>
         {v.decisionNote && <p>Note: {v.decisionNote}</p>}
-        {v.deliveryFailed && <p className="notice">SMS nahi pahunch paya. "Link dobara bhejein" karein ya visitor ko call karein.</p>}
+        {v.deliveryFailed && <p className="notice">The SMS could not be delivered. Use "Resend link" or call the visitor.</p>}
 
         {pending && (
           <>
             <div className="stack">
-              <label htmlFor="decision-note">Guard ke liye note</label>
+              <label htmlFor="decision-note">Note for the guard</label>
               <input id="decision-note" maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} />
             </div>
             <div className="row">
@@ -103,13 +103,13 @@ export function ApprovalPage() {
             <button
               type="button"
               disabled={busy}
-              onClick={() => void act(() => api.visits.resendInvite(id), 'Naya link bhej diya. Purana link ab band hai.')}
+              onClick={() => void act(() => api.visits.resendInvite(id), 'New link sent. The old link no longer works.')}
             >
-              Link dobara bhejein
+              Resend link
             </button>
             {!confirmCancel ? (
               <button type="button" className="danger" onClick={() => setConfirmCancel(true)}>
-                Visit cancel karein
+                Cancel visit
               </button>
             ) : (
               <div className="confirm">
@@ -122,10 +122,10 @@ export function ApprovalPage() {
                     void act(() => api.visits.cancel(id));
                   }}
                 >
-                  Haan, cancel karein
+                  Yes, cancel
                 </button>
                 <button type="button" onClick={() => setConfirmCancel(false)}>
-                  Nahi
+                  No
                 </button>
               </div>
             )}

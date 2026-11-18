@@ -5,13 +5,13 @@ type LiveSite = ReturnType<typeof useLiveSite>;
 
 const LiveSiteContext = createContext<LiveSite | null>(null);
 
-/** Poore side menu ke liye ek hi live connection, har page par naya nahi. */
+/** One live connection for the whole side menu, not one per page. */
 export function LiveSiteProvider({ children }: { children: ReactNode }) {
   const live = useLiveSite();
   return <LiveSiteContext.Provider value={live}>{children}</LiveSiteContext.Provider>;
 }
 
-/** Desk ke bahar ke users ke liye null. */
+/** null for users outside the desk. */
 export const useLiveOptional = () => useContext(LiveSiteContext);
 
 export function useLive(): LiveSite {

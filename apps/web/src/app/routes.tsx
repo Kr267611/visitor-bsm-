@@ -19,16 +19,16 @@ import { PrivacyPage } from '../visitor/PrivacyPage';
 
 const ALL_ROLES: Role[] = ['guard', 'employee', 'reception', 'security', 'admin'];
 
-/** Super admin ka platform panel baad mein (web par abhi sirf yeh suchna). */
+/** The super admin platform panel comes later; the web app only shows this notice for now. */
 function PlatformHome() {
   const { logout } = useAuth();
   return (
     <main className="auth-page">
       <div className="auth-card">
         <h1>Platform admin</h1>
-        <p className="muted">Plans aur businesses ka panel jaldi aa raha hai. Abhi yeh kaam API se hota hai.</p>
+        <p className="muted">The plans and businesses panel is coming soon. For now, this is managed through the API.</p>
         <button type="button" onClick={() => void logout()}>
-          Logout
+          Log out
         </button>
       </div>
     </main>
@@ -61,7 +61,7 @@ export function AppRoutes() {
         }
       />
 
-      {/* Side menu ek hi baar banta hai, sirf andar ka page badalta hai. */}
+      {/* The side menu is rendered once; only the page inside changes. */}
       <Route
         element={
           <RequireRole roles={ALL_ROLES}>
@@ -97,7 +97,7 @@ export function AppRoutes() {
       </Route>
 
       <Route path="/" element={<Home />} />
-      <Route path="*" element={<p className="page-message">Yeh page nahi mila.</p>} />
+      <Route path="*" element={<p className="page-message">Page not found.</p>} />
     </Routes>
   );
 }

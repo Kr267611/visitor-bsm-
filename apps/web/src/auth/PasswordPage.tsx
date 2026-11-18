@@ -4,7 +4,7 @@ import { PageHeader } from '../ui/Page';
 
 const MIN = 8;
 
-/** Apna password set/badlein. OTP se aaye user ka pehla password: purana nahi maangte. */
+/** Set or change your own password. Users who signed in with OTP set the first one without a current password. */
 export function PasswordPage() {
   const api = useApi();
   const [current, setCurrent] = useState('');
@@ -18,8 +18,8 @@ export function PasswordPage() {
     event.preventDefault();
     setError(null);
     setDone(false);
-    if (next.length < MIN) return setError(`Password kam se kam ${MIN} akshar ka ho.`);
-    if (next !== again) return setError('Dono naye password ek jaise nahi hain.');
+    if (next.length < MIN) return setError(`Password must be at least ${MIN} characters.`);
+    if (next !== again) return setError('The new passwords do not match.');
     setBusy(true);
     try {
       await api.me.changePassword({ currentPassword: current || undefined, newPassword: next });
@@ -36,11 +36,11 @@ export function PasswordPage() {
 
   return (
     <>
-      <PageHeader title="Password" subtitle="Password se login karne ke liye set karein. Badalne par aapke baaki devices logout ho jayenge." />
+      <PageHeader title="Password" subtitle="Set a password to sign in with it. Changing it signs you out on your other devices." />
       <form className="form-card" onSubmit={save}>
         <div className="form-grid">
           <div>
-            <label htmlFor="pw-current">Purana password</label>
+            <label htmlFor="pw-current">Current password</label>
             <input
               id="pw-current"
               type="password"
@@ -48,14 +48,14 @@ export function PasswordPage() {
               value={current}
               onChange={(e) => setCurrent(e.target.value)}
             />
-            <span className="muted">Pehli baar set kar rahe hain to khaali chhodein.</span>
+            <span className="muted">Leave blank if you are setting it for the first time.</span>
           </div>
           <div>
-            <label htmlFor="pw-new">Naya password</label>
+            <label htmlFor="pw-new">New password</label>
             <input id="pw-new" type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} required />
           </div>
           <div>
-            <label htmlFor="pw-again">Naya password dobara</label>
+            <label htmlFor="pw-again">Confirm new password</label>
             <input id="pw-again" type="password" autoComplete="new-password" value={again} onChange={(e) => setAgain(e.target.value)} required />
           </div>
         </div>
@@ -64,9 +64,9 @@ export function PasswordPage() {
             {error}
           </p>
         )}
-        {done && <p role="status">Password save ho gaya.</p>}
+        {done && <p role="status">Password saved.</p>}
         <button type="submit" className="primary" disabled={busy}>
-          Password save karein
+          Save password
         </button>
       </form>
     </>

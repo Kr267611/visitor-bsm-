@@ -3,14 +3,14 @@ const QUALITIES = [0.8, 0.65, 0.5, 0.35];
 
 export class PhotoError extends Error {}
 
-const UNREADABLE = 'Yeh photo nahi chal rahi. Camera se nayi photo lein.';
+const UNREADABLE = 'This photo cannot be used. Please take a new one with the camera.';
 
 export function fitWithin(width: number, height: number, maxSide: number) {
   const scale = Math.min(1, maxSide / Math.max(width, height));
   return { width: Math.round(width * scale), height: Math.round(height * scale) };
 }
 
-/** Quality ghatate hue pehla result jo limit mein aa jaye. */
+/** First result within the size limit, lowering quality step by step. */
 export async function compressWith(encode: (quality: number) => Promise<Blob>, maxBytes: number): Promise<Blob> {
   for (const quality of QUALITIES) {
     const blob = await encode(quality);
@@ -19,9 +19,9 @@ export async function compressWith(encode: (quality: number) => Promise<Blob>, m
   throw new PhotoError(UNREADABLE);
 }
 
-/** Camera ki badi photo ko chhota JPEG banata hai, upload se pehle. */
+/** Shrinks a large camera photo to a JPEG before upload. */
 export async function compressPhoto(file: File, maxBytes = 200_000): Promise<Blob> {
-  if (!file.type.startsWith('image/')) throw new PhotoError('Sirf photo chunein.');
+  if (!file.type.startsWith('image/')) throw new PhotoError('Please choose a photo.');
 
   let bitmap: ImageBitmap;
   try {

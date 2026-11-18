@@ -25,15 +25,15 @@ function RevokeAction({ device }: { device: AdminDevice }) {
     <div className="row">
       {!confirming ? (
         <button type="button" onClick={() => setConfirming(true)}>
-          Block karein
+          Block
         </button>
       ) : (
         <>
           <button type="button" className="danger" onClick={() => void revoke()}>
-            Haan, block karein
+            Yes, block
           </button>
           <button type="button" onClick={() => setConfirming(false)}>
-            Nahi
+            No
           </button>
         </>
       )}
@@ -51,7 +51,7 @@ export function DevicesPanel() {
   const devices = useQuery({ queryKey: ['admin', 'devices'], queryFn: () => api.admin.devices.list() });
   return (
     <>
-      <PageHeader title="Devices" subtitle="Jin phones aur browsers se log login hain. Phone kho jaye to yahan se block karein; access turant band ho jata hai." />
+      <PageHeader title="Devices" subtitle="Phones and browsers where your people are signed in. If a phone is lost, block it here; access stops immediately." />
       {devices.isError && (
         <p role="alert" className="error">
           {errorMessage(devices.error)}

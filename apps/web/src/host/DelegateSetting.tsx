@@ -30,19 +30,19 @@ export function DelegateSetting() {
 
   return (
     <>
-      <PageHeader title="Backup person" subtitle="Aap meeting mein hon ya chhutti par, to walk-in ki approval is person ko jayegi." />
+      <PageHeader title="Backup person" subtitle="When you are in a meeting or on leave, walk-in approvals go to this person." />
       <section className="form-card">
-      <p className="muted">Aap jawab na de payein to approval is person ko jayega.</p>
+      <p className="muted">If you do not respond in time, the approval request goes to this person.</p>
       {me.data?.delegateName && (
         <div className="row">
-          <span>Abhi backup: {me.data.delegateName}</span>
+          <span>Current backup: {me.data.delegateName}</span>
           <button type="button" onClick={() => void setDelegate(null)}>
-            Backup hatayein
+            Remove backup
           </button>
         </div>
       )}
       <div className="stack">
-        <label htmlFor="delegate-search">Backup person dhoondein</label>
+        <label htmlFor="delegate-search">Search for a backup person</label>
         <input id="delegate-search" value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
       <div className="row">

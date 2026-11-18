@@ -5,7 +5,7 @@ import { loadPremisesId, loadUser, savePremisesId, saveUser, useWebClient } from
 
 interface Auth {
   user: SessionUser | null;
-  /** Chuna gaya premises; null = server ka default. */
+  /** Selected premises; null means the server default. */
   premisesId: string | null;
   signedIn(session: Session): void;
   switchPremises(id: string): void;
@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       premisesId,
       signedIn(session) {
-        // Naye login par pichhla chuna premises (shayad doosre business ka) nahi rakhte.
+        // A new sign-in drops the previously chosen premises (it may belong to another business).
         savePremisesId(null);
         setPremisesId(null);
         saveUser(session.user);
@@ -43,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       switchPremises(id) {
         savePremisesId(id);
         setPremisesId(id);
-        // Har list ab naye premises ki: purana data turant hatao.
+        // Every list now belongs to the new premises: drop old data right away.
         void queryClient.resetQueries();
       },
       async logout() {

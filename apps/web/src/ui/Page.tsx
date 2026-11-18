@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 
-/** Har page ka upar wala hissa: naam, ek line ka matlab, aur main kaam ka button. */
+/** Page header: title, one-line explanation, and the main action. */
 export function PageHeader({ title, subtitle, actions }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode }) {
   return (
     <header className="page-head">
@@ -13,7 +13,7 @@ export function PageHeader({ title, subtitle, actions }: { title: ReactNode; sub
   );
 }
 
-/** Khaali list: kya hua aur aage kya karein. */
+/** Empty list: what happened and what to do next. */
 export function EmptyState({ title, hint, action }: { title: string; hint?: string; action?: ReactNode }) {
   return (
     <div className="empty-state">
@@ -25,7 +25,7 @@ export function EmptyState({ title, hint, action }: { title: string; hint?: stri
   );
 }
 
-/** Naam ke pehle akshar (avatar ke liye). */
+/** Initials of a name (for avatars). */
 export function initials(name: string | undefined | null): string {
   const parts = (name ?? '').trim().split(/\s+/).filter(Boolean);
   return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase() || '?';

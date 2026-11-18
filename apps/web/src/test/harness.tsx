@@ -15,11 +15,11 @@ export const json = (status: number, body?: unknown) =>
 export interface FakeServer {
   web: WebClient;
   calls: { key: string; body: any; init: RequestInit }[];
-  /** Test ke beech handlers badalne ke liye. */
+  /** Lets a test swap handlers midway. */
   handlers: Handlers;
 }
 
-/** Asli API client, sirf network nakli. Handler key jaise "GET /visits". */
+/** Real API client with a fake network. Handler keys look like "GET /visits". */
 export function fakeServer(handlers: Handlers = {}): FakeServer {
   const calls: FakeServer['calls'] = [];
   const web = createWebClient('http://api.test', (async (input: string, init: RequestInit = {}) => {
@@ -28,7 +28,7 @@ export function fakeServer(handlers: Handlers = {}): FakeServer {
     const body = typeof init.body === 'string' ? JSON.parse(init.body) : init.body;
     calls.push({ key, body, init });
     const handler = handlers[key];
-    if (!handler) return json(404, { error: 'NOT_FOUND', message: `Test handler nahi: ${key}` });
+    if (!handler) return json(404, { error: 'NOT_FOUND', message: `No test handler: ${key}` });
     return handler({ body, url, init });
   }) as unknown as typeof fetch);
   return { web, calls, handlers };
