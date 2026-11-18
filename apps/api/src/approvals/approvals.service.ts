@@ -24,7 +24,9 @@ export class ApprovalsService {
 
   async approve(user: AuthUser, id: string, note?: string) {
     const visit = await this.loadForDecision(user, id);
-    // The visitor needs a pass for the exit scan too.
+    // Self check-in: the visitor is already watching their status link, so it must keep working.
+    // Walk-ins get a new link now: the visitor needs a pass for the exit scan too.
+    const selfCheckIn = visit.type === 'SELF';
     const { token, hash } = newInviteToken();
     const updated = await this.lifecycle.apply({
       visitId: id,
@@ -32,15 +34,17 @@ export class ApprovalsService {
       actorId: user.id,
       deviceId: user.deviceId,
       meta: note ? { note } : undefined,
-      patch: { inviteTokenHash: hash },
-      notify: [
-        {
-          channel: 'SMS',
-          template: 'PASS_READY',
-          recipient: visit.visitor.phone,
-          vars: { link: inviteLink(token) },
-        },
-      ],
+      patch: selfCheckIn ? undefined : { inviteTokenHash: hash },
+      notify: selfCheckIn
+        ? []
+        : [
+            {
+              channel: 'SMS',
+              template: 'PASS_READY',
+              recipient: visit.visitor.phone,
+              vars: { link: inviteLink(token) },
+            },
+          ],
     });
     await this.timers.cancel(id);
     return { id: updated.id, status: updated.status };

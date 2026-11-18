@@ -16,6 +16,7 @@ import { PassesModule } from './passes/passes.module';
 import { PlatformController } from './platform/platform.controller';
 import { PlansModule } from './plans/plan-limits.service';
 import { PrismaModule } from './prisma/prisma.service';
+import { SelfCheckInModule } from './self-checkin/self-checkin.controller';
 import { RedisModule } from './redis/redis.service';
 import { TenancyModule } from './tenancy/tenancy.module';
 import { StorageModule } from './storage/storage.service';
@@ -37,6 +38,7 @@ import { VisitsModule } from './visits/visits.module';
     VisitsModule,
     GateModule,
     LiveModule,
+    SelfCheckInModule,
   ],
   controllers: [
     HealthController,

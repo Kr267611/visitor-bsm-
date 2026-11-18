@@ -11,12 +11,16 @@ const MAX_DAILY_FAILURES = 30;
 const DAY_SEC = 24 * 60 * 60;
 const MAX_REQUESTS = 3;
 
-export type OtpPurpose = 'LOGIN_OTP' | 'WALKIN_OTP';
+export type OtpPurpose = 'LOGIN_OTP' | 'WALKIN_OTP' | 'SELF_CHECKIN_OTP';
+
+const entryOtp = (otp: string) =>
+  `Your gate entry OTP is ${otp}. Your details will be stored for the visitor record: ${process.env.PUBLIC_WEB_URL}/privacy`;
 
 const TEXT: Record<OtpPurpose, (otp: string) => string> = {
+  // Same text as the walk-in OTP, so one DLT template covers both.
+  SELF_CHECKIN_OTP: entryOtp,
   LOGIN_OTP: (otp) => `Your sign-in OTP is ${otp}. It expires in 5 minutes.`,
-  WALKIN_OTP: (otp) =>
-    `Your gate entry OTP is ${otp}. Your details will be stored for the visitor record: ${process.env.PUBLIC_WEB_URL}/privacy`,
+  WALKIN_OTP: entryOtp,
 };
 
 @Injectable()

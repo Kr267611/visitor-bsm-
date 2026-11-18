@@ -30,6 +30,7 @@ enum VisitStatus {
 enum VisitType {
   PRE
   WALKIN
+  SELF
 }
 
 enum OutboxChannel {

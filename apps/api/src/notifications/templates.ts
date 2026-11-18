@@ -5,6 +5,10 @@ export const TEMPLATES = {
     text: '{hostName} has invited you to {siteName}. Please add your details: {link}',
   },
   PASS_READY: { channel: 'SMS', text: 'Your visitor pass is ready: {link}' },
+  SELF_CHECKIN_LINK: {
+    channel: 'SMS',
+    text: 'Your request to visit {siteName} has been sent to {hostName}. Track it and get your pass here: {link}',
+  },
   VISITOR_ARRIVED: { channel: 'PUSH', text: '{visitorName} has arrived at {gateName}.' },
   APPROVAL_REQUEST: {
     channel: 'PUSH',

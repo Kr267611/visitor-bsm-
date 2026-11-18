@@ -15,12 +15,14 @@ export class SessionResolver {
   ) {}
 
   async resolve(token: string): Promise<AuthUser | null> {
-    let payload: { sub: string; deviceId: string; businessId?: string | null };
+    let payload: { sub: string; deviceId: string; businessId?: string | null; aud?: unknown };
     try {
       payload = await this.jwt.verifyAsync(token);
     } catch {
       return null;
     }
+    // Only sign-in tokens: never a check-in session token or anything without a device.
+    if (payload.aud !== undefined || typeof payload.deviceId !== 'string') return null;
     // Access stops as soon as the device is revoked, not after up to 15 minutes.
     const device = await this.prisma.device.findUnique({
       where: { id: payload.deviceId },
