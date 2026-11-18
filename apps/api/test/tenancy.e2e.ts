@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { PassService } from '../src/passes/pass.service';
+import { currentContext, runAsSystem, runInTenant, tenantId } from '../src/tenancy/request-context';
+import { TENANT_PRISMA, TenantContextMissingError, TenantPrismaClient } from '../src/tenancy/tenant-prisma';
 import { seedBusiness, seedSite, seedUser, seedVisit, seedVisitor } from './factories';
 import { createTestApp, resetData, TestContext, tokenFor } from './setup';
 
@@ -178,6 +180,111 @@ describe('tenancy: ek business ka data doosre ko nahi', () => {
       const userIds = res.body.map((d: { user: { id: string } }) => d.user.id);
       expect(userIds).not.toContain(b.guard.id);
       expect(userIds).not.toContain(b.admin.id);
+    });
+  });
+
+  describe('scoped database client', () => {
+    const db = () => ctx.app.get<TenantPrismaClient>(TENANT_PRISMA);
+
+    it('reads only own business rows', async () => {
+      const { a, b } = await twoBusinesses();
+      const gates = await runInTenant(a.business.id, () => db().gate.findMany());
+      expect(gates.map((g) => g.id)).toEqual([a.gate.id]);
+      expect(await runInTenant(a.business.id, () => db().user.count())).toBe(3);
+      expect(await runInTenant(a.business.id, () => db().gate.findMany({ where: { OR: [{ id: b.gate.id }, { name: a.gate.name }] } }))).toHaveLength(1);
+    });
+
+    it('other business id: findUnique null, update and delete not found', async () => {
+      const { a, b } = await twoBusinesses();
+      await runInTenant(a.business.id, async () => {
+        expect(await db().gate.findUnique({ where: { id: b.gate.id } })).toBeNull();
+        await expect(db().gate.update({ where: { id: b.gate.id }, data: { name: 'X' } })).rejects.toThrow();
+        await expect(db().gate.delete({ where: { id: b.gate.id } })).rejects.toThrow();
+        expect((await db().gate.updateMany({ data: { name: 'Mine' } })).count).toBe(1);
+      });
+      expect((await ctx.prisma.gate.findUniqueOrThrow({ where: { id: b.gate.id } })).name).not.toBe('Mine');
+    });
+
+    it('create fills businessId, refuses another business', async () => {
+      const { a, b } = await twoBusinesses();
+      const dept = await runInTenant(a.business.id, () => db().department.create({ data: { name: 'Finance', businessId: tenantId() } }));
+      expect(dept.businessId).toBe(a.business.id);
+      const many = await runInTenant(a.business.id, () =>
+        // Types businessId maangte hain; runtime bhool jaye to bhi khud bhar deta hai.
+        db().department.createManyAndReturn({ data: [{ name: 'HR' }, { name: 'IT' }] as never }),
+      );
+      expect(many.every((d) => d.businessId === a.business.id)).toBe(true);
+      await expect(
+        runInTenant(a.business.id, () => db().department.create({ data: { name: 'X', businessId: b.business.id } })),
+      ).rejects.toThrow(/doosre business/);
+      await expect(
+        runInTenant(a.business.id, () => db().gate.update({ where: { id: a.gate.id }, data: { businessId: b.business.id } })),
+      ).rejects.toThrow(/business badalna/);
+    });
+
+    it('create with relation connect also gets the business', async () => {
+      const { a } = await twoBusinesses();
+      const gate = await runInTenant(a.business.id, () =>
+        db().gate.create({ data: { name: 'Side', premises: { connect: { id: a.site.id } } } as never }),
+      );
+      expect(gate.businessId).toBe(a.business.id);
+    });
+
+    it('upsert cannot reach another business row', async () => {
+      const { a, b } = await twoBusinesses();
+      const visitor = await seedVisitor(ctx.prisma, b.business.id, { phone: '+919844400000', name: 'B' });
+      const row = await runInTenant(a.business.id, () =>
+        db().visitor.upsert({
+          where: { businessId_phone: { businessId: a.business.id, phone: '+919844400000' } },
+          create: { phone: '+919844400000', name: 'A', businessId: tenantId() },
+          update: { name: 'A2' },
+        }),
+      );
+      expect(row.businessId).toBe(a.business.id);
+      expect(row.id).not.toBe(visitor.id);
+      expect((await ctx.prisma.visitor.findUniqueOrThrow({ where: { id: visitor.id } })).name).toBe('B');
+    });
+
+    it('throws without context, system sees everything', async () => {
+      await twoBusinesses();
+      expect(() => tenantId()).toThrow(/Tenant context missing/);
+      await expect(db().gate.findMany()).rejects.toThrow(TenantContextMissingError);
+      await expect(db().gate.count()).rejects.toThrow(/Tenant context missing/);
+      expect(await runAsSystem(() => db().gate.count())).toBe(2);
+      // Business table tenant model nahi, bina context bhi chalta hai.
+      expect(await db().business.count()).toBe(2);
+    });
+
+    it('scoping holds inside a transaction', async () => {
+      const { a, b } = await twoBusinesses();
+      const ids = await runInTenant(a.business.id, () =>
+        db().$transaction(async (tx) => {
+          await tx.department.create({ data: { name: 'Tx', businessId: tenantId() } });
+          return (await tx.gate.findMany()).map((g) => g.id);
+        }),
+      );
+      expect(ids).toEqual([a.gate.id]);
+      expect(await ctx.prisma.department.count({ where: { businessId: b.business.id } })).toBe(0);
+    });
+
+    it('parallel tenants do not mix', async () => {
+      const { a, b } = await twoBusinesses();
+      const [ga, gb] = await Promise.all([
+        runInTenant(a.business.id, async () => {
+          await new Promise((r) => setTimeout(r, 20));
+          return db().gate.findMany();
+        }),
+        runInTenant(b.business.id, () => db().gate.findMany()),
+      ]);
+      expect(ga.map((g) => g.id)).toEqual([a.gate.id]);
+      expect(gb.map((g) => g.id)).toEqual([b.gate.id]);
+    });
+
+    it('HTTP request gets the logged-in business, nothing leaks after', async () => {
+      const { a } = await twoBusinesses();
+      const res = await http().get('/gates').set(auth(a.guardToken)).expect(200);
+      expect(res.body.map((g: { id: string }) => g.id)).toEqual([a.gate.id]);
+      expect(currentContext()).toBeUndefined();
     });
   });
 

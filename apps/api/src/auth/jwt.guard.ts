@@ -3,6 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { ApiException } from '../common/api-exception';
 import { PrismaService } from '../prisma/prisma.service';
+import { fillContext } from '../tenancy/request-context';
 import { AuthUser, PUBLIC_KEY } from './roles.decorator';
 
 /** Access token se user nikalta hai. HTTP aur live connection dono yahi use karte hain. */
@@ -76,6 +77,14 @@ export class JwtGuard implements CanActivate {
     const user = header?.startsWith('Bearer ') ? await this.sessions.resolve(header.slice(7)) : null;
     if (!user) throw new ApiException(401, 'UNAUTHORIZED', 'Dobara login karein.');
     req.user = user;
+    // Is request ke scoped database queries ab sirf isi business tak.
+    fillContext({
+      businessId: user.businessId,
+      userId: user.id,
+      role: user.role,
+      premisesIds: user.premisesIds,
+      activePremisesId: user.premisesId,
+    });
     return true;
   }
 }

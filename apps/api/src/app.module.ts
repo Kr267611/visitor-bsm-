@@ -12,6 +12,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { PassesModule } from './passes/passes.module';
 import { PrismaModule } from './prisma/prisma.service';
 import { RedisModule } from './redis/redis.service';
+import { TenancyModule } from './tenancy/tenancy.module';
 import { StorageModule } from './storage/storage.service';
 import { VisitsModule } from './visits/visits.module';
 
@@ -20,6 +21,7 @@ import { VisitsModule } from './visits/visits.module';
     EventEmitterModule.forRoot(),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 600 }]),
     PrismaModule,
+    TenancyModule,
     RedisModule,
     JobsModule,
     NotificationsModule,

@@ -1,11 +1,12 @@
 import { randomInt } from 'node:crypto';
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { AuthUser, CurrentUser, Roles } from '../auth/roles.decorator';
 import { ApiException } from '../common/api-exception';
 import { parseBody, requirePhone } from '../common/parse';
 import { PrismaService } from '../prisma/prisma.service';
+import { TENANT_PRISMA, TenantPrismaClient } from '../tenancy/tenant-prisma';
 
 const roleSchema = z.enum(['guard', 'employee', 'reception', 'security', 'admin']);
 const uuid = z.string().uuid();
@@ -238,7 +239,10 @@ const meUpdate = z.object({ delegateId: uuid.nullable() });
 
 @Controller()
 export class ProfileController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(TENANT_PRISMA) private readonly db: TenantPrismaClient,
+  ) {}
 
   private async profile(user: AuthUser) {
     const { delegate, premises, business, ...me } = await this.prisma.user.findUniqueOrThrow({
@@ -292,8 +296,9 @@ export class ProfileController {
 
   @Get('gates')
   gates(@CurrentUser() user: AuthUser) {
-    return this.prisma.gate.findMany({
-      where: { premisesId: user.premisesId ?? '', businessId: user.businessId ?? '', isActive: true },
+    // Scoped client: business filter khud lagta hai.
+    return this.db.gate.findMany({
+      where: { premisesId: user.premisesId ?? '', isActive: true },
       orderBy: { name: 'asc' },
       select: { id: true, name: true, premisesId: true },
     });
