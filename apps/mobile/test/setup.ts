@@ -1,4 +1,4 @@
-// Har test se pehle saaf secure store.
+// Clear the secure store before each test.
 const mockStore = new Map<string, string>();
 
 jest.mock('expo-secure-store', () => ({
@@ -37,5 +37,5 @@ beforeEach(() => {
   Object.values(__router).forEach((fn) => (fn as jest.Mock).mockClear());
 });
 
-// Asli app jaisa React Native ka FormData, jo { uri, name, type } leta hai.
+// React Native style FormData, like the real app, which accepts { uri, name, type }.
 (globalThis as any).FormData = jest.requireActual('react-native/Libraries/Network/FormData').default;

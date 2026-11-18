@@ -7,7 +7,7 @@ export type ScanOutcome =
 
 const MAX_RETRIES = 2;
 
-/** Same clientEventId ke saath retry: server par entry ho chuki ho to bhi doosri nahi banegi. */
+/** Retries with the same clientEventId: if the server already recorded the entry, no second one is created. */
 export async function scanWithRetry(api: ApiClient, req: ScanRequest, retryDelayMs = 800): Promise<ScanOutcome> {
   for (let attempt = 0; ; attempt++) {
     try {

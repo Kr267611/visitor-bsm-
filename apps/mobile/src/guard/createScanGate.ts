@@ -1,4 +1,4 @@
-/** Camera ek QR ko second mein kai baar padhta hai. Sirf pehla scan aage jaye. */
+/** The camera reads a QR several times per second. Only the first scan goes through. */
 export function createScanGate(cooldownMs = 3000) {
   let lastValue: string | null = null;
   let lastAt = -Infinity;

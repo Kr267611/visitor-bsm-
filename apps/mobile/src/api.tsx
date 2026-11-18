@@ -41,5 +41,5 @@ export const useApi = (): ApiClient => useMobileClient().client;
 
 export function errorMessage(error: unknown): string {
   if (error instanceof ApiError || error instanceof NetworkError) return error.message;
-  return 'Kuch gadbad ho gayi. Dobara koshish karein.';
+  return 'Something went wrong. Please try again.';
 }

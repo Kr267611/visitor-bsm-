@@ -37,7 +37,7 @@ export function VisitScreen() {
       setError(errorMessage(e));
     } finally {
       setBusy(false);
-      // Galti par bhi: ho sakta hai kisi aur ne pehle faisla kar liya ho.
+      // Refresh even on error: someone else may have decided first.
       await queryClient.invalidateQueries({ queryKey: key });
       await queryClient.invalidateQueries({ queryKey: ['visits'] });
     }
@@ -46,7 +46,7 @@ export function VisitScreen() {
   if (visit.isPending) {
     return (
       <ScrollView contentContainerStyle={styles.page}>
-        <Muted>Load ho raha hai…</Muted>
+        <Muted>Loading…</Muted>
       </ScrollView>
     );
   }
@@ -67,18 +67,18 @@ export function VisitScreen() {
     <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
       <Title>{v.visitorName}</Title>
       <Text style={styles.status}>{v.status}</Text>
-      {v.photoUrl ? <Image accessibilityLabel="Visitor ki photo" source={{ uri: v.photoUrl }} style={styles.photo} /> : null}
+      {v.photoUrl ? <Image accessibilityLabel="Visitor photo" source={{ uri: v.photoUrl }} style={styles.photo} /> : null}
       {v.company ? <Muted>{v.company}</Muted> : null}
-      <Text style={styles.line}>Kaam: {v.purpose}</Text>
+      <Text style={styles.line}>Purpose: {v.purpose}</Text>
       <Text style={styles.line}>
-        {WHEN.format(new Date(v.validFrom))} se {WHEN.format(new Date(v.validTo))} tak
+        {WHEN.format(new Date(v.validFrom))} – {WHEN.format(new Date(v.validTo))}
       </Text>
       {v.decisionNote ? <Text style={styles.line}>Note: {v.decisionNote}</Text> : null}
-      {v.deliveryFailed ? <ErrorText>SMS nahi pahunch paya. "Link dobara bhejein" karein ya visitor ko call karein.</ErrorText> : null}
+      {v.deliveryFailed ? <ErrorText>The SMS could not be delivered. Use "Resend link" or call the visitor.</ErrorText> : null}
 
       {pending ? (
         <>
-          <Field label="Guard ke liye note" maxLength={200} value={note} onChangeText={setNote} />
+          <Field label="Note for the guard" maxLength={200} value={note} onChangeText={setNote} />
           <Button title="Approve" onPress={() => void act(() => api.visits.approve(id, trimmed))} busy={busy} />
           <Button title="Reject" kind="danger" onPress={() => void act(() => api.visits.reject(id, trimmed))} busy={busy} />
         </>
@@ -87,17 +87,17 @@ export function VisitScreen() {
       {open ? (
         <>
           <Button
-            title="Link dobara bhejein"
+            title="Resend link"
             kind="plain"
             busy={busy}
-            onPress={() => void act(() => api.visits.resendInvite(id), 'Naya link bhej diya. Purana link ab band hai.')}
+            onPress={() => void act(() => api.visits.resendInvite(id), 'New link sent. The old link no longer works.')}
           />
           {!confirmCancel ? (
-            <Button title="Visit cancel karein" kind="danger" onPress={() => setConfirmCancel(true)} />
+            <Button title="Cancel visit" kind="danger" onPress={() => setConfirmCancel(true)} />
           ) : (
             <>
               <Button
-                title="Haan, cancel karein"
+                title="Yes, cancel"
                 kind="danger"
                 busy={busy}
                 onPress={() => {
@@ -105,7 +105,7 @@ export function VisitScreen() {
                   void act(() => api.visits.cancel(id));
                 }}
               />
-              <Button title="Nahi" kind="plain" onPress={() => setConfirmCancel(false)} />
+              <Button title="No" kind="plain" onPress={() => setConfirmCancel(false)} />
             </>
           )}
         </>

@@ -34,3 +34,15 @@ const TRANSITIONS: Partial<Record<VisitStatus, Partial<Record<VisitAction, Visit
 export function nextStatus(from: VisitStatus, action: VisitAction): VisitStatus | null {
   return TRANSITIONS[from]?.[action] ?? null;
 }
+
+/** Human-readable status names for badges and lists (web and mobile use the same words). */
+export const VISIT_STATUS_LABEL: Record<VisitStatus, string> = {
+  INVITED: 'Invited',
+  PENDING_APPROVAL: 'Pending approval',
+  APPROVED: 'Approved',
+  REJECTED: 'Rejected',
+  CHECKED_IN: 'Checked in',
+  CHECKED_OUT: 'Checked out',
+  CANCELLED: 'Cancelled',
+  EXPIRED: 'Expired',
+};

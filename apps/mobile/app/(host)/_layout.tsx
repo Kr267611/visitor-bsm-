@@ -7,5 +7,5 @@ export default function HostLayout() {
   useNotificationRouting();
   if (!ready) return null;
   if (user?.role !== 'employee') return <Redirect href="/" />;
-  return <Stack screenOptions={{ headerTitle: 'Visitors', headerBackTitle: 'Wapas' }} />;
+  return <Stack screenOptions={{ headerTitle: 'Visitors', headerBackTitle: 'Back' }} />;
 }

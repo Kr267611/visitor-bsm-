@@ -16,17 +16,17 @@ export function ScanResult({ outcome, onNext, onWalkIn }: Props) {
     return (
       <View style={[styles.panel, styles.good]}>
         <Text style={[styles.verdict, styles.goodText]}>
-          {data.result === 'CHECKED_IN' ? 'Andar ja sakte hain' : 'Bahar ja sakte hain'}
+          {data.result === 'CHECKED_IN' ? 'Allowed in' : 'Allowed out'}
         </Text>
         {data.visitor.photoUrl ? (
-          <Image accessibilityLabel="Visitor ki photo" source={{ uri: data.visitor.photoUrl }} style={styles.photo} />
+          <Image accessibilityLabel="Visitor photo" source={{ uri: data.visitor.photoUrl }} style={styles.photo} />
         ) : (
-          <Muted>Is visitor ki photo nahi hai. ID dekh lein.</Muted>
+          <Muted>No photo on file for this visitor. Please check their ID.</Muted>
         )}
         <Text style={styles.name}>{data.visitor.name}</Text>
         {data.visitor.company ? <Muted>{data.visitor.company}</Muted> : null}
         <Text style={styles.host}>Host: {data.host}</Text>
-        <Button title="Agla scan" onPress={onNext} />
+        <Button title="Next scan" onPress={onNext} />
       </View>
     );
   }
@@ -34,9 +34,9 @@ export function ScanResult({ outcome, onNext, onWalkIn }: Props) {
   if (outcome.kind === 'network') {
     return (
       <View style={[styles.panel, styles.wait]}>
-        <Text style={[styles.verdict, styles.waitText]}>Entry confirm nahi hui. Dobara scan karein.</Text>
-        <Muted>Internet ya server se connection nahi ho paya. Na chale to paper register par likhein.</Muted>
-        <Button title="Agla scan" onPress={onNext} />
+        <Text style={[styles.verdict, styles.waitText]}>Entry not confirmed. Please scan again.</Text>
+        <Muted>Could not reach the server. Check your internet connection. If it still fails, use the paper register.</Muted>
+        <Button title="Next scan" onPress={onNext} />
       </View>
     );
   }
@@ -48,9 +48,9 @@ export function ScanResult({ outcome, onNext, onWalkIn }: Props) {
       <Text style={[styles.verdict, styles.badText]}>{error.message}</Text>
       {at ? <Text style={styles.host}>Time: {TIME.format(new Date(at))}</Text> : null}
       {error.code === 'PASS_EXPIRED' || error.code === 'PASS_NOT_YET_VALID' ? (
-        <Button title="Walk-in entry karein" kind="plain" onPress={onWalkIn} />
+        <Button title="Register as walk-in" kind="plain" onPress={onWalkIn} />
       ) : null}
-      <Button title="Agla scan" onPress={onNext} />
+      <Button title="Next scan" onPress={onNext} />
     </View>
   );
 }

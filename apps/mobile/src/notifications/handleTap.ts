@@ -5,7 +5,7 @@ import { useAuth } from '../auth/AuthProvider';
 
 const VISIT_TEMPLATES = ['APPROVAL_REQUEST', 'APPROVAL_REMINDER', 'VISITOR_ARRIVED'];
 
-/** Push ka data bahar se aata hai, isliye sirf saaf id par hi visit kholte hain. */
+/** Push data comes from outside, so only a clean id opens a visit. */
 export function routeForNotification(data?: { visitId?: unknown; template?: unknown } | null): string {
   const { visitId, template } = data ?? {};
   const known = typeof template === 'string' && VISIT_TEMPLATES.includes(template);
@@ -13,7 +13,7 @@ export function routeForNotification(data?: { visitId?: unknown; template?: unkn
   return '/(host)';
 }
 
-/** Push par tap: app band ho tab bhi, login load hone ke baad sahi visit khule. */
+/** Tapping a push opens the right visit once sign-in has loaded, even if the app was closed. */
 export function useNotificationRouting(): void {
   const router = useRouter();
   const { user, ready } = useAuth();

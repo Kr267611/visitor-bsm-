@@ -20,11 +20,11 @@ export function GuardHomeScreen() {
   const { gates, gate, setGate, ready, error } = useGate();
   const [permission, requestPermission, getPermission] = useCameraPermissions();
   const [choosingGate, setChoosingGate] = useState(false);
-  // Network fail hua to pata nahi entry hui ya nahi: us QR ke dobara scan par wahi id, taaki galat "pehle hi andar" na aaye.
+  // After a network failure we cannot tell whether the entry happened: rescanning that QR reuses the id, so we never wrongly say "already inside".
   const unconfirmed = useRef<{ key: string; id: string } | null>(null);
 
   useEffect(() => {
-    // Settings se wapas aane par permission dobara dekho.
+    // Check the permission again when returning from Settings.
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') void getPermission();
     });
@@ -70,7 +70,7 @@ export function GuardHomeScreen() {
   if (!ready) {
     return (
       <Screen>
-        <Muted>Load ho raha hai…</Muted>
+        <Muted>Loading…</Muted>
       </Screen>
     );
   }
@@ -79,8 +79,8 @@ export function GuardHomeScreen() {
     return (
       <Screen>
         <Title>Gate</Title>
-        {error ? <ErrorText>{errorMessage(error)}</ErrorText> : <Muted>Koi gate nahi mila. Admin se gate banwayein.</Muted>}
-        <Button title="Logout" kind="plain" onPress={() => void logout()} />
+        {error ? <ErrorText>{errorMessage(error)}</ErrorText> : <Muted>No gates found. Ask your admin to add a gate.</Muted>}
+        <Button title="Log out" kind="plain" onPress={() => void logout()} />
       </Screen>
     );
   }
@@ -88,7 +88,7 @@ export function GuardHomeScreen() {
   if (!gate || choosingGate) {
     return (
       <Screen>
-        <Title>Aap kis gate par hain?</Title>
+        <Title>Which gate are you at?</Title>
         {gates.map((g) => (
           <Button
             key={g.id}
@@ -109,10 +109,10 @@ export function GuardHomeScreen() {
       <Muted>{gate.name}</Muted>
       <View style={styles.modes}>
         <View style={styles.mode}>
-          <Button title="Andar" kind={mode === 'IN' ? 'primary' : 'plain'} onPress={() => setMode('IN')} />
+          <Button title="Entry" kind={mode === 'IN' ? 'primary' : 'plain'} onPress={() => setMode('IN')} />
         </View>
         <View style={styles.mode}>
-          <Button title="Bahar" kind={mode === 'OUT' ? 'primary' : 'plain'} onPress={() => setMode('OUT')} />
+          <Button title="Exit" kind={mode === 'OUT' ? 'primary' : 'plain'} onPress={() => setMode('OUT')} />
         </View>
       </View>
 
@@ -128,26 +128,26 @@ export function GuardHomeScreen() {
         <View style={styles.noCamera}>
           {permission && !permission.canAskAgain ? (
             <>
-              <ErrorText>Camera ki permission nahi hai. Settings mein jaakar chalu karein.</ErrorText>
-              <Button title="Settings kholein" kind="plain" onPress={() => void Linking.openSettings()} />
+              <ErrorText>Camera permission is off. Turn it on in Settings.</ErrorText>
+              <Button title="Open Settings" kind="plain" onPress={() => void Linking.openSettings()} />
             </>
           ) : (
-            <Button title="Camera chalu karein" onPress={() => void requestPermission()} />
+            <Button title="Turn on camera" onPress={() => void requestPermission()} />
           )}
-          <Button title="Bina QR check-in" kind="plain" onPress={() => router.push('/(guard)/inside')} />
+          <Button title="Check in without QR" kind="plain" onPress={() => router.push('/(guard)/inside')} />
         </View>
       )}
 
       <Button title="Walk-in entry" kind="plain" onPress={() => router.push('/(guard)/walk-in')} />
-      <Button title="Andar kaun hai" kind="plain" onPress={() => router.push('/(guard)/inside')} />
+      <Button title="Visitors inside" kind="plain" onPress={() => router.push('/(guard)/inside')} />
       <View style={styles.modes}>
         {gates.length > 1 ? (
           <View style={styles.mode}>
-            <Button title="Gate badlein" kind="plain" onPress={() => setChoosingGate(true)} />
+            <Button title="Change gate" kind="plain" onPress={() => setChoosingGate(true)} />
           </View>
         ) : null}
         <View style={styles.mode}>
-          <Button title="Logout" kind="plain" onPress={() => void logout()} />
+          <Button title="Log out" kind="plain" onPress={() => void logout()} />
         </View>
       </View>
     </Screen>

@@ -28,21 +28,21 @@ export function SettingsScreen() {
   return (
     <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
       <Title>Settings</Title>
-      <Muted>Aap jawab na de payein to approval backup person ko jayega.</Muted>
+      <Muted>If you do not respond in time, the approval request goes to your backup person.</Muted>
       {me.data?.delegateName ? (
         <>
           <Text style={styles.line}>Abhi backup: {me.data.delegateName}</Text>
-          <Button title="Backup hatayein" kind="plain" onPress={() => void setDelegate(null)} />
+          <Button title="Remove backup" kind="plain" onPress={() => void setDelegate(null)} />
         </>
       ) : null}
-      <Field label="Backup person dhoondein" value={search} onChangeText={setSearch} />
+      <Field label="Search for a backup person" value={search} onChangeText={setSearch} />
       {hosts.data
         ?.filter((host) => host.id !== user?.id)
         .map((host) => (
           <Button key={host.id} kind="plain" title={host.name} onPress={() => void setDelegate(host.id)} />
         ))}
       {error ? <ErrorText>{error}</ErrorText> : null}
-      <Button title="Logout" kind="plain" onPress={() => void logout()} />
+      <Button title="Log out" kind="plain" onPress={() => void logout()} />
     </ScrollView>
   );
 }

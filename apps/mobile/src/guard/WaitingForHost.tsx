@@ -29,26 +29,26 @@ export function WaitingForHost({ visitId, gateId }: { visitId: string; gateId: s
   }
 
   const visit = query.data;
-  const note = visit?.decisionNote ? <Text>Host ka note: {visit.decisionNote}</Text> : null;
-  const back = <Button title="Wapas" kind="plain" onPress={() => router.back()} />;
+  const note = visit?.decisionNote ? <Text>Host note: {visit.decisionNote}</Text> : null;
+  const back = <Button title="Back" kind="plain" onPress={() => router.back()} />;
 
   if (checkedIn || visit?.status === 'CHECKED_IN') {
     return (
       <>
-        <Title>Entry ho gayi</Title>
+        <Title>Checked in</Title>
         {note}
         {back}
       </>
     );
   }
-  if (!visit) return <Muted>Load ho raha hai…</Muted>;
+  if (!visit) return <Muted>Loading…</Muted>;
 
   if (visit.status === 'APPROVED') {
     return (
       <>
-        <Title>Host ne approve kar diya</Title>
+        <Title>Host approved</Title>
         {note}
-        <Button title="Check-in karein" onPress={() => void checkIn()} busy={busy} />
+        <Button title="Check in" onPress={() => void checkIn()} busy={busy} />
         {error ? <ErrorText>{error}</ErrorText> : null}
         {back}
       </>
@@ -57,7 +57,7 @@ export function WaitingForHost({ visitId, gateId }: { visitId: string; gateId: s
   if (visit.status === 'REJECTED') {
     return (
       <>
-        <Title>Host ne mana kar diya</Title>
+        <Title>Host declined</Title>
         {note}
         {back}
       </>
@@ -66,7 +66,7 @@ export function WaitingForHost({ visitId, gateId }: { visitId: string; gateId: s
   if (visit.status !== 'PENDING_APPROVAL') {
     return (
       <>
-        <Title>Yeh entry band ho gayi</Title>
+        <Title>This entry is closed</Title>
         <Muted>Status: {visit.status}</Muted>
         {back}
       </>
@@ -74,11 +74,11 @@ export function WaitingForHost({ visitId, gateId }: { visitId: string; gateId: s
   }
   return (
     <>
-      <Title>Host ke jawab ka intezaar</Title>
+      <Title>Waiting for the host</Title>
       <Muted>
-        {visit.visitorName} {visit.hostName} se milne aaye hain.
+        {visit.visitorName} is here to meet {visit.hostName}.
       </Muted>
-      {visit.receptionCallRequestedAt ? <Text>Reception host ko call kar raha hai.</Text> : null}
+      {visit.receptionCallRequestedAt ? <Text>Reception is calling the host.</Text> : null}
     </>
   );
 }

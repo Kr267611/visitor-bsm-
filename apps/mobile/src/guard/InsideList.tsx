@@ -41,7 +41,7 @@ function Row(props: { visit: VisitSummary; gateId: string | null; mode: 'in' | '
     <View style={styles.row}>
       <View style={styles.person}>
         {visit.photoUrl ? (
-          <Image accessibilityLabel={`${visit.visitorName} ki photo`} source={{ uri: visit.photoUrl }} style={styles.photo} />
+          <Image accessibilityLabel={`Photo of ${visit.visitorName}`} source={{ uri: visit.photoUrl }} style={styles.photo} />
         ) : (
           <View style={styles.photo} />
         )}
@@ -55,8 +55,8 @@ function Row(props: { visit: VisitSummary; gateId: string | null; mode: 'in' | '
           <Button title={`${visit.visitorName} check-out`} kind="plain" onPress={() => setConfirming(true)} disabled={!gateId} />
         ) : (
           <>
-            <Button title="Haan, check-out karein" kind="danger" onPress={() => void run('out')} busy={busy} />
-            <Button title="Nahi" kind="plain" onPress={() => setConfirming(false)} />
+            <Button title="Yes, check out" kind="danger" onPress={() => void run('out')} busy={busy} />
+            <Button title="No" kind="plain" onPress={() => setConfirming(false)} />
           </>
         ))}
       {mode === 'in' && visit.status === 'APPROVED' && (
@@ -87,15 +87,15 @@ export function InsideList() {
 
   return (
     <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
-      <Title>Andar kaun hai</Title>
-      <Field label="Naam se dhoondein" value={search} onChangeText={setSearch} />
+      <Title>Visitors inside</Title>
+      <Field label="Search by name" value={search} onChangeText={setSearch} />
       {board.isError ? <ErrorText>{errorMessage(board.error)}</ErrorText> : null}
-      {board.data && inside.length === 0 ? <Muted>Abhi koi visitor andar nahi hai.</Muted> : null}
+      {board.data && inside.length === 0 ? <Muted>No visitors inside right now.</Muted> : null}
       {inside.map((visit) => (
         <Row key={visit.id} visit={visit} gateId={gate?.id ?? null} mode="out" />
       ))}
-      <Text style={styles.heading}>Aane wale (bina QR check-in)</Text>
-      {board.data && expected.length === 0 ? <Muted>Aaj aur koi visitor aane wala nahi hai.</Muted> : null}
+      <Text style={styles.heading}>Expected (check in without QR)</Text>
+      {board.data && expected.length === 0 ? <Muted>No more visitors expected today.</Muted> : null}
       {expected.map((visit) => (
         <Row key={visit.id} visit={visit} gateId={gate?.id ?? null} mode="in" />
       ))}

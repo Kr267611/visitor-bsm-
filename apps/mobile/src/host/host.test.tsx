@@ -68,7 +68,7 @@ describe('host screens', () => {
 
   it('home with nothing explains next step', async () => {
     await renderScreen(<HostHomeScreen />, server({ 'GET /visits': () => json(200, []) }));
-    expect(await screen.findByText(/Abhi koi visitor nahi hai/)).toBeTruthy();
+    expect(await screen.findByText(/No visitors yet/)).toBeTruthy();
   });
 
   it('approve from visit screen updates status', async () => {
@@ -80,10 +80,10 @@ describe('host screens', () => {
       },
     });
     await renderScreen(<VisitScreen />, s);
-    await fireEvent.changeText(await screen.findByLabelText('Guard ke liye note'), '10 minute baithao');
+    await fireEvent.changeText(await screen.findByLabelText('Note for the guard'), 'Please wait 10 minutes');
     await fireEvent.press(screen.getByRole('button', { name: 'Approve' }));
     expect(await screen.findByText('APPROVED')).toBeTruthy();
-    expect(s.calls.find((c) => c.key === 'POST /visits/v1/approve')!.body).toEqual({ note: '10 minute baithao' });
+    expect(s.calls.find((c) => c.key === 'POST /visits/v1/approve')!.body).toEqual({ note: 'Please wait 10 minutes' });
   });
 
   it('reject sends reason', async () => {
@@ -92,15 +92,15 @@ describe('host screens', () => {
       'POST /visits/v1/reject': () => json(200, { id: 'v1', status: 'REJECTED' }),
     });
     await renderScreen(<VisitScreen />, s);
-    await fireEvent.changeText(await screen.findByLabelText('Guard ke liye note'), 'Aaj nahi');
+    await fireEvent.changeText(await screen.findByLabelText('Note for the guard'), 'Not today');
     await fireEvent.press(screen.getByRole('button', { name: 'Reject' }));
-    await waitFor(() => expect(s.calls.find((c) => c.key === 'POST /visits/v1/reject')?.body).toEqual({ reason: 'Aaj nahi' }));
+    await waitFor(() => expect(s.calls.find((c) => c.key === 'POST /visits/v1/reject')?.body).toEqual({ reason: 'Not today' }));
   });
 
   it('already decided shows status, no buttons', async () => {
-    await renderScreen(<VisitScreen />, server({ 'GET /visits/v1': () => json(200, pending({ status: 'REJECTED', decisionNote: 'Aaj nahi' })) }));
+    await renderScreen(<VisitScreen />, server({ 'GET /visits/v1': () => json(200, pending({ status: 'REJECTED', decisionNote: 'Not today' })) }));
     expect(await screen.findByText('REJECTED')).toBeTruthy();
-    expect(screen.getByText(/Aaj nahi/)).toBeTruthy();
+    expect(screen.getByText(/Not today/)).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull();
   });
 
@@ -109,24 +109,24 @@ describe('host screens', () => {
       'GET /visits/v1': () => json(200, pending()),
       'POST /visits/v1/approve': () => {
         s.handlers['GET /visits/v1'] = () => json(200, pending({ status: 'REJECTED' }));
-        return json(409, { error: 'INVALID_TRANSITION', message: 'Yeh visit abhi REJECTED hai, yeh kaam nahi ho sakta.', status: 'REJECTED' });
+        return json(409, { error: 'INVALID_TRANSITION', message: 'This visit is REJECTED; this action is not allowed.', status: 'REJECTED' });
       },
     });
     await renderScreen(<VisitScreen />, s);
     await fireEvent.press(await screen.findByRole('button', { name: 'Approve' }));
-    expect(await screen.findByText(/abhi REJECTED hai/)).toBeTruthy();
+    expect(await screen.findByText(/This visit is REJECTED/)).toBeTruthy();
     expect(await screen.findByText('REJECTED')).toBeTruthy();
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull());
   });
 
   it('failed SMS is shown to the host', async () => {
     await renderScreen(<VisitScreen />, server({ 'GET /visits/v1': () => json(200, detail({ deliveryFailed: true })) }));
-    expect(await screen.findByText(/SMS nahi pahunch paya/)).toBeTruthy();
+    expect(await screen.findByText(/The SMS could not be delivered/)).toBeTruthy();
   });
 
   it('visit not allowed shows message', async () => {
-    await renderScreen(<VisitScreen />, server({ 'GET /visits/v1': () => json(403, { error: 'FORBIDDEN', message: 'Aapko iski permission nahi hai.' }) }));
-    expect(await screen.findByText('Aapko iski permission nahi hai.')).toBeTruthy();
+    await renderScreen(<VisitScreen />, server({ 'GET /visits/v1': () => json(403, { error: 'FORBIDDEN', message: 'You do not have permission to do this.' }) }));
+    expect(await screen.findByText('You do not have permission to do this.')).toBeTruthy();
   });
 
   it('cancel and resend work for open visits', async () => {
@@ -135,36 +135,36 @@ describe('host screens', () => {
       'POST /visits/v1/cancel': () => json(200, { id: 'v1', status: 'CANCELLED' }),
     });
     await renderScreen(<VisitScreen />, s);
-    await fireEvent.press(await screen.findByRole('button', { name: 'Link dobara bhejein' }));
-    expect(await screen.findByText(/Naya link bhej diya/)).toBeTruthy();
-    await fireEvent.press(screen.getByRole('button', { name: 'Visit cancel karein' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Resend link' }));
+    expect(await screen.findByText(/New link sent/)).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Cancel visit' }));
     expect(s.calls.some((c) => c.key === 'POST /visits/v1/cancel')).toBe(false);
-    await fireEvent.press(screen.getByRole('button', { name: 'Haan, cancel karein' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Yes, cancel' }));
     await waitFor(() => expect(s.calls.some((c) => c.key === 'POST /visits/v1/cancel')).toBe(true));
   });
 
   describe('invite', () => {
     async function fill(over: { phone?: string; start?: string; end?: string; date?: string } = {}) {
-      await fireEvent.changeText(await screen.findByLabelText('Visitor ka naam'), 'Rahul Verma');
-      await fireEvent.changeText(screen.getByLabelText('Visitor ka mobile'), over.phone ?? '98765 43210');
+      await fireEvent.changeText(await screen.findByLabelText('Visitor name'), 'Rahul Verma');
+      await fireEvent.changeText(screen.getByLabelText('Visitor mobile'), over.phone ?? '98765 43210');
       await fireEvent.changeText(screen.getByLabelText('Date (YYYY-MM-DD)'), over.date ?? '2026-11-06');
-      await fireEvent.changeText(screen.getByLabelText('Kab se (HH:MM)'), over.start ?? '10:00');
-      await fireEvent.changeText(screen.getByLabelText('Kab tak (HH:MM)'), over.end ?? '13:00');
-      await fireEvent.changeText(screen.getByLabelText('Kaam'), 'Meeting');
-      await fireEvent.press(screen.getByRole('button', { name: 'Invite bhejein' }));
+      await fireEvent.changeText(screen.getByLabelText('From (HH:MM)'), over.start ?? '10:00');
+      await fireEvent.changeText(screen.getByLabelText('Until (HH:MM)'), over.end ?? '13:00');
+      await fireEvent.changeText(screen.getByLabelText('Purpose'), 'Meeting');
+      await fireEvent.press(screen.getByRole('button', { name: 'Send invite' }));
     }
 
     it('invite validates phone and time', async () => {
       const s = server();
       await renderScreen(<InviteScreen />, s);
       await fill({ phone: '123' });
-      expect(await screen.findByText(/Mobile number sahi nahi hai/)).toBeTruthy();
+      expect(await screen.findByText(/Enter a valid 10-digit mobile number/)).toBeTruthy();
       await fill({ start: '13:00', end: '10:00' });
-      expect(await screen.findByText(/Kab tak ka time/)).toBeTruthy();
+      expect(await screen.findByText(/"Until" must be later/)).toBeTruthy();
       await fill({ start: '25:00' });
-      expect(await screen.findByText(/Time HH:MM/)).toBeTruthy();
+      expect(await screen.findByText(/Enter times as HH:MM/)).toBeTruthy();
       await fill({ date: '06-11-2026' });
-      expect(await screen.findByText(/Date YYYY-MM-DD/)).toBeTruthy();
+      expect(await screen.findByText(/Enter the date as YYYY-MM-DD/)).toBeTruthy();
       expect(s.calls.some((c) => c.key === 'POST /visits')).toBe(false);
     });
 
@@ -190,7 +190,7 @@ describe('host screens', () => {
         'PATCH /me': ({ body }) => json(200, { delegateId: body.delegateId, delegateName: body.delegateId ? 'Ravi Kumar' : null }),
       });
       await renderScreen(<SettingsScreen />, s);
-      await fireEvent.changeText(await screen.findByLabelText('Backup person dhoondein'), 'ravi');
+      await fireEvent.changeText(await screen.findByLabelText('Search for a backup person'), 'ravi');
       await fireEvent.press(await screen.findByRole('button', { name: 'Ravi Kumar' }));
       expect(await screen.findByText(/Abhi backup: Ravi Kumar/)).toBeTruthy();
       expect(s.calls.find((c) => c.key === 'PATCH /me')!.body).toEqual({ delegateId: 'u2' });
@@ -199,7 +199,7 @@ describe('host screens', () => {
     it('logout is available', async () => {
       const s = server({ 'POST /auth/logout': () => json(204) });
       await renderScreen(<SettingsScreen />, s);
-      await fireEvent.press(await screen.findByRole('button', { name: 'Logout' }));
+      await fireEvent.press(await screen.findByRole('button', { name: 'Log out' }));
       await waitFor(() => expect(s.calls.some((c) => c.key === 'POST /auth/logout')).toBe(true));
     });
   });

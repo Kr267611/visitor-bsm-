@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async signedIn(session) {
         await saveSessionUser(session.user);
         setUser(session.user);
-        // Push na mile to bhi login chalta rahe.
+        // Sign-in keeps working even if push registration fails.
         void registerPush(mobile.client);
       },
       async logout() {

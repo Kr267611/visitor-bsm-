@@ -1,4 +1,4 @@
-import type { VisitStatus } from '@visitor/shared';
+import { VISIT_STATUS_LABEL, type VisitStatus } from '@visitor/shared';
 
 const TONE: Record<VisitStatus, string> = {
   INVITED: 'neutral',
@@ -11,16 +11,8 @@ const TONE: Record<VisitStatus, string> = {
   EXPIRED: 'neutral',
 };
 
-export const STATUS_LABEL: Record<VisitStatus, string> = {
-  INVITED: 'Invited',
-  PENDING_APPROVAL: 'Pending approval',
-  APPROVED: 'Approved',
-  REJECTED: 'Rejected',
-  CHECKED_IN: 'Checked in',
-  CHECKED_OUT: 'Checked out',
-  CANCELLED: 'Cancelled',
-  EXPIRED: 'Expired',
-};
+/** Same words on web and mobile. */
+export const STATUS_LABEL = VISIT_STATUS_LABEL;
 
 export function StatusBadge({ status }: { status: VisitStatus }) {
   return <span className={`badge badge-${TONE[status]}`}>{STATUS_LABEL[status] ?? status}</span>;

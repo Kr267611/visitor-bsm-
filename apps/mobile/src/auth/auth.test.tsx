@@ -32,9 +32,9 @@ function WhoAmI() {
 
 async function login() {
   await fireEvent.changeText(await screen.findByLabelText('Mobile number'), '9876543210');
-  await fireEvent.press(screen.getByRole('button', { name: 'OTP bhejein' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Send OTP' }));
   await fireEvent.changeText(await screen.findByLabelText('OTP'), '123456');
-  await fireEvent.press(screen.getByRole('button', { name: 'Login karein' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Sign in' }));
 }
 
 describe('login', () => {
@@ -81,11 +81,11 @@ describe('login', () => {
   it('wrong OTP shows message, stays on OTP step', async () => {
     const server = fakeServer({
       'POST /auth/otp/request': () => json(204),
-      'POST /auth/otp/verify': () => json(401, { error: 'INVALID_OTP', message: 'OTP sahi nahi hai.' }),
+      'POST /auth/otp/verify': () => json(401, { error: 'INVALID_OTP', message: 'Incorrect OTP.' }),
     });
     await renderScreen(<LoginScreen />, server);
     await login();
-    expect(await screen.findByText('OTP sahi nahi hai.')).toBeTruthy();
+    expect(await screen.findByText('Incorrect OTP.')).toBeTruthy();
     expect(screen.getByLabelText('OTP')).toBeTruthy();
     expect(router.replace).not.toHaveBeenCalled();
   });
@@ -94,8 +94,8 @@ describe('login', () => {
     const server = fakeServer();
     await renderScreen(<LoginScreen />, server);
     await fireEvent.changeText(await screen.findByLabelText('Mobile number'), '123');
-    await fireEvent.press(screen.getByRole('button', { name: 'OTP bhejein' }));
-    expect(await screen.findByText(/Mobile number sahi nahi hai/)).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Send OTP' }));
+    expect(await screen.findByText(/Enter a valid 10-digit mobile number/)).toBeTruthy();
     expect(server.calls).toHaveLength(0);
   });
 
@@ -113,7 +113,7 @@ describe('login', () => {
 
   it('revoked device: next request returns to login, tokens cleared', async () => {
     await signIn(USERS.guard);
-    const unauthorized = () => json(401, { error: 'UNAUTHORIZED', message: 'Dobara login karein.' });
+    const unauthorized = () => json(401, { error: 'UNAUTHORIZED', message: 'Please sign in again.' });
     const server = fakeServer({ 'GET /gates': unauthorized, 'POST /auth/refresh': unauthorized });
     await renderScreen(<WhoAmI />, server);
     await screen.findByText('user:guard');

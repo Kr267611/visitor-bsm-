@@ -5,7 +5,7 @@ const QUALITIES = [0.8, 0.65, 0.5, 0.35];
 const MAX_BYTES = 200_000;
 const MAX_WIDTH = 1024;
 
-/** Quality ghatata hai jab tak photo limit mein na aa jaye. Na aaye to sabse chhoti wali. */
+/** Lowers quality until the photo fits the limit; if it never does, keeps the smallest. */
 export async function compressUntilSmall(
   encode: (quality: number) => Promise<{ uri: string; size: number }>,
   maxBytes = MAX_BYTES,
@@ -19,10 +19,10 @@ export async function compressUntilSmall(
   return last;
 }
 
-/** Camera se photo. Guard ne cancel kiya to null. */
+/** Photo from the camera. null when the guard cancels. */
 export async function capturePhoto(): Promise<{ uri: string } | null> {
   const permission = await ImagePicker.requestCameraPermissionsAsync();
-  if (!permission.granted) throw new Error('Camera ki permission nahi hai. Settings mein jaakar chalu karein.');
+  if (!permission.granted) throw new Error('Camera permission is off. Turn it on in Settings.');
 
   const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 1 });
   if (result.canceled) return null;

@@ -26,11 +26,11 @@ export function InviteScreen() {
   const [busy, setBusy] = useState(false);
 
   function problem(): string | null {
-    if (!name.trim() || !purpose.trim()) return 'Naam aur kaam zaroori hai.';
-    if (!normalizeIndianPhone(phone)) return 'Mobile number sahi nahi hai. 10 digit ka number daalein.';
-    if (!DATE.test(date)) return 'Date YYYY-MM-DD format mein daalein, jaise 2026-11-06.';
-    if (!TIME.test(start) || !TIME.test(end)) return 'Time HH:MM format mein daalein, jaise 14:30.';
-    if (end <= start) return 'Kab tak ka time "Kab se" ke baad ka hona chahiye.';
+    if (!name.trim() || !purpose.trim()) return 'Name and purpose are required.';
+    if (!normalizeIndianPhone(phone)) return 'Enter a valid 10-digit mobile number.';
+    if (!DATE.test(date)) return 'Enter the date as YYYY-MM-DD, for example 2026-11-06.';
+    if (!TIME.test(start) || !TIME.test(end)) return 'Enter times as HH:MM, for example 14:30.';
+    if (end <= start) return '"Until" must be later than "From".';
     return null;
   }
 
@@ -58,15 +58,15 @@ export function InviteScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
-      <Title>Naya invite</Title>
-      <Field label="Visitor ka naam" value={name} onChangeText={setName} />
-      <Field label="Visitor ka mobile" keyboardType="phone-pad" value={phone} onChangeText={setPhone} />
+      <Title>New invite</Title>
+      <Field label="Visitor name" value={name} onChangeText={setName} />
+      <Field label="Visitor mobile" keyboardType="phone-pad" value={phone} onChangeText={setPhone} />
       <Field label="Date (YYYY-MM-DD)" value={date} onChangeText={setDate} />
-      <Field label="Kab se (HH:MM)" value={start} onChangeText={setStart} />
-      <Field label="Kab tak (HH:MM)" value={end} onChangeText={setEnd} />
-      <Field label="Kaam" value={purpose} onChangeText={setPurpose} />
+      <Field label="From (HH:MM)" value={start} onChangeText={setStart} />
+      <Field label="Until (HH:MM)" value={end} onChangeText={setEnd} />
+      <Field label="Purpose" value={purpose} onChangeText={setPurpose} />
       {error ? <ErrorText>{error}</ErrorText> : null}
-      <Button title="Invite bhejein" onPress={() => void submit()} busy={busy} />
+      <Button title="Send invite" onPress={() => void submit()} busy={busy} />
     </ScrollView>
   );
 }

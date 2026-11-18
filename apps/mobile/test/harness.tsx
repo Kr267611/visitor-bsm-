@@ -26,7 +26,7 @@ export function fakeServer(handlers: Handlers = {}): FakeServer {
     const body = typeof init.body === 'string' ? JSON.parse(init.body) : init.body;
     calls.push({ key, body, init });
     const handler = handlers[key];
-    if (!handler) return json(404, { error: 'NOT_FOUND', message: `Test handler nahi: ${key}` });
+    if (!handler) return json(404, { error: 'NOT_FOUND', message: `No test handler: ${key}` });
     return handler({ body, url, init });
   }) as unknown as typeof fetch);
   return { mobile, calls, handlers };
@@ -46,7 +46,7 @@ export async function signIn(user: SessionUser) {
 
 export function renderScreen(ui: ReactElement, server: FakeServer) {
   const queryClient = new QueryClient({
-    // gcTime Infinity: cache ke timer test khatam hone ke baad jest ko rokte nahi.
+    // gcTime Infinity: cache timers must not keep jest alive after the test.
     defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false, gcTime: Infinity } },
   });
   return render(

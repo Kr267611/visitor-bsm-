@@ -21,7 +21,7 @@ export function LoginScreen() {
     setError(null);
     const normalized = normalizeIndianPhone(phone);
     if (!normalized) {
-      setError('Mobile number sahi nahi hai. 10 digit ka number daalein.');
+      setError('Enter a valid 10-digit mobile number.');
       return;
     }
     setBusy(true);
@@ -60,11 +60,11 @@ export function LoginScreen() {
       {!sent ? (
         <>
           <Field label="Mobile number" keyboardType="phone-pad" value={phone} onChangeText={setPhone} />
-          <Button title="OTP bhejein" onPress={() => void requestOtp()} busy={busy} />
+          <Button title="Send OTP" onPress={() => void requestOtp()} busy={busy} />
         </>
       ) : (
         <>
-          <Muted>{phone} par OTP bheja gaya hai.</Muted>
+          <Muted>OTP sent to {phone}.</Muted>
           <Field
             label="OTP"
             keyboardType="number-pad"
@@ -73,8 +73,8 @@ export function LoginScreen() {
             value={otp}
             onChangeText={(v) => setOtp(v.replace(/\D/g, ''))}
           />
-          <Button title="Login karein" onPress={() => void verify()} busy={busy} disabled={otp.length !== 6} />
-          <Button title="Number badlein" kind="plain" onPress={() => setSent(false)} />
+          <Button title="Sign in" onPress={() => void verify()} busy={busy} disabled={otp.length !== 6} />
+          <Button title="Change number" kind="plain" onPress={() => setSent(false)} />
         </>
       )}
       {error ? <ErrorText>{error}</ErrorText> : null}

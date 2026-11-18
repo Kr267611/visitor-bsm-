@@ -4,7 +4,7 @@ import { io } from 'socket.io-client';
 import { useApi, useMobileClient } from '../api';
 import { secureTokens } from '../auth/secureTokens';
 
-/** Site ke live updates. Lautata hai connection chal raha hai ya nahi. */
+/** Live updates for the premises. Returns whether the connection is up. */
 export function useLiveUpdates(onUpdate: (event: { visitId: string; status: string }) => void, onReady?: () => void): boolean {
   const { apiUrl, client } = useMobileClient();
   const readyHandler = useRef(onReady);
@@ -27,7 +27,7 @@ export function useLiveUpdates(onUpdate: (event: { visitId: string; status: stri
     });
     socket.on('disconnect', (reason: string) => {
       setConnected(false);
-      // Server ne token expire hone par nikala: library khud reconnect nahi karti.
+      // The server dropped us because the token expired; the library does not reconnect by itself.
       if (reason === 'io server disconnect') {
         retry = setTimeout(() => {
           void client.me.get().catch(() => undefined).finally(() => socket.connect());
@@ -48,7 +48,7 @@ export function useLiveUpdates(onUpdate: (event: { visitId: string; status: stri
 const WAITING_POLL_MS = 5000;
 const RECONNECT_MS = 3000;
 
-/** Gate par khade visitor ke liye: socket band ho to bhi 5 second mein jawab dikhe. */
+/** For a visitor waiting at the gate: show the answer within 5 seconds even if the socket is down. */
 export function useLiveVisit(visitId: string) {
   const api = useApi();
   const queryClient = useQueryClient();

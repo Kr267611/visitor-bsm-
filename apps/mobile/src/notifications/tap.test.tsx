@@ -32,7 +32,7 @@ describe('useNotificationRouting', () => {
 
   it('same tap is handled only once across re-renders', async () => {
     await signIn(USERS.employee);
-    // Har render par naya object, jaise asli hook de sakta hai.
+    // A new object on every render, as the real hook may return.
     mockResponse.mockImplementation(() => tapped());
     await renderScreen(<Probe />, fakeServer());
     await waitFor(() => expect(router.push).toHaveBeenCalledTimes(1));

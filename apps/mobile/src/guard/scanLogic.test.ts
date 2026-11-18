@@ -46,7 +46,7 @@ describe('scanWithRetry', () => {
   });
 
   it('does not retry ApiError', async () => {
-    const error = new ApiError(409, 'ALREADY_CHECKED_IN', 'Andar hain', { gate: 'G' });
+    const error = new ApiError(409, 'ALREADY_CHECKED_IN', 'Already inside', { gate: 'G' });
     const api = { gate: { scan: jest.fn(async () => Promise.reject(error)) } };
     const res = await scanWithRetry(api as never, req, 0);
     expect(res).toEqual({ kind: 'rejected', error });

@@ -12,11 +12,11 @@
       "expo-notifications",
       [
         "expo-camera",
-        { "cameraPermission": "Visitor ka QR scan karne ke liye camera chahiye." }
+        { "cameraPermission": "The camera is used to scan visitor QR passes." }
       ],
       [
         "expo-image-picker",
-        { "cameraPermission": "Visitor ki photo lene ke liye camera chahiye." }
+        { "cameraPermission": "The camera is used to take visitor photos." }
       ]
     ],
     "android": { "package": "in.bsm.visitor" },

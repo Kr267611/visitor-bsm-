@@ -55,13 +55,13 @@ describe('inside list', () => {
     await renderScreen(<InsideList />, server());
     expect(await screen.findByText('Visitor a')).toBeTruthy();
     expect(screen.getAllByText(/Anita Singh/).length).toBeGreaterThan(0);
-    expect(screen.getByLabelText('Visitor a ki photo').props.source).toEqual({ uri: 'http://api.test/photos/x' });
+    expect(screen.getByLabelText('Photo of Visitor a').props.source).toEqual({ uri: 'http://api.test/photos/x' });
   });
 
   it('search filters by name', async () => {
     await renderScreen(<InsideList />, server());
     await screen.findByText('Visitor a');
-    await fireEvent.changeText(screen.getByLabelText('Naam se dhoondein'), 'visitor b');
+    await fireEvent.changeText(screen.getByLabelText('Search by name'), 'visitor b');
     expect(screen.queryByText('Visitor a')).toBeNull();
     expect(screen.getByText('Visitor b')).toBeTruthy();
   });
@@ -72,20 +72,20 @@ describe('inside list', () => {
     await fireEvent.press(await screen.findByRole('button', { name: 'Visitor a check-out' }));
     expect(s.calls.some((c) => c.key === 'POST /visits/a/check-out')).toBe(false);
     s.handlers['GET /dashboard/live'] = () => json(200, board({ inside: [visit('b')] }));
-    await fireEvent.press(screen.getByRole('button', { name: 'Haan, check-out karein' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Yes, check out' }));
     await waitFor(() => expect(screen.queryByText('Visitor a')).toBeNull());
     expect(s.calls.find((c) => c.key === 'POST /visits/a/check-out')!.body.gateId).toBe('g1');
   });
 
   it('check-out conflict shows message and refreshes', async () => {
     const s = server({
-      'POST /visits/a/check-out': () => json(409, { error: 'NOT_CHECKED_IN', message: 'Yeh visitor andar nahi hai.' }),
+      'POST /visits/a/check-out': () => json(409, { error: 'NOT_CHECKED_IN', message: 'This visitor is not checked in.' }),
     });
     await renderScreen(<InsideList />, s);
     await fireEvent.press(await screen.findByRole('button', { name: 'Visitor a check-out' }));
     const before = s.calls.filter((c) => c.key === 'GET /dashboard/live').length;
-    await fireEvent.press(screen.getByRole('button', { name: 'Haan, check-out karein' }));
-    expect(await screen.findByText('Yeh visitor andar nahi hai.')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Yes, check out' }));
+    expect(await screen.findByText('This visitor is not checked in.')).toBeTruthy();
     await waitFor(() => expect(s.calls.filter((c) => c.key === 'GET /dashboard/live').length).toBeGreaterThan(before));
   });
 
@@ -107,7 +107,7 @@ describe('inside list', () => {
   });
 
   it('load failure shows the message', async () => {
-    await renderScreen(<InsideList />, server({ 'GET /dashboard/live': () => json(500, { error: 'INTERNAL', message: 'Server mein dikkat hai.' }) }));
-    expect(await screen.findByText('Server mein dikkat hai.')).toBeTruthy();
+    await renderScreen(<InsideList />, server({ 'GET /dashboard/live': () => json(500, { error: 'INTERNAL', message: 'The server ran into a problem.' }) }));
+    expect(await screen.findByText('The server ran into a problem.')).toBeTruthy();
   });
 });

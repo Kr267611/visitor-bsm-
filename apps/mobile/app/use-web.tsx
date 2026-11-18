@@ -5,9 +5,9 @@ export default function UseWeb() {
   const { logout } = useAuth();
   return (
     <Screen>
-      <Title>Yeh account web par use karein</Title>
-      <Muted>Admin aur security ka kaam web app par hota hai.</Muted>
-      <Button title="Logout" kind="plain" onPress={() => void logout()} />
+      <Title>Please use this account on the web</Title>
+      <Muted>Admin and security work is done in the web app.</Muted>
+      <Button title="Log out" kind="plain" onPress={() => void logout()} />
     </Screen>
   );
 }

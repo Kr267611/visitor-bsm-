@@ -1,3 +1,4 @@
+import { VISIT_STATUS_LABEL } from '@visitor/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet } from 'react-native';
@@ -11,15 +12,15 @@ export function HostHomeScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.page}>
-      <Title>Mere visitors</Title>
-      <Button title="Naya invite" onPress={() => router.push('/(host)/invite')} />
+      <Title>My visitors</Title>
+      <Button title="New invite" onPress={() => router.push('/(host)/invite')} />
       {visits.isError ? <ErrorText>{errorMessage(visits.error)}</ErrorText> : null}
-      {visits.data?.length === 0 ? <Muted>Abhi koi visitor nahi hai. "Naya invite" se shuru karein.</Muted> : null}
+      {visits.data?.length === 0 ? <Muted>No visitors yet. Tap "New invite" to start.</Muted> : null}
       {visits.data?.map((visit) => (
         <Button
           key={visit.id}
           kind="plain"
-          title={`${visit.visitorName} · ${visit.status}`}
+          title={`${visit.visitorName} · ${VISIT_STATUS_LABEL[visit.status]}`}
           onPress={() => router.push(`/(host)/visits/${visit.id}`)}
         />
       ))}

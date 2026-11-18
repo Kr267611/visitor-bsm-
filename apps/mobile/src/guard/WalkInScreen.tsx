@@ -56,7 +56,7 @@ export function WalkInScreen({ resendDelayMs = RESEND_DELAY_MS }: { resendDelayM
   async function start() {
     setError(null);
     if (!normalizeIndianPhone(phone)) {
-      setError('Mobile number sahi nahi hai. 10 digit ka number daalein.');
+      setError('Enter a valid 10-digit mobile number.');
       return;
     }
     setBusy(true);
@@ -105,7 +105,7 @@ export function WalkInScreen({ resendDelayMs = RESEND_DELAY_MS }: { resendDelayM
     setBusy(true);
     setError(null);
     try {
-      // Dobara koshish par photo phir se upload nahi.
+      // On retry, do not upload the photo again.
       if (photoUri && !uploadedKey.current) {
         const file = { uri: photoUri, name: 'photo.jpg', type: 'image/jpeg' };
         uploadedKey.current = (await api.uploads.uploadPhoto(file)).key;
@@ -143,8 +143,8 @@ export function WalkInScreen({ resendDelayMs = RESEND_DELAY_MS }: { resendDelayM
     return (
       <Screen>
         <Title>Walk-in entry</Title>
-        <Field label="Visitor ka mobile" keyboardType="phone-pad" value={phone} onChangeText={setPhone} />
-        <Button title="Aage badhein" onPress={() => void start()} busy={busy} />
+        <Field label="Visitor mobile" keyboardType="phone-pad" value={phone} onChangeText={setPhone} />
+        <Button title="Continue" onPress={() => void start()} busy={busy} />
         {error ? <ErrorText>{error}</ErrorText> : null}
       </Screen>
     );
@@ -155,29 +155,29 @@ export function WalkInScreen({ resendDelayMs = RESEND_DELAY_MS }: { resendDelayM
 
   return (
     <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
-      <Title>Visitor ki details</Title>
+      <Title>Visitor details</Title>
       <Field
         label="OTP"
         keyboardType="number-pad"
         maxLength={6}
         value={otp}
         onChangeText={(v) => setOtp(v.replace(/\D/g, ''))}
-        hint={`${phone} par SMS gaya hai. Visitor se poochein.`}
+        hint={`SMS sent to ${phone}. Ask the visitor for the code.`}
       />
-      <Button title="OTP dobara bhejein" kind="plain" disabled={!canResend} onPress={() => void resendOtp()} />
-      <Field label="Naam" value={name} onChangeText={setName} />
+      <Button title="Resend OTP" kind="plain" disabled={!canResend} onPress={() => void resendOtp()} />
+      <Field label="Name" value={name} onChangeText={setName} />
       <Field label="Company" value={company} onChangeText={setCompany} />
-      <Field label="Kaam" value={purpose} onChangeText={setPurpose} />
+      <Field label="Purpose" value={purpose} onChangeText={setPurpose} />
 
       {photoUri || savedPhoto ? (
-        <Image accessibilityLabel="Li gayi photo" source={{ uri: (photoUri ?? savedPhoto) as string }} style={styles.photo} />
+        <Image accessibilityLabel="Captured photo" source={{ uri: (photoUri ?? savedPhoto) as string }} style={styles.photo} />
       ) : (
-        <Muted>Naye visitor ki photo zaroori hai.</Muted>
+        <Muted>A photo is required for a new visitor.</Muted>
       )}
-      <Button title="Photo lein" kind="plain" onPress={() => void takePhoto()} />
+      <Button title="Take photo" kind="plain" onPress={() => void takePhoto()} />
 
       <Field
-        label="Kisse milna hai"
+        label="Who are they meeting?"
         value={host ? host.name : hostSearch}
         onChangeText={(v) => {
           setHost(null);
@@ -196,17 +196,17 @@ export function WalkInScreen({ resendDelayMs = RESEND_DELAY_MS }: { resendDelayM
 
       <Pressable
         accessibilityRole="checkbox"
-        accessibilityLabel="Visitor ko bata diya gaya hai ki details visitor record ke liye save hongi."
+        accessibilityLabel="The visitor has been told their details will be stored for the visitor record."
         accessibilityState={{ checked: consent }}
         onPress={() => setConsent(!consent)}
         style={styles.check}
       >
         <View style={[styles.box, consent && styles.boxOn]}>{consent ? <Text style={styles.tick}>✓</Text> : null}</View>
-        <Text style={styles.checkText}>Visitor ko bata diya gaya hai ki details visitor record ke liye save hongi.</Text>
+        <Text style={styles.checkText}>The visitor has been told their details will be stored for the visitor record.</Text>
       </Pressable>
 
       {error ? <ErrorText>{error}</ErrorText> : null}
-      <Button title="Host ko bhejein" disabled={!canSubmit} busy={busy} onPress={() => void submit()} />
+      <Button title="Send to host" disabled={!canSubmit} busy={busy} onPress={() => void submit()} />
     </ScrollView>
   );
 }
