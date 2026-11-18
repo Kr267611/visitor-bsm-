@@ -11,11 +11,11 @@ export class DashboardService {
     private readonly visits: VisitsService,
   ) {}
 
-  async live(siteId: string, now: Date = new Date()): Promise<LiveDashboard> {
+  async live(premisesId: string, now: Date = new Date()): Promise<LiveDashboard> {
     const { start, end } = istDayRange(undefined, now);
     const rows = await this.prisma.visit.findMany({
       where: {
-        siteId,
+        premisesId,
         OR: [
           { status: 'CHECKED_IN' },
           { status: 'PENDING_APPROVAL' },

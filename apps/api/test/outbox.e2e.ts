@@ -108,7 +108,7 @@ describe('outbox', () => {
     await ctx.prisma.device.create({
       data: { userId: host.id, name: 'old', pushToken: 'tok-old', revokedAt: new Date() },
     });
-    const visit = await seedVisit(ctx.prisma, { siteId: site.id, hostId: host.id });
+    const visit = await seedVisit(ctx.prisma, { premisesId: site.id, hostId: host.id });
     await ctx.prisma.outbox.create({
       data: {
         visitId: visit.id,
@@ -150,7 +150,7 @@ describe('outbox', () => {
     const { site } = await seedSite(ctx.prisma);
     const host = await seedUser(ctx.prisma, site.id);
     await ctx.prisma.device.create({ data: { userId: host.id, name: 'p', pushToken: 'tok-1' } });
-    const visit = await seedVisit(ctx.prisma, { siteId: site.id, hostId: host.id });
+    const visit = await seedVisit(ctx.prisma, { premisesId: site.id, hostId: host.id });
     ctx.push.failing = true;
     await ctx.prisma.outbox.create({
       data: {

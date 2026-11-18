@@ -12,7 +12,8 @@ export const VISIT_UPDATED = 'visit.updated';
 
 export interface VisitUpdatedEvent {
   visitId: string;
-  siteId: string;
+  businessId: string;
+  premisesId: string;
   status: Visit['status'];
 }
 
@@ -68,6 +69,7 @@ export class VisitLifecycleService {
       await tx.visitEvent.create({
         data: {
           visitId: current.id,
+          businessId: current.businessId,
           type: input.action,
           actorId: input.actorId,
           gateId: input.gateId,
@@ -80,6 +82,7 @@ export class VisitLifecycleService {
         await tx.outbox.createMany({
           data: drafts.map((d) => ({
             visitId: d.visitId ?? current.id,
+            businessId: current.businessId,
             channel: d.channel,
             template: d.template,
             recipient: d.recipient,
@@ -90,7 +93,12 @@ export class VisitLifecycleService {
       return tx.visit.findUniqueOrThrow({ where: { id: current.id } });
     });
 
-    const event: VisitUpdatedEvent = { visitId: visit.id, siteId: visit.siteId, status: visit.status };
+    const event: VisitUpdatedEvent = {
+      visitId: visit.id,
+      businessId: visit.businessId,
+      premisesId: visit.premisesId,
+      status: visit.status,
+    };
     this.events.emit(VISIT_UPDATED, event);
     return visit;
   }
@@ -114,6 +122,7 @@ export class VisitLifecycleService {
       await tx.visitEvent.create({
         data: {
           visitId: created.id,
+          businessId: created.businessId,
           type: 'CREATED',
           actorId: input.actorId,
           gateId: input.gateId,
@@ -125,6 +134,7 @@ export class VisitLifecycleService {
         await tx.outbox.createMany({
           data: drafts.map((d) => ({
             visitId: created.id,
+            businessId: created.businessId,
             channel: d.channel,
             template: d.template,
             recipient: d.recipient,
@@ -135,7 +145,12 @@ export class VisitLifecycleService {
       return created;
     });
 
-    const event: VisitUpdatedEvent = { visitId: visit.id, siteId: visit.siteId, status: visit.status };
+    const event: VisitUpdatedEvent = {
+      visitId: visit.id,
+      businessId: visit.businessId,
+      premisesId: visit.premisesId,
+      status: visit.status,
+    };
     this.events.emit(VISIT_UPDATED, event);
     return visit;
   }
@@ -149,13 +164,15 @@ export class VisitLifecycleService {
     notify: OutboxDraft[] = [],
   ): Promise<void> {
     notify.forEach((d) => renderTemplate(d.template, d.vars));
+    const { businessId } = await this.prisma.visit.findUniqueOrThrow({ where: { id: visitId }, select: { businessId: true } });
     await this.prisma.$transaction([
       this.prisma.visitEvent.create({
-        data: { visitId, type, actorId, meta: meta as Prisma.InputJsonValue | undefined },
+        data: { visitId, businessId, type, actorId, meta: meta as Prisma.InputJsonValue | undefined },
       }),
       this.prisma.outbox.createMany({
         data: notify.map((d) => ({
           visitId,
+          businessId,
           channel: d.channel,
           template: d.template,
           recipient: d.recipient,
@@ -166,8 +183,13 @@ export class VisitLifecycleService {
   }
 
   /** Bina status change ke bhi live screens ko batana ho (jaise reception ka call task). */
-  announce(visit: Pick<Visit, 'id' | 'siteId' | 'status'>): void {
-    const event: VisitUpdatedEvent = { visitId: visit.id, siteId: visit.siteId, status: visit.status };
+  announce(visit: Pick<Visit, 'id' | 'businessId' | 'premisesId' | 'status'>): void {
+    const event: VisitUpdatedEvent = {
+      visitId: visit.id,
+      businessId: visit.businessId,
+      premisesId: visit.premisesId,
+      status: visit.status,
+    };
     this.events.emit(VISIT_UPDATED, event);
   }
 }

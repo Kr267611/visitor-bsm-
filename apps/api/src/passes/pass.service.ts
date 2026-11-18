@@ -3,7 +3,7 @@ import { createPrivateKey, createPublicKey, KeyObject, sign, verify } from 'node
 export interface PassPayload {
   /** Visit id */
   v: string;
-  /** Site id */
+  /** Premises id */
   s: string;
   /** Valid from, epoch seconds */
   f: number;
@@ -23,10 +23,10 @@ export class PassService {
     this.publicKey = createPublicKey(decodeKey(publicKeyB64));
   }
 
-  sign(input: { visitId: string; siteId: string; validFrom: Date; validTo: Date }): string {
+  sign(input: { visitId: string; premisesId: string; validFrom: Date; validTo: Date }): string {
     const payload: PassPayload = {
       v: input.visitId,
-      s: input.siteId,
+      s: input.premisesId,
       f: Math.floor(input.validFrom.getTime() / 1000),
       t: Math.floor(input.validTo.getTime() / 1000),
     };

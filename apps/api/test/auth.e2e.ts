@@ -47,7 +47,7 @@ describe('auth', () => {
   });
   beforeEach(async () => {
     await prisma.$executeRawUnsafe(
-      'TRUNCATE visit_events, outbox, refresh_tokens, devices, visits, visitors, users, gates, sites CASCADE',
+      'TRUNCATE audit_logs, visit_events, outbox, refresh_tokens, devices, visits, visitors, user_premises, users, departments, gates, premises_settings, premises, businesses CASCADE',
     );
     await redis.client.flushdb();
     sms.sent.length = 0;
@@ -62,7 +62,7 @@ describe('auth', () => {
     expect(res.body.accessToken).toBeTruthy();
     expect(res.body.refreshToken).toBeTruthy();
     expect(res.body.deviceId).toBeTruthy();
-    expect(res.body.user).toEqual({ id: user.id, name: user.name, role: 'guard', siteId: site.id });
+    expect(res.body.user).toEqual({ id: user.id, name: user.name, role: 'guard', businessId: site.businessId });
   });
 
   it('accepts other phone formats for the same user', async () => {

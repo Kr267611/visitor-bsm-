@@ -34,12 +34,12 @@ export class GateService {
 
   async scan(user: AuthUser, input: { qr: string; gateId: string; mode: ScanMode; clientEventId: string }) {
     const gate = await this.requireGate(user, input.gateId);
-    const replay = await this.replay(input.clientEventId);
+    const replay = await this.replay(input.clientEventId, user.businessId);
     if (replay) return replay;
 
     const pass = this.passes.verify(input.qr);
     if (!pass) throw new ApiException(422, 'INVALID_PASS', 'Yeh QR sahi nahi hai.');
-    if (pass.s !== gate.siteId) throw new ApiException(422, 'WRONG_SITE', 'Yeh pass is site ka nahi hai.');
+    if (pass.s !== gate.premisesId) throw new ApiException(422, 'WRONG_SITE', 'Yeh pass is premises ka nahi hai.');
 
     const visit = await this.loadVisit(pass.v);
     const action = { gate, user, clientEventId: input.clientEventId };
@@ -54,12 +54,12 @@ export class GateService {
     input: { gateId: string; clientEventId: string },
   ) {
     const gate = await this.requireGate(user, input.gateId);
-    const replay = await this.replay(input.clientEventId);
+    const replay = await this.replay(input.clientEventId, user.businessId);
     if (replay) return replay;
 
     const visit = await this.loadVisit(visitId);
-    if (visit.siteId !== user.siteId) {
-      throw new ApiException(403, 'FORBIDDEN', 'Yeh visit aapki site ka nahi hai.');
+    if (visit.businessId !== user.businessId || !user.premisesIds.includes(visit.premisesId)) {
+      throw new ApiException(403, 'FORBIDDEN', 'Yeh visit aapke premises ka nahi hai.');
     }
     const action = { gate, user, clientEventId: input.clientEventId, meta: { method: 'manual' } };
     return mode === 'IN' ? this.checkIn(visit, action) : this.checkOut(visit, action);
@@ -68,7 +68,7 @@ export class GateService {
   private async checkIn(visit: GateVisit, action: Action) {
     // Isi scan ka retry beech mein poora ho gaya ho sakta hai: pehle wahi dekho, warna galat "already inside".
     if (visit.status !== 'APPROVED') {
-      const replay = await this.replay(action.clientEventId);
+      const replay = await this.replay(action.clientEventId, action.user.businessId);
       if (replay) return replay;
     }
     this.assertCanEnter(visit);
@@ -92,7 +92,7 @@ export class GateService {
         ],
       });
     } catch (error) {
-      return this.afterConflict(error, visit.id, action.clientEventId);
+      return this.afterConflict(error, visit.id, action.clientEventId, action.user.businessId);
     }
     return this.result('CHECKED_IN', await this.loadVisit(visit.id));
   }
@@ -100,7 +100,7 @@ export class GateService {
   private async checkOut(visit: GateVisit, action: Action) {
     // Time khatam hone par bhi bahar jaane dena hai, isliye yahan window check nahi.
     if (visit.status !== 'CHECKED_IN') {
-      const replay = await this.replay(action.clientEventId);
+      const replay = await this.replay(action.clientEventId, action.user.businessId);
       if (replay) return replay;
       throw new ApiException(409, 'NOT_CHECKED_IN', 'Yeh visitor andar nahi hai.', { status: visit.status });
     }
@@ -116,7 +116,7 @@ export class GateService {
         patch: { checkedOutAt: new Date(), outGateId: action.gate.id },
       });
     } catch (error) {
-      return this.afterConflict(error, visit.id, action.clientEventId);
+      return this.afterConflict(error, visit.id, action.clientEventId, action.user.businessId);
     }
     return this.result('CHECKED_OUT', await this.loadVisit(visit.id));
   }
@@ -141,20 +141,21 @@ export class GateService {
   }
 
   /** Do requests ek saath aayin aur yeh haar gayi: same scan ka retry ho to success, warna saaf error. */
-  private async afterConflict(error: unknown, visitId: string, clientEventId: string) {
+  private async afterConflict(error: unknown, visitId: string, clientEventId: string, businessId: string | null) {
     const duplicate = error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
     if (!duplicate && !(error instanceof InvalidTransitionError)) throw error;
 
-    const replay = await this.replay(clientEventId);
+    const replay = await this.replay(clientEventId, businessId);
     if (replay) return replay;
     const fresh = await this.loadVisit(visitId);
     if (fresh.status === 'CHECKED_IN') throw this.alreadyInside(fresh);
     throw error;
   }
 
-  private async replay(clientEventId: string) {
+  private async replay(clientEventId: string, businessId: string | null) {
     const event = await this.prisma.visitEvent.findUnique({ where: { clientEventId } });
-    if (!event) return null;
+    // Doosre business ki event id se uska visit nahi dikhna chahiye.
+    if (!event || event.businessId !== businessId) return null;
     const visit = await this.loadVisit(event.visitId);
     return this.result(event.type === 'CHECK_OUT' ? 'CHECKED_OUT' : 'CHECKED_IN', visit);
   }
@@ -162,7 +163,9 @@ export class GateService {
   async requireGate(user: AuthUser, gateId: string): Promise<Gate> {
     const gate = await this.prisma.gate.findUnique({ where: { id: gateId } });
     if (!gate) throw new ApiException(422, 'VALIDATION_FAILED', 'Gate nahi mila.');
-    if (gate.siteId !== user.siteId) throw new ApiException(403, 'FORBIDDEN', 'Yeh gate aapki site ka nahi hai.');
+    if (gate.businessId !== user.businessId || !user.premisesIds.includes(gate.premisesId)) {
+      throw new ApiException(403, 'FORBIDDEN', 'Yeh gate aapke premises ka nahi hai.');
+    }
     return gate;
   }
 

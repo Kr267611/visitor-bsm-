@@ -12,7 +12,7 @@ function keys() {
 describe('PassService', () => {
   const input = {
     visitId: '11111111-1111-1111-1111-111111111111',
-    siteId: '22222222-2222-2222-2222-222222222222',
+    premisesId: '22222222-2222-2222-2222-222222222222',
     validFrom: new Date('2026-11-05T04:30:00Z'),
     validTo: new Date('2026-11-05T07:30:00Z'),
   };
@@ -22,7 +22,7 @@ describe('PassService', () => {
   it('sign then verify returns payload', () => {
     expect(service.verify(service.sign(input))).toEqual({
       v: input.visitId,
-      s: input.siteId,
+      s: input.premisesId,
       f: 1793853000,
       t: 1793863800,
     });

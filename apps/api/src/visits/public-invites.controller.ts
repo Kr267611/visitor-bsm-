@@ -53,11 +53,11 @@ export class PublicInvitesController {
       status: v.status,
       visitorName: v.status === 'INVITED' ? (v.invitedName ?? v.visitor.name) : v.visitor.name,
       hostName: v.host.name,
-      siteName: v.site.name,
+      siteName: v.premises.name,
       validFrom: v.validFrom.toISOString(),
       validTo: v.validTo.toISOString(),
       pass: hasPass
-        ? this.passes.sign({ visitId: v.id, siteId: v.siteId, validFrom: v.validFrom, validTo: v.validTo })
+        ? this.passes.sign({ visitId: v.id, premisesId: v.premisesId, validFrom: v.validFrom, validTo: v.validTo })
         : null,
     };
   }

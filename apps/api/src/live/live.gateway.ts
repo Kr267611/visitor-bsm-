@@ -20,17 +20,17 @@ export class LiveGateway implements OnGatewayConnection {
   async handleConnection(client: Socket): Promise<void> {
     const token: unknown = client.handshake.auth?.token;
     const user = typeof token === 'string' ? await this.sessions.resolve(token) : null;
-    if (!user?.siteId) {
+    if (!user?.premisesId) {
       client.disconnect(true);
       return;
     }
-    await client.join(`site:${user.siteId}`);
+    await client.join(`premises:${user.premisesId}`);
     client.emit('ready');
   }
 
   @OnEvent(VISIT_UPDATED)
   onVisitUpdated(event: VisitUpdatedEvent): void {
-    this.server.to(`site:${event.siteId}`).emit('visit.updated', {
+    this.server.to(`premises:${event.premisesId}`).emit('visit.updated', {
       visitId: event.visitId,
       status: event.status,
     });

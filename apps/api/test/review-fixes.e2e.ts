@@ -3,7 +3,7 @@ import { ExpoPushProvider } from '../src/notifications/push.provider';
 import { Msg91SmsProvider } from '../src/notifications/msg91-sms.provider';
 import { StorageService } from '../src/storage/storage.service';
 import { RetentionJob } from '../src/visits/retention.job';
-import { seedSite, seedUser, seedVisit } from './factories';
+import { seedBusiness, seedSite, seedUser, seedVisit } from './factories';
 import { createTestApp, resetData, TestContext, tokenFor } from './setup';
 
 const JPEG = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(50, 1)]);
@@ -126,7 +126,7 @@ describe('review fixes', () => {
       const { site } = await seedSite(ctx.prisma);
       const host = await seedUser(ctx.prisma, site.id);
       await ctx.prisma.visitor.create({
-        data: { phone: '+919876543210', name: 'Real Stored Name', company: 'Secret Co', photoKey: 'visitors/old/p.jpg' },
+        data: { businessId: site.businessId, phone: '+919876543210', name: 'Real Stored Name', company: 'Secret Co', photoKey: 'visitors/old/p.jpg' },
       });
       const token = await tokenFor(ctx, host.id);
       const res = await http()
@@ -191,8 +191,10 @@ describe('review fixes', () => {
       const storage = ctx.app.get(StorageService);
       await storage.put('visitors/x/old.jpg', JPEG, 'image/jpeg');
       await storage.put('visitors/x/new.jpg', JPEG, 'image/jpeg');
+      const biz = await seedBusiness(ctx.prisma);
       const oldOne = await ctx.prisma.visitor.create({
         data: {
+          businessId: biz.id,
           phone: '+919000000011',
           name: 'Old',
           photoKey: 'visitors/x/old.jpg',
@@ -203,6 +205,7 @@ describe('review fixes', () => {
       });
       const fresh = await ctx.prisma.visitor.create({
         data: {
+          businessId: biz.id,
           phone: '+919000000012',
           name: 'New',
           photoKey: 'visitors/x/new.jpg',
@@ -255,7 +258,7 @@ describe('review fixes', () => {
     it('GET /visits/:id says when an SMS finally failed', async () => {
       const { site } = await seedSite(ctx.prisma);
       const host = await seedUser(ctx.prisma, site.id);
-      const visit = await seedVisit(ctx.prisma, { siteId: site.id, hostId: host.id, status: 'INVITED' });
+      const visit = await seedVisit(ctx.prisma, { premisesId: site.id, hostId: host.id, status: 'INVITED' });
       const token = await tokenFor(ctx, host.id);
       const before = await http().get(`/visits/${visit.id}`).set(auth(token)).expect(200);
       expect(before.body.deliveryFailed).toBe(false);

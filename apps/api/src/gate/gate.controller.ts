@@ -54,8 +54,8 @@ export class GateController {
   }
 
   @Get('gate/visitors/lookup')
-  lookup(@Query('phone') phone = '') {
-    return this.walkIns.lookup(phone);
+  lookup(@CurrentUser() user: AuthUser, @Query('phone') phone = '') {
+    return this.walkIns.lookup(user, phone);
   }
 
   @Post('gate/walk-ins/otp')

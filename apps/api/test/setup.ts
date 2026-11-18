@@ -40,7 +40,7 @@ export async function tokenFor(ctx: TestContext, userId: string): Promise<string
 /** Har test se pehle saara data saaf. TRUNCATE par append-only trigger nahi chalta. */
 export async function resetData(ctx: TestContext): Promise<void> {
   await ctx.prisma.$executeRawUnsafe(
-    'TRUNCATE visit_events, outbox, refresh_tokens, devices, visits, visitors, users, gates, sites CASCADE',
+    'TRUNCATE audit_logs, visit_events, outbox, refresh_tokens, devices, visits, visitors, user_premises, users, departments, gates, premises_settings, premises, businesses CASCADE',
   );
   await ctx.redis.client.flushdb();
   ctx.sms.sent.length = 0;

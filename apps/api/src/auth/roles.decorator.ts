@@ -13,7 +13,12 @@ export const Public = () => SetMetadata(PUBLIC_KEY, true);
 export interface AuthUser {
   id: string;
   role: Role;
-  siteId: string | null;
+  /** Super admin ke liye null. */
+  businessId: string | null;
+  /** Abhi chuna hua premises. */
+  premisesId: string | null;
+  /** Jin premises ka access hai (admin: business ke saare). */
+  premisesIds: string[];
   deviceId: string;
 }
 

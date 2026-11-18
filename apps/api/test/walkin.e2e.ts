@@ -76,7 +76,7 @@ describe('walk-in', () => {
     const w = await world();
     const none = await http().get('/gate/visitors/lookup?phone=9876543210').set(auth(w.token)).expect(200);
     expect(none.body).toEqual({ found: false });
-    await ctx.prisma.visitor.create({ data: { phone: PHONE, name: 'Rahul Verma', company: 'ACME' } });
+    await ctx.prisma.visitor.create({ data: { businessId: w.site.businessId, phone: PHONE, name: 'Rahul Verma', company: 'ACME' } });
     const found = await http().get('/gate/visitors/lookup?phone=98765-43210').set(auth(w.token)).expect(200);
     expect(found.body).toEqual({ found: true, name: 'Rahul Verma', company: 'ACME', photoUrl: null });
   });
@@ -150,7 +150,7 @@ describe('walk-in', () => {
 
   it('known visitor can reuse saved photo', async () => {
     const w = await world();
-    await ctx.prisma.visitor.create({ data: { phone: PHONE, name: 'Rahul', photoKey: 'visitors/old/p.jpg' } });
+    await ctx.prisma.visitor.create({ data: { businessId: w.site.businessId, phone: PHONE, name: 'Rahul', photoKey: 'visitors/old/p.jpg' } });
     const res = await walkIn(w, { photoKey: undefined });
     expect(res.status).toBe(201);
     expect((await ctx.prisma.visitor.findFirstOrThrow()).photoKey).toBe('visitors/old/p.jpg');
@@ -311,7 +311,7 @@ describe('walk-in', () => {
 
   it('PRE visit cannot be approved', async () => {
     const w = await world();
-    const visit = await seedVisit(ctx.prisma, { status: 'INVITED', siteId: w.site.id, hostId: w.host.id });
+    const visit = await seedVisit(ctx.prisma, { status: 'INVITED', premisesId: w.site.id, hostId: w.host.id });
     await http().post(`/visits/${visit.id}/approve`).set(auth(await tokenFor(ctx, w.host.id))).send({}).expect(409);
   });
 });

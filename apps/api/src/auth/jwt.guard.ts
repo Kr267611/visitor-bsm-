@@ -23,13 +23,34 @@ export class SessionResolver {
     // Device revoke hote hi access band ho, 15 minute ka intezaar nahi.
     const device = await this.prisma.device.findUnique({
       where: { id: payload.deviceId },
-      include: { user: true },
+      include: {
+        user: {
+          include: {
+            business: { select: { isActive: true } },
+            premises: { select: { premisesId: true, premises: { select: { isDefault: true } } } },
+          },
+        },
+      },
     });
     if (!device || device.revokedAt || !device.user.isActive || device.userId !== payload.sub) return null;
+    const user = device.user;
+    // Business band ho to uske log bhi andar nahi aa sakte.
+    if (user.businessId && !user.business?.isActive) return null;
+
+    let premises = user.premises.map((p) => ({ id: p.premisesId, isDefault: p.premises.isDefault }));
+    if (user.role === 'admin' && user.businessId) {
+      premises = await this.prisma.premises.findMany({
+        where: { businessId: user.businessId },
+        select: { id: true, isDefault: true },
+      });
+    }
+    const active = premises.find((p) => p.isDefault) ?? premises[0];
     return {
-      id: device.user.id,
-      role: device.user.role,
-      siteId: device.user.siteId,
+      id: user.id,
+      role: user.role,
+      businessId: user.businessId,
+      premisesId: active?.id ?? null,
+      premisesIds: premises.map((p) => p.id),
       deviceId: device.id,
     };
   }

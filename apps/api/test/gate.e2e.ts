@@ -21,10 +21,10 @@ describe('gate', () => {
     const { site, gate } = await seedSite(ctx.prisma);
     const host = await seedUser(ctx.prisma, site.id, 'employee', { name: 'Anita Singh' });
     const guard = await seedUser(ctx.prisma, site.id, 'guard');
-    const visit = await seedVisit(ctx.prisma, { siteId: site.id, hostId: host.id, ...visitOver });
+    const visit = await seedVisit(ctx.prisma, { premisesId: site.id, hostId: host.id, ...visitOver });
     const qr = ctx.app.get(PassService).sign({
       visitId: visit.id,
-      siteId: site.id,
+      premisesId: site.id,
       validFrom: visit.validFrom,
       validTo: visit.validTo,
     });
@@ -158,7 +158,7 @@ describe('gate', () => {
 
   it('two gates parallel: one 200, one 409, one event', async () => {
     const w = await world();
-    const gate2 = await ctx.prisma.gate.create({ data: { siteId: w.site.id, name: 'Gate 2' } });
+    const gate2 = await ctx.prisma.gate.create({ data: { businessId: w.site.businessId, premisesId: w.site.id, name: 'Gate 2' } });
     const [a, b] = await Promise.all([
       scan(w.token, { qr: w.qr, gateId: w.gate.id, mode: 'IN' }),
       scan(w.token, { qr: w.qr, gateId: gate2.id, mode: 'IN' }),

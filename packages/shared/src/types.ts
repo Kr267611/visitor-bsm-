@@ -1,4 +1,4 @@
-export type Role = 'guard' | 'employee' | 'reception' | 'security' | 'admin';
+export type Role = 'super_admin' | 'guard' | 'employee' | 'reception' | 'security' | 'admin';
 
 import type { VisitStatus } from './status';
 

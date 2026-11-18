@@ -14,7 +14,7 @@ const MAX_WINDOW_MS = 24 * 60 * 60 * 1000;
 const SITE_STAFF = ['guard', 'reception', 'security', 'admin'];
 const DESK_STAFF = ['reception', 'admin'];
 
-export const VISIT_INCLUDE = { visitor: true, host: true, site: true } as const;
+export const VISIT_INCLUDE = { visitor: true, host: true, premises: true } as const;
 export type VisitWithPeople = Prisma.VisitGetPayload<{ include: typeof VISIT_INCLUDE }>;
 
 const forbidden = () => new ApiException(403, 'FORBIDDEN', 'Aapko iski permission nahi hai.');
@@ -36,7 +36,10 @@ export class VisitsService {
   ) {}
 
   async invite(user: AuthUser, input: InviteInput): Promise<Visit> {
-    if (!user.siteId) throw new ApiException(422, 'VALIDATION_FAILED', 'Aapke account par site set nahi hai.');
+    if (!user.businessId || !user.premisesId) {
+      throw new ApiException(422, 'VALIDATION_FAILED', 'Aapke account par premises set nahi hai.');
+    }
+    const { businessId, premisesId } = user;
     const phone = requirePhone(input.visitorPhone);
     if (input.validTo <= input.validFrom || input.validTo <= new Date()) {
       throw new ApiException(422, 'VALIDATION_FAILED', 'Khatam hone ka time shuru hone ke baad ka hona chahiye.');
@@ -47,18 +50,20 @@ export class VisitsService {
 
     // Purana visitor ho to uska naam nahi badalte, visitor khud form mein theek karega.
     const visitor = await this.prisma.visitor.upsert({
-      where: { phone },
+      where: { businessId_phone: { businessId, phone } },
       update: {},
-      create: { phone, name: input.visitorName },
+      create: { businessId, phone, name: input.visitorName },
     });
-    const host = await this.prisma.user.findUniqueOrThrow({ where: { id: user.id }, include: { site: true } });
+    const host = await this.prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+    const premises = await this.prisma.premises.findUniqueOrThrow({ where: { id: premisesId } });
     const { token, hash } = newInviteToken();
 
     return this.lifecycle.create({
       data: {
         visitorId: visitor.id,
         hostId: user.id,
-        siteId: user.siteId,
+        businessId,
+        premisesId,
         type: 'PRE',
         purpose: input.purpose,
         invitedName: input.visitorName,
@@ -73,17 +78,17 @@ export class VisitsService {
           channel: 'SMS',
           template: 'INVITE_LINK',
           recipient: phone,
-          vars: { hostName: host.name, siteName: host.site?.name ?? '', link: inviteLink(token) },
+          vars: { hostName: host.name, siteName: premises.name, link: inviteLink(token) },
         },
       ],
     });
   }
 
   async list(user: AuthUser, q: { scope: 'mine' | 'site'; date?: string; status?: VisitStatus }) {
-    const where: Prisma.VisitWhereInput = {};
+    const where: Prisma.VisitWhereInput = { businessId: user.businessId ?? '' };
     if (q.scope === 'site') {
       if (!SITE_STAFF.includes(user.role)) throw forbidden();
-      where.siteId = user.siteId ?? undefined;
+      where.premisesId = user.premisesId ?? '';
     } else {
       where.OR = [{ hostId: user.id }, { host: { delegateId: user.id } }];
     }
@@ -146,19 +151,23 @@ export class VisitsService {
     const link = inviteLink(token);
     await this.prisma.$transaction([
       this.prisma.visit.update({ where: { id }, data: { inviteTokenHash: hash } }),
-      this.prisma.visitEvent.create({ data: { visitId: id, type: 'INVITE_RESENT', actorId: user.id } }),
+      this.prisma.visitEvent.create({
+        data: { visitId: id, businessId: visit.businessId, type: 'INVITE_RESENT', actorId: user.id },
+      }),
       this.prisma.outbox.create({
         data:
           visit.status === 'INVITED'
             ? {
                 visitId: id,
+                businessId: visit.businessId,
                 channel: 'SMS',
                 template: 'INVITE_LINK',
                 recipient: visit.visitor.phone,
-                vars: { hostName: visit.host.name, siteName: visit.site.name, link },
+                vars: { hostName: visit.host.name, siteName: visit.premises.name, link },
               }
             : {
                 visitId: id,
+                businessId: visit.businessId,
                 channel: 'SMS',
                 template: 'PASS_READY',
                 recipient: visit.visitor.phone,
@@ -175,11 +184,12 @@ export class VisitsService {
   }
 
   isHostOrDelegate(user: AuthUser, visit: VisitWithPeople): boolean {
+    if (visit.businessId !== user.businessId) return false;
     return visit.hostId === user.id || visit.host.delegateId === user.id;
   }
 
   isSiteStaff(user: AuthUser, visit: Visit, roles: string[]): boolean {
-    return roles.includes(user.role) && user.siteId === visit.siteId;
+    return roles.includes(user.role) && visit.businessId === user.businessId && user.premisesIds.includes(visit.premisesId);
   }
 
   toSummary(v: VisitWithPeople): VisitSummary {

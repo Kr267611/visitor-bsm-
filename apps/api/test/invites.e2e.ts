@@ -64,7 +64,7 @@ describe('invites', () => {
     expect(body.code).toMatch(/^VIS-\d{4}-\d{5}$/);
     const visit = await ctx.prisma.visit.findUniqueOrThrow({ where: { id: body.id } });
     expect(visit.hostId).toBe(user.id);
-    expect(visit.siteId).toBe(site.id);
+    expect(visit.premisesId).toBe(site.id);
     expect(await ctx.prisma.visitEvent.count({ where: { visitId: body.id, type: 'CREATED' } })).toBe(1);
     const box = await ctx.prisma.outbox.findFirstOrThrow({ where: { visitId: body.id } });
     expect(box.template).toBe('INVITE_LINK');

@@ -16,19 +16,40 @@ const USERS: { name: string; phone: string; role: Role }[] = [
 ];
 
 async function main() {
-  const site =
-    (await prisma.site.findFirst({ where: { name: 'Main Site' } })) ??
-    (await prisma.site.create({ data: { name: 'Main Site', address: 'Test address' } }));
-  const gate = await prisma.gate.findFirst({ where: { siteId: site.id, name: 'Main Gate 1' } });
-  if (!gate) await prisma.gate.create({ data: { siteId: site.id, name: 'Main Gate 1' } });
-  for (const user of USERS) {
-    await prisma.user.upsert({
-      where: { phone: user.phone },
-      update: {},
-      create: { ...user, siteId: site.id },
+  const plan = await prisma.plan.findUniqueOrThrow({ where: { code: 'standard' } });
+  const business = await prisma.business.upsert({
+    where: { slug: 'bsm' },
+    update: {},
+    create: { name: 'BSM', slug: 'bsm', planId: plan.id },
+  });
+  let premises = await prisma.premises.findFirst({ where: { businessId: business.id, isDefault: true } });
+  if (!premises) {
+    premises = await prisma.premises.create({
+      data: {
+        businessId: business.id,
+        name: 'Main Site',
+        address: 'Test address',
+        code: 'BSM001',
+        webSlug: 'main-site',
+        isDefault: true,
+        setting: { create: { businessId: business.id } },
+      },
     });
   }
-  console.log(`Seed ho gaya: ${USERS.length} users, site "${site.name}"`);
+  const gate = await prisma.gate.findFirst({ where: { premisesId: premises.id, name: 'Main Gate 1' } });
+  if (!gate) await prisma.gate.create({ data: { businessId: business.id, premisesId: premises.id, name: 'Main Gate 1' } });
+  for (const user of USERS) {
+    await prisma.user.upsert({
+      where: { businessId_phone: { businessId: business.id, phone: user.phone } },
+      update: {},
+      create: {
+        ...user,
+        businessId: business.id,
+        premises: { create: { premisesId: premises.id, businessId: business.id } },
+      },
+    });
+  }
+  console.log(`Seed ho gaya: business "${business.name}", ${USERS.length} users, premises "${premises.name}"`);
 }
 
 main().finally(() => prisma.$disconnect());

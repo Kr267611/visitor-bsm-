@@ -11,9 +11,12 @@ const pushTokenSchema = z.object({ pushToken: z.string().min(1).max(300) });
 export class DevicesController {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Security sirf apni site ke devices. Admin sab. */
+  /** Admin poore business ke devices, security sirf apne premises ke logon ke. */
   private scope(user: AuthUser) {
-    return user.role === 'admin' ? {} : { user: { siteId: user.siteId } };
+    const businessId = user.businessId ?? '';
+    return user.role === 'admin'
+      ? { user: { businessId } }
+      : { user: { businessId, premises: { some: { premisesId: { in: user.premisesIds } } } } };
   }
 
   @Post('devices/push-token')

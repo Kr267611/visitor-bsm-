@@ -58,7 +58,7 @@ describe('live', () => {
 
     const seenByB: unknown[] = [];
     socketB.on('visit.updated', (e) => seenByB.push(e));
-    const visit = await seedVisit(ctx.prisma, { siteId: a.site.id });
+    const visit = await seedVisit(ctx.prisma, { premisesId: a.site.id });
     const received = once<{ visitId: string; status: string }>(socketA, 'visit.updated');
     await ctx.app.get(VisitLifecycleService).apply({ visitId: visit.id, action: 'CHECK_IN', actorId: null });
 
@@ -73,7 +73,7 @@ describe('live', () => {
     const guard = await seedUser(ctx.prisma, site.id, 'guard');
     const socket = connect(await tokenFor(ctx, guard.id));
     await ready(socket);
-    const visit = await seedVisit(ctx.prisma, { siteId: site.id });
+    const visit = await seedVisit(ctx.prisma, { premisesId: site.id });
     const received = once<object>(socket, 'visit.updated');
     await ctx.app.get(VisitLifecycleService).apply({ visitId: visit.id, action: 'CHECK_IN', actorId: null });
     expect(await received).toEqual({ visitId: visit.id, status: 'CHECKED_IN' });
@@ -84,7 +84,7 @@ describe('live', () => {
     const other = await seedSite(ctx.prisma, 'Other');
     const desk = await seedUser(ctx.prisma, site.id, 'reception');
     const host = await seedUser(ctx.prisma, site.id, 'employee', { name: 'Anita', phone: '+919811111111' });
-    const on = { siteId: site.id, hostId: host.id };
+    const on = { premisesId: site.id, hostId: host.id };
     const inside = await seedVisit(ctx.prisma, { ...on, status: 'CHECKED_IN' });
     const expected = await seedVisit(ctx.prisma, { ...on, status: 'APPROVED' });
     const invited = await seedVisit(ctx.prisma, { ...on, status: 'INVITED' });
@@ -92,7 +92,7 @@ describe('live', () => {
     const call = await seedVisit(ctx.prisma, { ...on, status: 'PENDING_APPROVAL' });
     await ctx.prisma.visit.update({ where: { id: call.id }, data: { receptionCallRequestedAt: new Date() } });
     await seedVisit(ctx.prisma, { ...on, status: 'CHECKED_OUT' });
-    await seedVisit(ctx.prisma, { siteId: other.site.id, status: 'CHECKED_IN' });
+    await seedVisit(ctx.prisma, { premisesId: other.site.id, status: 'CHECKED_IN' });
 
     const res = await http().get('/dashboard/live').set('Authorization', `Bearer ${await tokenFor(ctx, desk.id)}`).expect(200);
     const ids = (k: string) => res.body[k].map((v: { id: string }) => v.id).sort();
@@ -120,7 +120,7 @@ describe('live', () => {
   it('expected uses IST day: 00:30 IST visit counted in that IST day', async () => {
     const { site } = await seedSite(ctx.prisma);
     const desk = await seedUser(ctx.prisma, site.id, 'reception');
-    const on = { siteId: site.id, status: 'APPROVED' as const };
+    const on = { premisesId: site.id, status: 'APPROVED' as const };
     // 5 Nov 00:30 IST = 4 Nov 19:00 UTC
     const early = await seedVisit(ctx.prisma, {
       ...on,
@@ -147,7 +147,7 @@ describe('live', () => {
 
   it('needsCall only pending with reception_call_requested_at', async () => {
     const { site } = await seedSite(ctx.prisma);
-    const v = await seedVisit(ctx.prisma, { siteId: site.id, status: 'APPROVED' });
+    const v = await seedVisit(ctx.prisma, { premisesId: site.id, status: 'APPROVED' });
     await ctx.prisma.visit.update({ where: { id: v.id }, data: { receptionCallRequestedAt: new Date() } });
     const data = await ctx.app.get(DashboardService).live(site.id);
     expect(data.needsCall).toHaveLength(0);
@@ -155,12 +155,12 @@ describe('live', () => {
 
   it('expiry moves old INVITED/APPROVED/PENDING, leaves CHECKED_IN', async () => {
     const { site } = await seedSite(ctx.prisma);
-    const past = { siteId: site.id, validFrom: new Date(Date.now() - 7_200_000), validTo: new Date(Date.now() - 60_000) };
+    const past = { premisesId: site.id, validFrom: new Date(Date.now() - 7_200_000), validTo: new Date(Date.now() - 60_000) };
     const a = await seedVisit(ctx.prisma, { ...past, status: 'INVITED' });
     const b = await seedVisit(ctx.prisma, { ...past, status: 'APPROVED' });
     const c = await seedVisit(ctx.prisma, { ...past, status: 'PENDING_APPROVAL' });
     const stay = await seedVisit(ctx.prisma, { ...past, status: 'CHECKED_IN' });
-    const future = await seedVisit(ctx.prisma, { siteId: site.id, status: 'APPROVED' });
+    const future = await seedVisit(ctx.prisma, { premisesId: site.id, status: 'APPROVED' });
 
     expect(await ctx.app.get(ExpiryJob).run()).toBe(3);
     const status = async (id: string) => (await ctx.prisma.visit.findUniqueOrThrow({ where: { id } })).status;

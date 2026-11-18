@@ -20,21 +20,29 @@ export class AuthService {
     private readonly otp: OtpService,
   ) {}
 
+  /** F3 mein yahan kai businesses ka chunav aayega; abhi pehla active account. */
+  private activeUserByPhone(phone: string) {
+    return this.prisma.user.findFirst({
+      where: { phone, isActive: true, OR: [{ businessId: null }, { business: { isActive: true } }] },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
   async requestOtp(phone: string): Promise<void> {
-    const user = await this.prisma.user.findUnique({ where: { phone } });
+    const user = await this.activeUserByPhone(phone);
     if (!user?.isActive) return; // Bahar wale ko pata na chale kaun employee hai.
     await this.otp.request(phone, 'LOGIN_OTP');
   }
 
   async verifyOtp(phone: string, otp: string, deviceName: string) {
-    const user = await this.prisma.user.findUnique({ where: { phone } });
+    const user = await this.activeUserByPhone(phone);
     const ok = user?.isActive && (await this.otp.verify(phone, otp, 'LOGIN_OTP'));
     if (!user || !ok) throw new ApiException(401, 'INVALID_OTP', 'OTP sahi nahi hai.');
 
     const device = await this.prisma.device.create({ data: { userId: user.id, name: deviceName } });
     return {
       ...(await this.issueTokens(user, device.id)),
-      user: { id: user.id, name: user.name, role: user.role, siteId: user.siteId },
+      user: { id: user.id, name: user.name, role: user.role, businessId: user.businessId },
       deviceId: device.id,
     };
   }

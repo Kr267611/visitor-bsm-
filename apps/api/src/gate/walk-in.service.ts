@@ -36,8 +36,10 @@ export class WalkInService {
     private readonly gates: GateService,
   ) {}
 
-  async lookup(rawPhone: string) {
-    const visitor = await this.prisma.visitor.findUnique({ where: { phone: requirePhone(rawPhone) } });
+  async lookup(user: AuthUser, rawPhone: string) {
+    const visitor = await this.prisma.visitor.findUnique({
+      where: { businessId_phone: { businessId: user.businessId ?? '', phone: requirePhone(rawPhone) } },
+    });
     if (!visitor) return { found: false };
     return {
       found: true,
@@ -64,11 +66,20 @@ export class WalkInService {
     if (!input.consent) {
       throw new ApiException(422, 'CONSENT_REQUIRED', 'Visitor ki sahmati ke bina entry nahi ho sakti.');
     }
-    const host = await this.prisma.user.findUnique({ where: { id: input.hostId } });
-    if (!host?.isActive || host.siteId !== gate.siteId) {
-      throw new ApiException(422, 'VALIDATION_FAILED', 'Host is site ka active employee hona chahiye.');
+    const host = await this.prisma.user.findFirst({
+      where: {
+        id: input.hostId,
+        businessId: gate.businessId,
+        isActive: true,
+        premises: { some: { premisesId: gate.premisesId } },
+      },
+    });
+    if (!host) {
+      throw new ApiException(422, 'VALIDATION_FAILED', 'Host is premises ka active employee hona chahiye.');
     }
-    const known = await this.prisma.visitor.findUnique({ where: { phone } });
+    const known = await this.prisma.visitor.findUnique({
+      where: { businessId_phone: { businessId: gate.businessId, phone } },
+    });
     const photoKey = await this.resolvePhoto(user, input.photoKey, known?.photoKey ?? null);
 
     // OTP sabse aakhir mein, taaki baaki galti par OTP bekaar na jaye.
@@ -86,9 +97,9 @@ export class WalkInService {
       deleteAfter: new Date(consentAt.getTime() + RETENTION_DAYS * 24 * 60 * 60 * 1000),
     };
     const visitor = await this.prisma.visitor.upsert({
-      where: { phone },
+      where: { businessId_phone: { businessId: gate.businessId, phone } },
       update: details,
-      create: { phone, ...details },
+      create: { businessId: gate.businessId, phone, ...details },
     });
 
     const now = new Date();
@@ -96,7 +107,8 @@ export class WalkInService {
       data: {
         visitorId: visitor.id,
         hostId: host.id,
-        siteId: gate.siteId,
+        businessId: gate.businessId,
+        premisesId: gate.premisesId,
         type: 'WALKIN',
         purpose: input.purpose,
         status: 'PENDING_APPROVAL',

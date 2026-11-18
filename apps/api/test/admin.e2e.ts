@@ -23,7 +23,7 @@ describe('admin', () => {
     const res = await http()
       .post('/admin/users')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: 'Amit', phone: '98765 43210', role: 'guard', siteId: site.id })
+      .send({ name: 'Amit', phone: '98765 43210', role: 'guard', premisesIds: [site.id] })
       .expect(201);
     expect(res.body.phone).toBe('+919876543210');
     expect(res.body.isActive).toBe(true);
@@ -31,7 +31,7 @@ describe('admin', () => {
 
   it('duplicate phone rejected', async () => {
     const { site, token } = await adminSetup();
-    const body = { name: 'Amit', phone: '9876543210', role: 'guard', siteId: site.id };
+    const body = { name: 'Amit', phone: '9876543210', role: 'guard', premisesIds: [site.id] };
     await http().post('/admin/users').set('Authorization', `Bearer ${token}`).send(body).expect(201);
     const res = await http().post('/admin/users').set('Authorization', `Bearer ${token}`).send(body);
     expect(res.status).toBe(422);
@@ -43,7 +43,7 @@ describe('admin', () => {
     await http()
       .post('/admin/users')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: 'Amit', phone: '9876543210', role: 'boss', siteId: site.id })
+      .send({ name: 'Amit', phone: '9876543210', role: 'boss', premisesIds: [site.id] })
       .expect(422);
   });
 
@@ -69,16 +69,16 @@ describe('admin', () => {
   it('admin manages sites and gates', async () => {
     const { token } = await adminSetup();
     const site = await http()
-      .post('/admin/sites')
+      .post('/admin/premises')
       .set('Authorization', `Bearer ${token}`)
       .send({ name: 'Plant 2', address: 'Surat' })
       .expect(201);
     const gate = await http()
       .post('/admin/gates')
       .set('Authorization', `Bearer ${token}`)
-      .send({ siteId: site.body.id, name: 'Gate 2' })
+      .send({ premisesId: site.body.id, name: 'Gate 2' })
       .expect(201);
-    expect(gate.body.siteId).toBe(site.body.id);
+    expect(gate.body.premisesId).toBe(site.body.id);
     const list = await http().get('/admin/gates').set('Authorization', `Bearer ${token}`).expect(200);
     expect(list.body.map((g: { name: string }) => g.name)).toContain('Gate 2');
     const patched = await http()

@@ -88,16 +88,16 @@ describe('VisitLifecycleService', () => {
     const outside = new PrismaClient();
     const seen: string[] = [];
     const seenPromise = new Promise<void>((resolve) => {
-      ctx.app.get(EventEmitter2).once('visit.updated', async (e: { visitId: string; siteId: string; status: string }) => {
+      ctx.app.get(EventEmitter2).once('visit.updated', async (e: { visitId: string; premisesId: string; status: string }) => {
         const row = await outside.visit.findUniqueOrThrow({ where: { id: e.visitId } });
-        seen.push(row.status, e.status, e.siteId);
+        seen.push(row.status, e.status, e.premisesId);
         resolve();
       });
     });
     await lifecycle.apply({ visitId: visit.id, action: 'CHECK_IN', actorId: null });
     await seenPromise;
     await outside.$disconnect();
-    expect(seen).toEqual(['CHECKED_IN', 'CHECKED_IN', visit.siteId]);
+    expect(seen).toEqual(['CHECKED_IN', 'CHECKED_IN', visit.premisesId]);
   });
 
   it('failed apply emits nothing', async () => {
