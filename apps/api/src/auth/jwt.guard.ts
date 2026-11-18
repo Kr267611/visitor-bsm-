@@ -15,7 +15,7 @@ export class SessionResolver {
   ) {}
 
   async resolve(token: string): Promise<AuthUser | null> {
-    let payload: { sub: string; deviceId: string };
+    let payload: { sub: string; deviceId: string; businessId?: string | null };
     try {
       payload = await this.jwt.verifyAsync(token);
     } catch {
@@ -37,6 +37,8 @@ export class SessionResolver {
     const user = device.user;
     // Business band ho to uske log bhi andar nahi aa sakte.
     if (user.businessId && !user.business?.isActive) return null;
+    // Token jis business ke liye bana tha, user ab bhi usi mein ho.
+    if (payload.businessId !== undefined && payload.businessId !== user.businessId) return null;
 
     let premises = user.premises.map((p) => ({ id: p.premisesId, isDefault: p.premises.isDefault }));
     if (user.role === 'admin' && user.businessId) {
@@ -76,6 +78,14 @@ export class JwtGuard implements CanActivate {
     const header: string | undefined = req.headers.authorization;
     const user = header?.startsWith('Bearer ') ? await this.sessions.resolve(header.slice(7)) : null;
     if (!user) throw new ApiException(401, 'UNAUTHORIZED', 'Dobara login karein.');
+    // App premises badalne ke liye X-Premises-Id bhejti hai; sirf apne premises allowed.
+    const wanted = req.headers['x-premises-id'];
+    if (typeof wanted === 'string' && wanted) {
+      if (!user.premisesIds.includes(wanted)) {
+        throw new ApiException(403, 'PREMISES_FORBIDDEN', 'Is premises ka access aapke paas nahi hai.');
+      }
+      user.premisesId = wanted;
+    }
     req.user = user;
     // Is request ke scoped database queries ab sirf isi business tak.
     fillContext({

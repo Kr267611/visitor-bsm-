@@ -2,7 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { DevicesController } from '../devices/devices.controller';
-import { AuthController } from './auth.controller';
+import { AuthController, PasswordController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtGuard, SessionResolver } from './jwt.guard';
 import { OtpService } from './otp.service';
@@ -18,7 +18,7 @@ import { RolesGuard } from './roles.guard';
       }),
     }),
   ],
-  controllers: [AuthController, DevicesController],
+  controllers: [AuthController, PasswordController, DevicesController],
   providers: [
     AuthService,
     OtpService,

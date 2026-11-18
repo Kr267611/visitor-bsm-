@@ -52,7 +52,15 @@ export async function seedUser(
   prisma: PrismaService,
   premisesId: string,
   role: 'guard' | 'employee' | 'reception' | 'security' | 'admin' = 'employee',
-  overrides: Partial<{ name: string; phone: string; isActive: boolean; delegateId: string; isHost: boolean }> = {},
+  overrides: Partial<{
+    name: string;
+    phone: string;
+    email: string;
+    isActive: boolean;
+    delegateId: string;
+    isHost: boolean;
+    passwordHash: string;
+  }> = {},
 ) {
   const { businessId } = await prisma.premises.findUniqueOrThrow({ where: { id: premisesId } });
   return prisma.user.create({
