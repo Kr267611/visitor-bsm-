@@ -1,14 +1,15 @@
 # Visitor BSM
 
-Company ka visitor management system: API, web app aur mobile app.
+Multi-business visitor management system: NestJS API, React web app and Expo mobile app.
 
-- Design: [docs/design/visitor-bsm-design.html](docs/design/visitor-bsm-design.html)
-- Plans: [docs/superpowers/plans](docs/superpowers/plans)
+- Architecture: [docs/superpowers/specs/2026-11-18-vms-architecture-design.md](docs/superpowers/specs/2026-11-18-vms-architecture-design.md)
+- Deployment plan: [docs/deployment-plan.md](docs/deployment-plan.md)
 - Operations: [docs/runbook.md](docs/runbook.md)
+- Acceptance checklist: [docs/phase1-acceptance.md](docs/phase1-acceptance.md)
 
 ## Local setup
 
-Node 22+ aur pnpm 10 chahiye.
+Requires Node 22+ and pnpm 10.
 
 ```bash
 pnpm install
@@ -16,7 +17,7 @@ bash scripts/setup-redis.sh
 pnpm services
 ```
 
-`pnpm services` Docker ke bina PostgreSQL (5433) aur Redis (6380) chalata hai, Windows par. Mac ya Linux par, ya Docker ho to, iski jagah `docker compose up -d` chalayein. Ise chalta chhod kar doosre terminal mein:
+`pnpm services` runs PostgreSQL (port 5433) and Redis (port 6380) on Windows without Docker. On macOS or Linux, or if you have Docker, run `docker compose up -d` instead. Leave it running and open a second terminal:
 
 ```bash
 cp .env.example apps/api/.env
@@ -24,17 +25,17 @@ cd apps/api
 npx tsx scripts/gen-qr-keys.ts >> .env
 ```
 
-Ab `apps/api/.env` mein `JWT_SECRET=change-me` ko koi lamba random text karein, warna server start nahi hoga. Phir:
+In `apps/api/.env`, replace `JWT_SECRET=change-me` with a long random value; the server refuses to start otherwise. Then:
 
 ```bash
 npx prisma migrate deploy
-npx tsx prisma/seed.ts
+npx tsx --env-file=.env prisma/seed.ts
 pnpm dev
 ```
 
-Web app ke liye doosre terminal mein `pnpm --filter web dev`, phir http://localhost:5173 kholein.
+For the web app, run `pnpm --filter web dev` in another terminal and open http://localhost:5173.
 
-Seed ke test accounts ke numbers `apps/api/prisma/seed.ts` mein hain. `SMS_PROVIDER=console` par OTP terminal mein dikhta hai.
+The seed creates the business "BSM" with one premises and test accounts (numbers are in `apps/api/prisma/seed.ts`). With `SMS_PROVIDER=console`, OTPs are printed in the API terminal. Users can then set a password under **Password** in the side menu.
 
 ## Tests
 
@@ -42,8 +43,10 @@ Seed ke test accounts ke numbers `apps/api/prisma/seed.ts` mein hain. `SMS_PROVI
 pnpm --filter @visitor/shared test
 pnpm --filter api test
 pnpm --filter api test:e2e
+pnpm --filter web test
+pnpm --filter mobile test
 ```
 
 ## Deploy
 
-Render par `render.yaml` Blueprint se: API, web app, Postgres aur Redis sab ek saath banenge. Web app chaho to Vercel par bhi chal sakta hai (`apps/web/vercel.json`). Asli launch se pehle [runbook](docs/runbook.md) ki Launch checklist poori karein.
+See [docs/deployment-plan.md](docs/deployment-plan.md). In short: the API, PostgreSQL and Redis run on Render (`render.yaml` Blueprint), the web app runs on Render or Vercel, and the mobile app is built with Expo EAS. Complete the launch checklist in the [runbook](docs/runbook.md) before real visitors use the system.

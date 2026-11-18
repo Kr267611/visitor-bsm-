@@ -1,4 +1,4 @@
-// Docker ke bina local PostgreSQL (5433) aur Redis (6380) chalata hai. Data `.tools/` mein rehta hai.
+// Runs local PostgreSQL (5433) and Redis (6380) without Docker. Data lives in `.tools/`.
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -9,7 +9,7 @@ const pgDir = resolve(tools, 'pgdata');
 const redisExe = resolve(tools, 'redis', 'redis-server.exe');
 
 if (!existsSync(redisExe)) {
-  console.error('Redis nahi mila. Pehle chalayein: bash scripts/setup-redis.sh');
+  console.error('Redis not found. Run this first: bash scripts/setup-redis.sh');
   process.exit(1);
 }
 

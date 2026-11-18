@@ -1,51 +1,58 @@
 # Phase 1 acceptance checklist
 
-Staging par asli phones ke saath: guard phone, host phone, visitor phone, aur desk browser. Har item ke saamne pass ya fail likhein.
+Run on staging with real devices: a guard phone, a host phone, a visitor phone and a desk browser. Mark each item pass or fail.
 
-## A. Pehle se invite kiya hua visitor
+## A. Pre-invited visitor
 
-- [ ] Host app aur web dono se invite banta hai.
-- [ ] Visitor ko SMS par link milta hai, koi app install nahi.
-- [ ] Visitor ki camera photo upload hoti hai, consent ke bina pass nahi banta.
-- [ ] Pass par QR, host, site aur time sahi dikhta hai.
-- [ ] Guard QR scan karta hai, photo aur naam dikhta hai, poora kaam 30 second se kam mein.
-- [ ] Host ko push aata hai: visitor gate par aa gaye.
-- [ ] Desk par visitor "Andar hain" mein bina refresh aa jata hai.
+- [ ] A host can create an invite from both the app and the web.
+- [ ] The visitor receives an SMS link; no app install is needed.
+- [ ] The visitor's camera photo uploads; no pass is issued without consent.
+- [ ] The pass shows the QR, host, premises and time correctly.
+- [ ] The guard scans the QR and sees the photo and name; the whole flow takes under 30 seconds.
+- [ ] The host gets a push: the visitor has arrived at the gate.
+- [ ] The visitor appears under "Inside" on the desk without a refresh.
 
 ## B. Walk-in
 
-- [ ] Purana visitor: number daalte hi details aa jati hain.
-- [ ] Naya visitor: OTP, photo, host aur consent ke bina entry nahi.
-- [ ] Host ko push aata hai, approve karte hi guard ki screen badalti hai.
-- [ ] Host ka note guard ko dikhta hai.
-- [ ] Reject par check-in ka button nahi aata.
-- [ ] Jawab na aaye: 90 second par reminder, 3 minute par backup person, 5 minute par desk par "Host ko call karein".
-- [ ] App ke bina host ko SMS link milta hai aur web se approve ho jata hai.
+- [ ] Returning visitor: details fill in as soon as the number is entered.
+- [ ] New visitor: no entry without OTP, photo, host and consent.
+- [ ] The host gets a push; approving updates the guard's screen immediately.
+- [ ] The guard sees the host's note.
+- [ ] After a rejection, no check-in button is shown.
+- [ ] No response: reminder at 90 seconds, backup person at 3 minutes, "Call the host" on the desk at 5 minutes.
+- [ ] Without the app, the host gets an SMS link and can approve on the web.
 
 ## C. Check-out
 
-- [ ] Gate par "Bahar" mode mein QR scan se check-out.
-- [ ] Time khatam hone ke baad bhi check-out hota hai.
-- [ ] Desk aur guard app dono se bina QR check-out.
+- [ ] Check-out by scanning the QR in "Exit" mode at the gate.
+- [ ] Check-out still works after the pass time has ended.
+- [ ] Check-out without QR from both the desk and the guard app.
 
-## D. Gadbad wale cases
+## D. Edge cases
 
-- [ ] Same QR dobara "Andar" mode mein: time aur gate ke saath "pehle hi andar" dikhta hai.
-- [ ] Expired aur galat site ka pass: saaf message.
-- [ ] Scan ke dauran internet band: "Entry confirm nahi hui", aur dobara scan par doosri entry nahi banti.
-- [ ] Internet poora band: guard paper register par likhta hai (Phase 1 mein offline nahi).
-- [ ] Camera ki permission mana: bina QR check-in ka raasta dikhta hai.
-- [ ] SMS gateway fail: check-in nahi rukta, message retry hota hai.
-- [ ] Admin ne device block kiya: guard ka phone turant login par.
-- [ ] Do gates par same QR ek saath: sirf ek entry.
+- [ ] Same QR scanned again in "Entry" mode: shows "already checked in" with the time and gate.
+- [ ] Expired pass and pass for another premises: clear messages.
+- [ ] Internet drops during a scan: "Entry not confirmed", and rescanning does not create a second entry.
+- [ ] Internet fully down: the guard uses the paper register (no offline mode yet).
+- [ ] Camera permission denied: the check-in-without-QR path is offered.
+- [ ] SMS gateway fails: check-in is not blocked and the message is retried.
+- [ ] Admin blocks a device: the guard's phone returns to sign-in immediately.
+- [ ] Same QR at two gates at once: only one entry.
 
-## E. Speed aur network
+## E. Multi-business (foundation)
 
-- [ ] India se gate scan p95 2 second ke andar.
-- [ ] Jio aur Airtel dono par poora flow.
-- [ ] Render deploy ke dauran desk list polling se chalti rahe.
+- [ ] Sign in with a password and with OTP; a person in two businesses chooses one after the password/OTP.
+- [ ] The premises switcher changes every list and the live desk.
+- [ ] A module missing from the plan shows "Access restricted" and is hidden from the menu.
+- [ ] One business never sees another business's visits, members, premises or photos.
 
-## F. Screens
+## F. Speed and network
 
-- [ ] Web: phone width par visitor page, desktop par desk, light aur dark dono mein dekh lein.
-- [ ] Mobile: dhoop mein aur ek haath se guard screen use karke dekh lein.
+- [ ] Gate scan from India: p95 under 2 seconds.
+- [ ] Full flow on both Jio and Airtel.
+- [ ] The desk list keeps updating by polling during a Render deploy.
+
+## G. Screens
+
+- [ ] Web: visitor page at phone width, desk on desktop, in both light and dark mode.
+- [ ] Mobile: use the guard screen in sunlight and with one hand.

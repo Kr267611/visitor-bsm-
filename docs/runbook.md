@@ -1,53 +1,53 @@
 # Visitor system: runbook
 
-## Launch checklist (asli visitors se pehle)
+## Launch checklist (before real visitors)
 
-Staging free plans par chalta hai. Asli visitors ka data free plan par nahi rakhna hai.
+Staging runs on free plans. Real visitor data must never be stored on a free plan.
 
-- [ ] Render: `visitor-api` ko `0.5c-512mb` (Starter) par, Key Value ko 256 MB paid par, aur Postgres ko paid plan par karein. Free Postgres 30 din baad expire ho jata hai aur uska backup nahi hota.
-- [ ] Photos ke liye S3-compatible bucket banayein, private rakhein, aur `S3_*` settings daalein.
-- [ ] Backup: roz raat `pg_dump` kisi doosri jagah save ho, yeh job abhi bani nahi hai. Render ke paid Postgres ke backup options bhi dekh lein.
-- [ ] Company se confirm karein ki visitors ka data Singapore mein rakhna theek hai.
-- [ ] Consent aur privacy ka text legal se confirm karwayein, phir `CONSENT_VERSION` badlein.
-- [ ] SMS: gateway account, DLT templates (`apps/api/src/notifications/templates.ts` aur `otp.service.ts` ka text), phir `SMS_PROVIDER=msg91`, `MSG91_AUTH_KEY`, `SMS_SENDER`.
-- [ ] Staging par asli SMS, asli Expo push, aur India se gate scan ka speed test (p95 2 second ke andar). Jio aur Airtel dono par.
-- [ ] `QR_*` keys production ke liye nayi banayein: `npx tsx scripts/gen-qr-keys.ts`.
-- [ ] Android push: Firebase project (FCM) aur `eas init` ka projectId lagayein. Iske bina host ko sirf SMS jayega.
-- [ ] Seed production par mat chalayein. Pehla admin SQL se banayein.
+- [ ] Render: move `visitor-api` to Starter (0.5 CPU, 512 MB), Key Value to the paid 256 MB plan, and Postgres to a paid plan. Free Postgres expires after 30 days and has no backups.
+- [ ] Create a private S3-compatible bucket for photos and set the `S3_*` settings.
+- [ ] Backups: a nightly `pg_dump` saved somewhere else (this job does not exist yet). Also review the backup options of Render's paid Postgres.
+- [ ] Confirm with the company that storing visitor data in Singapore is acceptable.
+- [ ] Have legal approve the consent and privacy text, then change `CONSENT_VERSION`.
+- [ ] SMS: gateway account and DLT templates (the exact texts in `apps/api/src/notifications/templates.ts` and `otp.service.ts`), then set `SMS_PROVIDER=msg91`, `MSG91_AUTH_KEY` and `SMS_SENDER`.
+- [ ] On staging: real SMS, real Expo push, and a gate-scan speed test from India (p95 under 2 seconds) on both Jio and Airtel.
+- [ ] Generate new `QR_*` keys for production: `npx tsx scripts/gen-qr-keys.ts`.
+- [ ] Android push: a Firebase project (FCM) and the `eas init` projectId. Without them hosts receive SMS only.
+- [ ] Never run the seed in production. Create the first business and its admin through the platform API (`POST /platform/businesses`) as a super admin.
 
-## Rozana monitoring
+## Daily monitoring
 
-`GET /health` public hai, uptime check isi par lagayein. `GET /health/details` (admin login):
+`GET /health` is public; point the uptime check at it. `GET /health/details` (admin sign-in):
 
-| Field | Kab dhyan dein |
+| Field | When to act |
 |---|---|
-| `outboxFailed` | 0 se upar: messages 5 baar fail ho chuke hain, gateway dekhein |
-| `oldestPendingSec` | 300 se upar: worker atka hai ya gateway down hai |
-| `queueDepth` | Lagatar badh raha ho: worker nahi chal raha |
+| `outboxFailed` | Above 0: messages failed repeatedly; check the gateway |
+| `oldestPendingSec` | Above 300: the worker is stuck or the gateway is down |
+| `queueDepth` | Keeps growing: the worker is not running |
 
-Errors Sentry mein aayenge agar `SENTRY_DSN` set hai.
+Errors go to Sentry when `SENTRY_DSN` is set.
 
-## Backup se restore
+## Restore from backup
 
-1. Naya database banayein, purana overwrite na karein.
-2. `pg_restore --no-owner -d <naya-url> backup.dump`
-3. Check karein: `SELECT count(*) FROM visits;`, aur `visit_events` ka trigger maujood hai.
-4. `DATABASE_URL` naye database par karein aur redeploy karein.
+1. Create a new database; never overwrite the old one.
+2. `pg_restore --no-owner -d <new-url> backup.dump`
+3. Check `SELECT count(*) FROM visits;` and that the `visit_events` and `audit_logs` triggers exist.
+4. Point `DATABASE_URL` at the new database and redeploy.
 
-Har 3 mahine mein ek baar restore test karein.
+Test a restore once every 3 months.
 
-## QR key badalna
+## Rotating the QR key
 
-Nayi key lagate hi purane saare pass band ho jayenge. Rat ko karein, jab koi visit active na ho.
+All existing passes stop working as soon as the new key is live. Do it at night when no visit is active.
 
 1. `npx tsx scripts/gen-qr-keys.ts`
-2. Render mein `QR_PRIVATE_KEY` aur `QR_PUBLIC_KEY` badlein, redeploy karein.
-3. Aaj aur aage ke visitors ko host "resend invite" se naya link bheje.
+2. Update `QR_PRIVATE_KEY` and `QR_PUBLIC_KEY` on Render and redeploy.
+3. Hosts send today's and future visitors a new link with "Resend link".
 
-## Guard ka phone kho gaya
+## A guard's phone is lost
 
-Admin web app, ya `POST /admin/devices/:id/revoke`. Access turant band ho jata hai.
+Block it in the web app under **Admin → Devices**, or call `POST /admin/devices/:id/revoke`. Access stops immediately.
 
-## Internet ya server band hai
+## Internet or server is down
 
-Phase 1 mein offline mode nahi hai. Guard paper register par naam, number, host aur time likhe, aur baad mein entry system mein daal de.
+There is no offline mode yet. The guard writes name, number, host and time in the paper register and enters it into the system later.

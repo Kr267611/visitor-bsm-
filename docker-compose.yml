@@ -1,4 +1,4 @@
-# Docker wale developers ke liye. Windows par Docker ke bina: `pnpm services`.
+# For developers with Docker. On Windows without Docker, use `pnpm services`.
 services:
   postgres:
     image: postgres:16

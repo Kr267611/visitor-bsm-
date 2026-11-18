@@ -15,5 +15,5 @@ RUN cd apps/api && npx prisma generate && pnpm build
 WORKDIR /app/apps/api
 ENV NODE_ENV=production
 EXPOSE 3000
-# Ek hi instance hai, isliye migration start par safe hai.
+# Single instance, so running migrations at start-up is safe.
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
