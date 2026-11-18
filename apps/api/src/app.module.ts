@@ -2,7 +2,10 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { AdminController, ProfileController } from './admin/admin.controller';
+import { DepartmentsController } from './admin/departments.controller';
+import { PremisesController } from './admin/premises.controller';
+import { ProfileController } from './admin/profile.controller';
+import { UsersController } from './admin/users.controller';
 import { AuthModule } from './auth/auth.module';
 import { GateModule } from './gate/gate.module';
 import { HealthController } from './health/health.controller';
@@ -35,7 +38,14 @@ import { VisitsModule } from './visits/visits.module';
     GateModule,
     LiveModule,
   ],
-  controllers: [HealthController, AdminController, ProfileController, PlatformController],
+  controllers: [
+    HealthController,
+    PremisesController,
+    DepartmentsController,
+    UsersController,
+    ProfileController,
+    PlatformController,
+  ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}
