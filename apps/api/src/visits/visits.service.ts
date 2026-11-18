@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { Prisma, Visit, VisitStatus } from '@prisma/client';
 import type { VisitSummary } from '@visitor/shared';
 import { AuthUser } from '../auth/roles.decorator';
@@ -6,7 +6,7 @@ import { ApiException } from '../common/api-exception';
 import { requirePhone } from '../common/parse';
 import { istDayRange } from '../common/time';
 import { PlanLimits } from '../plans/plan-limits.service';
-import { PrismaService } from '../prisma/prisma.service';
+import { TENANT_PRISMA, TenantPrismaClient } from '../tenancy/tenant-prisma';
 import { StorageService } from '../storage/storage.service';
 import { inviteLink, newInviteToken } from './invite-tokens';
 import { VisitLifecycleService } from './visit-lifecycle.service';
@@ -31,7 +31,7 @@ export interface InviteInput {
 @Injectable()
 export class VisitsService {
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(TENANT_PRISMA) private readonly prisma: TenantPrismaClient,
     private readonly lifecycle: VisitLifecycleService,
     private readonly storage: StorageService,
     private readonly limits: PlanLimits,
@@ -88,7 +88,8 @@ export class VisitsService {
   }
 
   async list(user: AuthUser, q: { scope: 'mine' | 'site'; date?: string; status?: VisitStatus }) {
-    const where: Prisma.VisitWhereInput = { businessId: user.businessId ?? '' };
+    // Business filter scoped client khud lagata hai.
+    const where: Prisma.VisitWhereInput = {};
     if (q.scope === 'site') {
       if (!SITE_STAFF.includes(user.role)) throw forbidden();
       where.premisesId = user.premisesId ?? '';
@@ -152,12 +153,12 @@ export class VisitsService {
     }
     const { token, hash } = newInviteToken();
     const link = inviteLink(token);
-    await this.prisma.$transaction([
-      this.prisma.visit.update({ where: { id }, data: { inviteTokenHash: hash } }),
-      this.prisma.visitEvent.create({
+    await this.prisma.$transaction(async (tx) => {
+      await tx.visit.update({ where: { id }, data: { inviteTokenHash: hash } });
+      await tx.visitEvent.create({
         data: { visitId: id, businessId: visit.businessId, type: 'INVITE_RESENT', actorId: user.id },
-      }),
-      this.prisma.outbox.create({
+      });
+      await tx.outbox.create({
         data:
           visit.status === 'INVITED'
             ? {
@@ -176,10 +177,11 @@ export class VisitsService {
                 recipient: visit.visitor.phone,
                 vars: { link },
               },
-      }),
-    ]);
+      });
+    });
   }
 
+  /** Doosre business ka visit scoped client se milta hi nahi, isliye 404 (hone ka pata bhi nahi chalta). */
   async load(id: string): Promise<VisitWithPeople> {
     const visit = await this.prisma.visit.findUnique({ where: { id }, include: VISIT_INCLUDE });
     if (!visit) throw new ApiException(404, 'NOT_FOUND', 'Visit nahi mila.');

@@ -16,6 +16,12 @@ export async function friendly<T>(work: Promise<T>): Promise<T> {
   }
 }
 
+/** Request id (clientEventId) kisi aur ka nikla: replay nahi, saaf 422 (500 nahi). */
+export const usedRequestId = () =>
+  new ApiException(422, 'VALIDATION_FAILED', 'Yeh request id pehle use ho chuki hai. Dobara koshish karein.');
+
+export const isUniqueViolation = (e: unknown) => e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002';
+
 export const notFound = () => new ApiException(404, 'NOT_FOUND', 'Yeh record nahi mila.');
 
 const KIOSK_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';

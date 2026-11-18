@@ -1,11 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Prisma, Visit } from '@prisma/client';
 import { nextStatus, VisitAction } from '@visitor/shared';
 import { ApiException } from '../common/api-exception';
 import { istYear } from '../common/time';
 import { OutboxDraft, renderTemplate } from '../notifications/templates';
-import { PrismaService } from '../prisma/prisma.service';
+import { TENANT_PRISMA, TenantPrismaClient, TenantTx } from '../tenancy/tenant-prisma';
 import { InvalidTransitionError } from './errors';
 
 export const VISIT_UPDATED = 'visit.updated';
@@ -33,14 +33,17 @@ export interface ApplyInput {
   notify?: OutboxDraft[];
   meta?: object;
   /** Status badalne ke saath, usi transaction mein. */
-  inTx?: (tx: Prisma.TransactionClient) => Promise<void>;
+  inTx?: (tx: TenantTx) => Promise<void>;
 }
 
-/** `visits.status` sirf yahin se badalta hai: status, audit event aur outbox ek transaction mein. */
+/**
+ * `visits.status` sirf yahin se badalta hai: status, audit event aur outbox ek transaction mein.
+ * Scoped client: HTTP request ka business, ya job/public link ka `runInTenant`. Context na ho to throw.
+ */
 @Injectable()
 export class VisitLifecycleService {
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(TENANT_PRISMA) private readonly prisma: TenantPrismaClient,
     private readonly events: EventEmitter2,
   ) {}
 

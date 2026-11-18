@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
+import { ApprovalTimerProcessor } from '../src/approvals/approval-timer.processor';
 import { PassService } from '../src/passes/pass.service';
+import { ExpiryJob } from '../src/visits/expiry.job';
 import { currentContext, runAsSystem, runInTenant, tenantId } from '../src/tenancy/request-context';
 import { TENANT_PRISMA, TenantContextMissingError, TenantPrismaClient } from '../src/tenancy/tenant-prisma';
 import { seedBusiness, seedSite, seedUser, seedVisit, seedVisitor } from './factories';
@@ -107,7 +109,9 @@ describe('tenancy: ek business ka data doosre ko nahi', () => {
       const otherVisit = await seedVisit(ctx.prisma, { premisesId: b.site.id, hostId: b.host.id });
       const list = await http().get('/visits?scope=site').set(auth(a.guardToken)).expect(200);
       expect(list.body.map((v: { id: string }) => v.id)).not.toContain(otherVisit.id);
-      await http().get(`/visits/${otherVisit.id}`).set(auth(a.guardToken)).expect(403);
+      // Doosre business ka visit milta hi nahi: hone ka pata bhi na chale.
+      await http().get(`/visits/${otherVisit.id}`).set(auth(a.guardToken)).expect(404);
+      await http().post(`/visits/${otherVisit.id}/cancel`).set(auth(a.adminToken)).expect(404);
     });
 
     it('QR of other business does not work at this gate', async () => {
@@ -134,12 +138,13 @@ describe('tenancy: ek business ka data doosre ko nahi', () => {
         .post(`/visits/${visit.id}/check-in`)
         .set(auth(a.guardToken))
         .send({ gateId: b.gate.id, clientEventId: randomUUID() })
-        .expect(403);
+        .expect(422);
       await http()
         .post(`/visits/${visit.id}/check-in`)
         .set(auth(a.guardToken))
         .send({ gateId: a.gate.id, clientEventId: randomUUID() })
-        .expect(403);
+        .expect(422);
+      expect((await ctx.prisma.visit.findUniqueOrThrow({ where: { id: visit.id } })).status).toBe('APPROVED');
     });
 
     it('event id of other business does not reveal its visit', async () => {
@@ -285,6 +290,108 @@ describe('tenancy: ek business ka data doosre ko nahi', () => {
       const res = await http().get('/gates').set(auth(a.guardToken)).expect(200);
       expect(res.body.map((g: { id: string }) => g.id)).toEqual([a.gate.id]);
       expect(currentContext()).toBeUndefined();
+    });
+  });
+
+  describe('flows across businesses', () => {
+    const JPEG = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(100, 1)]);
+
+    it('approve, reject and resend on other business visit are 404 and change nothing', async () => {
+      const { a, b } = await twoBusinesses();
+      const pending = await seedVisit(ctx.prisma, { premisesId: b.site.id, hostId: b.host.id, status: 'PENDING_APPROVAL' });
+      for (const path of ['approve', 'reject', 'resend-invite']) {
+        const res = await http().post(`/visits/${pending.id}/${path}`).set(auth(a.adminToken)).send({});
+        expect([path, res.status]).toEqual([path, 404]);
+      }
+      expect((await ctx.prisma.visit.findUniqueOrThrow({ where: { id: pending.id } })).status).toBe('PENDING_APPROVAL');
+      expect(await ctx.prisma.visitEvent.count({ where: { visitId: pending.id } })).toBe(0);
+    });
+
+    it('walk-in cannot pick a host from another business', async () => {
+      const { a, b } = await twoBusinesses();
+      const res = await http()
+        .post('/gate/walk-ins')
+        .set(auth(a.guardToken))
+        .send({
+          gateId: a.gate.id,
+          hostId: b.host.id,
+          phone: '9876543210',
+          otp: '123456',
+          name: 'R',
+          purpose: 'Meeting',
+          consent: true,
+          clientEventId: randomUUID(),
+        })
+        .expect(422);
+      expect(res.body.message).toMatch(/Host/);
+    });
+
+    it('expiry job expires each business visit inside its own business', async () => {
+      const { a, b } = await twoBusinesses();
+      const past = { validFrom: new Date(Date.now() - 7_200_000), validTo: new Date(Date.now() - 3_600_000) };
+      const va = await seedVisit(ctx.prisma, { premisesId: a.site.id, hostId: a.host.id, ...past });
+      const vb = await seedVisit(ctx.prisma, { premisesId: b.site.id, hostId: b.host.id, ...past });
+      expect(await ctx.app.get(ExpiryJob).run()).toBe(2);
+      const events = await ctx.prisma.visitEvent.findMany({ where: { type: 'EXPIRE' } });
+      expect(events.map((e) => [e.visitId, e.businessId]).sort()).toEqual(
+        [
+          [va.id, a.business.id],
+          [vb.id, b.business.id],
+        ].sort(),
+      );
+    });
+
+    it('approval timer writes into the visit business', async () => {
+      const { b } = await twoBusinesses();
+      const visit = await seedVisit(ctx.prisma, { premisesId: b.site.id, hostId: b.host.id, status: 'PENDING_APPROVAL' });
+      await ctx.app.get(ApprovalTimerProcessor).process({ name: 'reminder', data: { visitId: visit.id } });
+      const event = await ctx.prisma.visitEvent.findFirstOrThrow({ where: { visitId: visit.id, type: 'REMINDER_SENT' } });
+      expect(event.businessId).toBe(b.business.id);
+      const box = await ctx.prisma.outbox.findFirstOrThrow({ where: { visitId: visit.id } });
+      expect(box.businessId).toBe(b.business.id);
+    });
+
+    it('public invite link works without login and stays in its business', async () => {
+      const { b } = await twoBusinesses();
+      const invite = await http()
+        .post('/visits')
+        .set(auth(b.adminToken))
+        .send({
+          visitorName: 'Rahul',
+          visitorPhone: '9876543210',
+          validFrom: new Date(Date.now() + 60_000).toISOString(),
+          validTo: new Date(Date.now() + 3_600_000).toISOString(),
+          purpose: 'Meeting',
+        })
+        .expect(201);
+      const box = await ctx.prisma.outbox.findFirstOrThrow({ where: { visitId: invite.body.id, template: 'INVITE_LINK' } });
+      const token = (box.vars as { link: string }).link.split('/v/')[1];
+      const photo = await http()
+        .post(`/public/invites/${token}/photo`)
+        .attach('photo', JPEG, { filename: 'a.jpg', contentType: 'image/jpeg' })
+        .expect(201);
+      await http()
+        .post(`/public/invites/${token}/register`)
+        .send({ name: 'Rahul Verma', photoKey: photo.body.key, consent: true })
+        .expect(201);
+      const reg = await ctx.prisma.visitEvent.findFirstOrThrow({ where: { visitId: invite.body.id, type: 'REGISTER' } });
+      expect(reg.businessId).toBe(b.business.id);
+    });
+
+    it('same clientEventId in two businesses does not leak or crash', async () => {
+      const { a, b } = await twoBusinesses();
+      const visit = await seedVisit(ctx.prisma, { premisesId: b.site.id, hostId: b.host.id, status: 'CHECKED_IN' });
+      const eventId = randomUUID();
+      await ctx.prisma.visitEvent.create({
+        data: { visitId: visit.id, businessId: b.business.id, type: 'CHECK_IN', clientEventId: eventId },
+      });
+      const own = await seedVisit(ctx.prisma, { premisesId: a.site.id, hostId: a.host.id });
+      const res = await http()
+        .post(`/visits/${own.id}/check-in`)
+        .set(auth(a.guardToken))
+        .send({ gateId: a.gate.id, clientEventId: eventId });
+      expect(res.status).toBeLessThan(500);
+      expect(JSON.stringify(res.body)).not.toContain(visit.id);
     });
   });
 

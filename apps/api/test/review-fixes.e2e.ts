@@ -263,7 +263,15 @@ describe('review fixes', () => {
       const before = await http().get(`/visits/${visit.id}`).set(auth(token)).expect(200);
       expect(before.body.deliveryFailed).toBe(false);
       await ctx.prisma.outbox.create({
-        data: { visitId: visit.id, channel: 'SMS', template: 'INVITE_LINK', recipient: 'x', vars: {}, status: 'FAILED' },
+        data: {
+          visitId: visit.id,
+          businessId: visit.businessId,
+          channel: 'SMS',
+          template: 'INVITE_LINK',
+          recipient: 'x',
+          vars: {},
+          status: 'FAILED',
+        },
       });
       const after = await http().get(`/visits/${visit.id}`).set(auth(token)).expect(200);
       expect(after.body.deliveryFailed).toBe(true);

@@ -8,6 +8,7 @@ import { FakePushProvider, PUSH_PROVIDER } from '../src/notifications/push.provi
 import { SMS_PROVIDER } from '../src/notifications/sms.provider';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
+import { runInTenant } from '../src/tenancy/request-context';
 
 export interface TestContext {
   app: INestApplication;
@@ -47,4 +48,21 @@ export async function resetData(ctx: TestContext): Promise<void> {
   ctx.sms.failing = false;
   ctx.push.sent.length = 0;
   ctx.push.failing = false;
+}
+
+/**
+ * Service ko test business ke andar chalata hai (HTTP request jaisa). Scoped client bina business ke
+ * throw karta hai, isliye seedhe service bulane wale tests isse lapet kar bulate hain.
+ */
+export function inTenant<T extends object>(ctx: TestContext, service: T, slug = 'test-biz'): T {
+  return new Proxy(service, {
+    get(target, prop, receiver) {
+      const value = Reflect.get(target, prop, receiver);
+      if (typeof value !== 'function') return value;
+      return async (...args: unknown[]) => {
+        const { id } = await ctx.prisma.business.findUniqueOrThrow({ where: { slug } });
+        return runInTenant(id, () => value.apply(target, args));
+      };
+    },
+  });
 }

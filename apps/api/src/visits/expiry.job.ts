@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { JobsService } from '../jobs/jobs.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { runInTenant } from '../tenancy/request-context';
 import { InvalidTransitionError } from './errors';
 import { VisitLifecycleService } from './visit-lifecycle.service';
 
@@ -23,12 +24,13 @@ export class ExpiryJob implements OnModuleInit {
   async run(now: Date = new Date()): Promise<number> {
     const rows = await this.prisma.visit.findMany({
       where: { status: { in: ['INVITED', 'APPROVED', 'PENDING_APPROVAL'] }, validTo: { lt: now } },
-      select: { id: true },
+      select: { id: true, businessId: true },
     });
     let expired = 0;
-    for (const { id } of rows) {
+    // Job saare businesses dekhta hai (raw client); har badlav usi visit ke business ke andar.
+    for (const { id, businessId } of rows) {
       try {
-        await this.lifecycle.apply({ visitId: id, action: 'EXPIRE', actorId: null });
+        await runInTenant(businessId, () => this.lifecycle.apply({ visitId: id, action: 'EXPIRE', actorId: null }));
         expired += 1;
       } catch (error) {
         // Isi beech kisi ne check-in kar diya: theek hai.

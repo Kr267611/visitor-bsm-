@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Gate, Prisma } from '@prisma/client';
 import { AuthUser } from '../auth/roles.decorator';
 import { ApiException } from '../common/api-exception';
+import { usedRequestId } from '../common/records';
 import { formatIstDate } from '../common/time';
 import { PassService } from '../passes/pass.service';
-import { PrismaService } from '../prisma/prisma.service';
+import { TENANT_PRISMA, TenantPrismaClient } from '../tenancy/tenant-prisma';
 import { StorageService } from '../storage/storage.service';
 import { InvalidTransitionError } from '../visits/errors';
 import { VisitLifecycleService } from '../visits/visit-lifecycle.service';
@@ -26,7 +27,7 @@ interface Action {
 @Injectable()
 export class GateService {
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(TENANT_PRISMA) private readonly prisma: TenantPrismaClient,
     private readonly passes: PassService,
     private readonly lifecycle: VisitLifecycleService,
     private readonly storage: StorageService,
@@ -149,6 +150,8 @@ export class GateService {
     if (replay) return replay;
     const fresh = await this.loadVisit(visitId);
     if (fresh.status === 'CHECKED_IN') throw this.alreadyInside(fresh);
+    // Id kisi doosre business ke event ki thi: uska kuch nahi dikhate.
+    if (duplicate) throw usedRequestId();
     throw error;
   }
 

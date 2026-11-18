@@ -20,11 +20,14 @@ export class LiveGateway implements OnGatewayConnection {
   async handleConnection(client: Socket): Promise<void> {
     const token: unknown = client.handshake.auth?.token;
     const user = typeof token === 'string' ? await this.sessions.resolve(token) : null;
-    if (!user?.premisesId) {
+    // App doosra premises chune to woh user ke apne premises mein se hi ho (HTTP ke X-Premises-Id jaisa).
+    const wanted: unknown = client.handshake.auth?.premisesId;
+    const premisesId = typeof wanted === 'string' && wanted ? wanted : user?.premisesId;
+    if (!user || !premisesId || !user.premisesIds.includes(premisesId)) {
       client.disconnect(true);
       return;
     }
-    await client.join(`premises:${user.premisesId}`);
+    await client.join(`premises:${premisesId}`);
     client.emit('ready');
   }
 

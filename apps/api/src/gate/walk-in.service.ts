@@ -1,11 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ApprovalTimerProcessor } from '../approvals/approval-timer.processor';
 import { AuthUser } from '../auth/roles.decorator';
 import { OtpService } from '../auth/otp.service';
 import { ApiException } from '../common/api-exception';
 import { requirePhone } from '../common/parse';
+import { isUniqueViolation, usedRequestId } from '../common/records';
 import { PlanLimits } from '../plans/plan-limits.service';
-import { PrismaService } from '../prisma/prisma.service';
+import { TENANT_PRISMA, TenantPrismaClient } from '../tenancy/tenant-prisma';
 import { StorageService } from '../storage/storage.service';
 import { VisitLifecycleService } from '../visits/visit-lifecycle.service';
 import { GateService } from './gate.service';
@@ -29,7 +30,7 @@ export interface WalkInInput {
 @Injectable()
 export class WalkInService {
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(TENANT_PRISMA) private readonly prisma: TenantPrismaClient,
     private readonly otp: OtpService,
     private readonly storage: StorageService,
     private readonly lifecycle: VisitLifecycleService,
@@ -106,31 +107,36 @@ export class WalkInService {
     });
 
     const now = new Date();
-    const visit = await this.lifecycle.create({
-      data: {
-        visitorId: visitor.id,
-        hostId: host.id,
-        businessId: gate.businessId,
-        premisesId: gate.premisesId,
-        type: 'WALKIN',
-        purpose: input.purpose,
-        status: 'PENDING_APPROVAL',
-        validFrom: now,
-        validTo: new Date(now.getTime() + WALK_IN_WINDOW_MS),
-      },
-      actorId: user.id,
-      gateId: gate.id,
-      deviceId: user.deviceId,
-      clientEventId: input.clientEventId,
-      notify: [
-        {
-          channel: 'PUSH',
-          template: 'APPROVAL_REQUEST',
-          recipient: host.id,
-          vars: { visitorName: visitor.name, company: visitor.company ?? '-' },
+    const visit = await this.lifecycle
+      .create({
+        data: {
+          visitorId: visitor.id,
+          hostId: host.id,
+          businessId: gate.businessId,
+          premisesId: gate.premisesId,
+          type: 'WALKIN',
+          purpose: input.purpose,
+          status: 'PENDING_APPROVAL',
+          validFrom: now,
+          validTo: new Date(now.getTime() + WALK_IN_WINDOW_MS),
         },
-      ],
-    });
+        actorId: user.id,
+        gateId: gate.id,
+        deviceId: user.deviceId,
+        clientEventId: input.clientEventId,
+        notify: [
+          {
+            channel: 'PUSH',
+            template: 'APPROVAL_REQUEST',
+            recipient: host.id,
+            vars: { visitorName: visitor.name, company: visitor.company ?? '-' },
+          },
+        ],
+      })
+      .catch((error: unknown) => {
+        // Id kisi doosre business ke event ki thi (apne business ki hoti to upar mil jati).
+        throw isUniqueViolation(error) ? usedRequestId() : error;
+      });
     await this.timers.schedule(visit.id);
     return this.view(visit);
   }

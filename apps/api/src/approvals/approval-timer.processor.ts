@@ -1,6 +1,8 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { JobsService } from '../jobs/jobs.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { runInTenant } from '../tenancy/request-context';
 import { VisitLifecycleService } from '../visits/visit-lifecycle.service';
 
 export type TimerName = 'reminder' | 'delegate' | 'reception';
@@ -47,8 +49,15 @@ export class ApprovalTimerProcessor implements OnModuleInit {
     });
     // Faisla ho chuka ho to kuch nahi karna.
     if (visit?.status !== 'PENDING_APPROVAL') return;
+    await runInTenant(visit.businessId, () => this.escalate(job.name, visit));
+  }
 
-    if (job.name === 'reminder') {
+  private async escalate(
+    name: TimerName,
+    visit: Prisma.VisitGetPayload<{ include: { visitor: true; host: true } }>,
+  ): Promise<void> {
+
+    if (name === 'reminder') {
       await this.lifecycle.recordEvent(visit.id, 'REMINDER_SENT', null, { to: visit.hostId }, [
         {
           channel: 'PUSH',
@@ -57,7 +66,7 @@ export class ApprovalTimerProcessor implements OnModuleInit {
           vars: { visitorName: visit.visitor.name },
         },
       ]);
-    } else if (job.name === 'delegate') {
+    } else if (name === 'delegate') {
       if (!visit.host.delegateId) return;
       await this.lifecycle.recordEvent(visit.id, 'ESCALATED_TO_DELEGATE', null, { to: visit.host.delegateId }, [
         {

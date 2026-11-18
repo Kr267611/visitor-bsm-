@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { InvalidTransitionError } from '../src/visits/errors';
 import { VisitLifecycleService } from '../src/visits/visit-lifecycle.service';
 import { seedVisit } from './factories';
-import { createTestApp, resetData, TestContext } from './setup';
+import { createTestApp, inTenant, resetData, TestContext } from './setup';
 
 describe('VisitLifecycleService', () => {
   let ctx: TestContext;
@@ -13,7 +13,7 @@ describe('VisitLifecycleService', () => {
 
   beforeAll(async () => {
     ctx = await createTestApp();
-    lifecycle = ctx.app.get(VisitLifecycleService);
+    lifecycle = inTenant(ctx, ctx.app.get(VisitLifecycleService));
   });
   beforeEach(() => resetData(ctx));
   afterAll(() => ctx.app.close());

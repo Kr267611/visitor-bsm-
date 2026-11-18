@@ -119,4 +119,6 @@ function assertNotMoving(data: Data, businessId: string, model: string) {
 }
 
 export type TenantPrismaClient = ReturnType<typeof createTenantClient>;
+/** Scoped client ke interactive transaction ke andar ka client. */
+export type TenantTx = Omit<TenantPrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
 export type { Prisma };

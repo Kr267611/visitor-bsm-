@@ -1,13 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { LiveDashboard } from '@visitor/shared';
 import { istDayRange } from '../common/time';
-import { PrismaService } from '../prisma/prisma.service';
+import { TENANT_PRISMA, TenantPrismaClient } from '../tenancy/tenant-prisma';
 import { VISIT_INCLUDE, VisitsService } from '../visits/visits.service';
 
 @Injectable()
 export class DashboardService {
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(TENANT_PRISMA) private readonly prisma: TenantPrismaClient,
     private readonly visits: VisitsService,
   ) {}
 

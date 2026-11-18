@@ -5,8 +5,8 @@ import { DashboardService } from '../src/dashboard/dashboard.service';
 import { istDayRange } from '../src/common/time';
 import { ExpiryJob } from '../src/visits/expiry.job';
 import { VisitLifecycleService } from '../src/visits/visit-lifecycle.service';
-import { seedSite, seedUser, seedVisit } from './factories';
-import { createTestApp, resetData, TestContext, tokenFor } from './setup';
+import { seedBusiness, seedSite, seedUser, seedVisit } from './factories';
+import { createTestApp, inTenant, resetData, TestContext, tokenFor } from './setup';
 
 describe('live', () => {
   let ctx: TestContext;
@@ -25,8 +25,9 @@ describe('live', () => {
   });
   afterAll(() => ctx.app.close());
 
-  function connect(token?: string): Socket {
-    const socket = io(url, { auth: token ? { token } : {}, transports: ['websocket'], reconnection: false });
+  function connect(token?: string, premisesId?: string): Socket {
+    const auth = { ...(token && { token }), ...(premisesId && { premisesId }) };
+    const socket = io(url, { auth, transports: ['websocket'], reconnection: false });
     sockets.push(socket);
     return socket;
   }
@@ -47,6 +48,34 @@ describe('live', () => {
     expect(socket.connected).toBe(false);
   });
 
+  it('socket can pick an own premises, never another business premises', async () => {
+    const a = await seedSite(ctx.prisma, 'A');
+    const plant2 = await seedSite(ctx.prisma, 'Plant 2', a.business.id);
+    const other = await seedSite(ctx.prisma, 'Other', (await seedBusiness(ctx.prisma)).id);
+    const admin = await seedUser(ctx.prisma, a.site.id, 'admin');
+    const token = await tokenFor(ctx, admin.id);
+
+    const bad = connect(token, other.site.id);
+    await once(bad, 'disconnect');
+    expect(bad.connected).toBe(false);
+
+    const good = connect(token, plant2.site.id);
+    await ready(good);
+    const seen = once<{ visitId: string }>(good, 'visit.updated');
+    const visit = await seedVisit(ctx.prisma, { premisesId: plant2.site.id, hostId: admin.id });
+    await inTenant(ctx, ctx.app.get(VisitLifecycleService)).apply({ visitId: visit.id, action: 'CHECK_IN', actorId: null });
+    expect((await seen).visitId).toBe(visit.id);
+  });
+
+  it('guard cannot listen to an unassigned premises of own business', async () => {
+    const a = await seedSite(ctx.prisma, 'A');
+    const plant2 = await seedSite(ctx.prisma, 'Plant 2', a.business.id);
+    const guard = await seedUser(ctx.prisma, a.site.id, 'guard');
+    const socket = connect(await tokenFor(ctx, guard.id), plant2.site.id);
+    await once(socket, 'disconnect');
+    expect(socket.connected).toBe(false);
+  });
+
   it('client gets visit.updated for own site, not other site', async () => {
     const a = await seedSite(ctx.prisma, 'A');
     const b = await seedSite(ctx.prisma, 'B');
@@ -60,7 +89,7 @@ describe('live', () => {
     socketB.on('visit.updated', (e) => seenByB.push(e));
     const visit = await seedVisit(ctx.prisma, { premisesId: a.site.id });
     const received = once<{ visitId: string; status: string }>(socketA, 'visit.updated');
-    await ctx.app.get(VisitLifecycleService).apply({ visitId: visit.id, action: 'CHECK_IN', actorId: null });
+    await inTenant(ctx, ctx.app.get(VisitLifecycleService)).apply({ visitId: visit.id, action: 'CHECK_IN', actorId: null });
 
     const e = await received;
     expect(e.visitId).toBe(visit.id);
@@ -75,7 +104,7 @@ describe('live', () => {
     await ready(socket);
     const visit = await seedVisit(ctx.prisma, { premisesId: site.id });
     const received = once<object>(socket, 'visit.updated');
-    await ctx.app.get(VisitLifecycleService).apply({ visitId: visit.id, action: 'CHECK_IN', actorId: null });
+    await inTenant(ctx, ctx.app.get(VisitLifecycleService)).apply({ visitId: visit.id, action: 'CHECK_IN', actorId: null });
     expect(await received).toEqual({ visitId: visit.id, status: 'CHECKED_IN' });
   });
 
@@ -140,7 +169,7 @@ describe('live', () => {
       validTo: new Date('2026-11-05T20:00:00Z'),
     });
     const now = new Date('2026-11-05T02:00:00Z');
-    const data = await ctx.app.get(DashboardService).live(site.id, now);
+    const data = await inTenant(ctx, ctx.app.get(DashboardService)).live(site.id, now);
     expect(data.expected.map((v) => v.id)).toEqual([early.id]);
     void desk;
   });
@@ -149,7 +178,7 @@ describe('live', () => {
     const { site } = await seedSite(ctx.prisma);
     const v = await seedVisit(ctx.prisma, { premisesId: site.id, status: 'APPROVED' });
     await ctx.prisma.visit.update({ where: { id: v.id }, data: { receptionCallRequestedAt: new Date() } });
-    const data = await ctx.app.get(DashboardService).live(site.id);
+    const data = await inTenant(ctx, ctx.app.get(DashboardService)).live(site.id);
     expect(data.needsCall).toHaveLength(0);
   });
 

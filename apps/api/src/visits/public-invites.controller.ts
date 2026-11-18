@@ -8,6 +8,7 @@ import { ApiException } from '../common/api-exception';
 import { parseBody } from '../common/parse';
 import { PassService } from '../passes/pass.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { runInTenant } from '../tenancy/request-context';
 import { StorageService } from '../storage/storage.service';
 import { photoInterceptor, requireJpeg } from '../storage/uploads.controller';
 import { InvalidTransitionError } from './errors';
@@ -37,6 +38,7 @@ export class PublicInvitesController {
     private readonly storage: StorageService,
   ) {}
 
+  /** Link ka token hi pehchan hai: raw client se dhoondhte hain, phir badlav usi visit ke business mein. */
   private async load(token: string): Promise<VisitWithPeople> {
     const visit = await this.prisma.visit.findUnique({
       where: { inviteTokenHash: hashInviteToken(token) },
@@ -108,26 +110,28 @@ export class PublicInvitesController {
 
     const consentAt = new Date();
     try {
-      await this.lifecycle.apply({
-        visitId: visit.id,
-        action: 'REGISTER',
-        actorId: null,
-        inTx: async (tx) => {
-          await tx.visitor.update({
-            where: { id: visit.visitorId },
-            data: {
-              name: body.name,
-              company: body.company,
-              photoKey: body.photoKey,
-              idType: body.idType,
-              idLast4: body.idLast4,
-              consentAt,
-              consentVersion: process.env.CONSENT_VERSION,
-              deleteAfter: new Date(consentAt.getTime() + RETENTION_DAYS * 24 * 60 * 60 * 1000),
-            },
-          });
-        },
-      });
+      await runInTenant(visit.businessId, () =>
+        this.lifecycle.apply({
+          visitId: visit.id,
+          action: 'REGISTER',
+          actorId: null,
+          inTx: async (tx) => {
+            await tx.visitor.update({
+              where: { id: visit.visitorId },
+              data: {
+                name: body.name,
+                company: body.company,
+                photoKey: body.photoKey,
+                idType: body.idType,
+                idLast4: body.idLast4,
+                consentAt,
+                consentVersion: process.env.CONSENT_VERSION,
+                deleteAfter: new Date(consentAt.getTime() + RETENTION_DAYS * 24 * 60 * 60 * 1000),
+              },
+            });
+          },
+        }),
+      );
     } catch (error) {
       // Doosri request pehle jeet gayi: wahi pass de do.
       const fresh = await this.load(token);
