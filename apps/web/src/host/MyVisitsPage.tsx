@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { errorMessage, useApi } from '../api';
+import { useAuth } from '../auth/AuthProvider';
+import { useFeature } from '../ui/Layout';
+import { EmptyState, PageHeader } from '../ui/Page';
 import { StatusBadge } from '../ui/StatusBadge';
 
 const WHEN = new Intl.DateTimeFormat('en-IN', {
@@ -14,11 +17,23 @@ const WHEN = new Intl.DateTimeFormat('en-IN', {
 
 export function MyVisitsPage() {
   const api = useApi();
+  const { user } = useAuth();
+  const has = useFeature();
   const visits = useQuery({ queryKey: ['visits', 'mine'], queryFn: () => api.visits.list({ scope: 'mine' }) });
+  const canInvite = user?.role !== 'security' && has('invites');
+  const inviteButton = canInvite ? (
+    <Link to="/my/invite" className="button-link">
+      + Naya invite
+    </Link>
+  ) : null;
 
   return (
     <>
-      <h1>Mere visitors</h1>
+      <PageHeader
+        title="Mere visitors"
+        subtitle="Jinhe aapne bulaya hai ya jo aapse milne aaye. Naam par click karke detail aur approval."
+        actions={inviteButton}
+      />
 
       {visits.isError && (
         <p role="alert" className="error">
@@ -28,14 +43,20 @@ export function MyVisitsPage() {
 
       {visits.data && (
         <section className="panel">
-          {visits.data.length === 0 && <p className="empty">Abhi koi visitor nahi hai. Side menu mein "Naya invite" se shuru karein.</p>}
+          {visits.data.length === 0 && (
+            <EmptyState
+              title="Abhi koi visitor nahi hai."
+              hint="Kisi ko bulana hai? Invite bhejiye; unhe SMS par link milega aur gate par QR pass."
+              action={inviteButton}
+            />
+          )}
           {visits.data.map((visit) => (
             <div className="visit-row" key={visit.id}>
               <div className="visit-main">
                 <Link to={`/my/visits/${visit.id}`}>
                   <strong>{visit.visitorName}</strong>
                 </Link>
-                <span className="muted">{WHEN.format(new Date(visit.validFrom))}</span>
+                <span className="muted small">{WHEN.format(new Date(visit.validFrom))}</span>
               </div>
               <StatusBadge status={visit.status} />
             </div>

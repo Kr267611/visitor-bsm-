@@ -1,5 +1,5 @@
 import { BusinessChoice, businessChoice, normalizeIndianPhone, Session } from '@visitor/shared';
-import { FormEvent, useState } from 'react';
+import { FormEvent, ReactNode, useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { errorMessage, useApi } from '../api';
 import { useAuth } from './AuthProvider';
@@ -13,6 +13,28 @@ function safeNext(next: string | null): string | null {
 }
 
 type Mode = 'password' | 'otp';
+
+/** Login ke bagal mein product ka parichay (mobile par chhota). */
+function AuthFrame({ children }: { children: ReactNode }) {
+  return (
+    <main className="auth-split">
+      <section className="auth-brand" aria-label="Visitor BSM">
+        <div className="stack">
+          <span className="eyebrow">Visitor BSM</span>
+          <h2>Har visitor ka hisaab, gate se reception tak.</h2>
+        </div>
+        <ul>
+          <li>Pre-invite se visitor ko QR pass, gate par ek scan.</li>
+          <li>Walk-in ke liye host ki approval seedha phone par.</li>
+          <li>Kaun andar hai, kaun aane wala hai: live.</li>
+        </ul>
+      </section>
+      <div className="auth-side">
+        <div className="auth-card">{children}</div>
+      </div>
+    </main>
+  );
+}
 
 export function LoginPage() {
   const api = useApi();
@@ -106,114 +128,109 @@ export function LoginPage() {
 
   if (choice) {
     return (
-      <main className="auth-page">
-        <div className="auth-card">
-          <div className="eyebrow">Visitor BSM</div>
-          <h1>Business chunein</h1>
-          <p className="muted">Aapka account in businesses mein hai. Kismein login karna hai?</p>
-          <div className="stack">
-            {choice.businesses.map((b) => (
-              <button key={b.id ?? 'platform'} type="button" disabled={busy} onClick={() => choose(b.id)}>
-                {b.name}
-              </button>
-            ))}
-          </div>
-          <button type="button" className="link" onClick={() => setChoice(null)}>
-            Wapas
-          </button>
-          {alert}
+      <AuthFrame>
+        <h1>Business chunein</h1>
+        <p className="muted">Aapka account in businesses mein hai. Kismein login karna hai?</p>
+        <div className="stack">
+          {choice.businesses.map((b) => (
+            <button key={b.id ?? 'platform'} type="button" disabled={busy} onClick={() => choose(b.id)}>
+              {b.name}
+            </button>
+          ))}
         </div>
-      </main>
+        <button type="button" className="link" onClick={() => setChoice(null)}>
+          Wapas
+        </button>
+        {alert}
+      </AuthFrame>
     );
   }
 
   return (
-    <main className="auth-page">
-      <div className="auth-card">
-        <div className="eyebrow">Visitor BSM</div>
+    <AuthFrame>
+      <div className="stack" style={{ gap: 4 }}>
         <h1>Login</h1>
-        <div className="row" role="tablist" aria-label="Login ka tareeka">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mode === 'password'}
-            className={mode === 'password' ? 'primary' : ''}
-            onClick={() => switchMode('password')}
-          >
-            Password
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mode === 'otp'}
-            className={mode === 'otp' ? 'primary' : ''}
-            onClick={() => switchMode('otp')}
-          >
-            OTP
-          </button>
-        </div>
-
-        {mode === 'password' ? (
-          <form onSubmit={passwordLogin} className="stack">
-            <label htmlFor="identifier">Mobile ya email</label>
-            <input
-              id="identifier"
-              autoComplete="username"
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
-              required
-            />
-            <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-            <button type="submit" className="primary" disabled={busy}>
-              Login karein
-            </button>
-          </form>
-        ) : sentTo === null ? (
-          <form onSubmit={requestOtp} className="stack">
-            <label htmlFor="phone">Mobile number</label>
-            <input
-              id="phone"
-              inputMode="tel"
-              autoComplete="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              required
-            />
-            <button type="submit" className="primary" disabled={busy}>
-              OTP bhejein
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={verify} className="stack">
-            <p className="muted">{sentTo} par OTP bheja gaya hai.</p>
-            <label htmlFor="otp">OTP</label>
-            <input
-              id="otp"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={6}
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-              required
-            />
-            <button type="submit" className="primary" disabled={busy || otp.length !== 6}>
-              Login karein
-            </button>
-            <button type="button" className="link" onClick={() => setSentTo(null)}>
-              Number badlein
-            </button>
-          </form>
-        )}
-        {alert}
+        <p className="muted">Apne office account se andar aayein.</p>
       </div>
-    </main>
+      <div className="tabs" role="tablist" aria-label="Login ka tareeka">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === 'password'}
+          onClick={() => switchMode('password')}
+        >
+          Password
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === 'otp'}
+          onClick={() => switchMode('otp')}
+        >
+          OTP
+        </button>
+      </div>
+
+      {mode === 'password' ? (
+        <form onSubmit={passwordLogin} className="stack">
+          <label htmlFor="identifier">Mobile ya email</label>
+          <input
+            id="identifier"
+            autoComplete="username"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+            required
+          />
+          <label htmlFor="password">Password</label>
+          <input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <button type="submit" className="primary" disabled={busy}>
+            Login karein
+          </button>
+        </form>
+      ) : sentTo === null ? (
+        <form onSubmit={requestOtp} className="stack">
+          <label htmlFor="phone">Mobile number</label>
+          <input
+            id="phone"
+            inputMode="tel"
+            autoComplete="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            required
+          />
+          <button type="submit" className="primary" disabled={busy}>
+            OTP bhejein
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={verify} className="stack">
+          <p className="muted">{sentTo} par OTP bheja gaya hai.</p>
+          <label htmlFor="otp">OTP</label>
+          <input
+            id="otp"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            value={otp}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+            required
+          />
+          <button type="submit" className="primary" disabled={busy || otp.length !== 6}>
+            Login karein
+          </button>
+          <button type="button" className="link" onClick={() => setSentTo(null)}>
+            Number badlein
+          </button>
+        </form>
+      )}
+      {alert}
+    </AuthFrame>
   );
 }

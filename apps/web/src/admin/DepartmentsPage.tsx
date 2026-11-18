@@ -2,6 +2,7 @@ import type { Department } from '@visitor/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useState } from 'react';
 import { errorMessage, useApi } from '../api';
+import { EmptyState, PageHeader } from '../ui/Page';
 
 const KEY = ['admin', 'departments'];
 
@@ -94,7 +95,7 @@ export function DepartmentsPage() {
 
   return (
     <>
-      <h1>Departments</h1>
+      <PageHeader title="Departments" subtitle="Members ko department mein rakhein; reports aur host search mein kaam aata hai." />
       <form className="form-card" onSubmit={add}>
         <div className="stack">
           <label htmlFor="dept-name">Department ka naam</label>
@@ -103,13 +104,13 @@ export function DepartmentsPage() {
         <button type="submit" className="primary">
           Department jodein
         </button>
+        <p className="muted small">Department hatane par uske members bina department ke reh jaate hain; unka account nahi hatta.</p>
       </form>
       {error && (
         <p role="alert" className="error">
           {error}
         </p>
       )}
-      <p className="muted">Department hatane par uske members bina department ke reh jaate hain; unka account nahi hatta.</p>
       <section className="panel table-scroll">
         <table>
           <thead>
@@ -121,15 +122,11 @@ export function DepartmentsPage() {
           </thead>
           <tbody>
             {departments.data?.map((dept) => <DepartmentRow key={dept.id} dept={dept} onError={setError} />)}
-            {departments.data?.length === 0 && (
-              <tr>
-                <td colSpan={3} className="muted">
-                  Abhi koi department nahi.
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
+        {departments.data?.length === 0 && (
+          <EmptyState title="Abhi koi department nahi." hint="Upar naam likh kar pehla department jodein, jaise Finance ya HR." />
+        )}
       </section>
     </>
   );

@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { errorMessage, useApi } from '../api';
+import { PageHeader } from '../ui/Page';
 import { useAuth } from '../auth/AuthProvider';
 
 export function DelegateSetting() {
@@ -29,7 +30,7 @@ export function DelegateSetting() {
 
   return (
     <>
-      <h1>Backup person</h1>
+      <PageHeader title="Backup person" subtitle="Aap meeting mein hon ya chhutti par, to walk-in ki approval is person ko jayegi." />
       <section className="form-card">
       <p className="muted">Aap jawab na de payein to approval is person ko jayega.</p>
       {me.data?.delegateName && (

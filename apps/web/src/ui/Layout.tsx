@@ -5,6 +5,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useApi } from '../api';
 import { useAuth } from '../auth/AuthProvider';
 import { LiveSiteProvider, useLiveOptional } from '../desk/LiveSiteContext';
+import { initials, ROLE_LABEL } from './Page';
 
 const DESK_ROLES: Role[] = ['reception', 'security', 'guard', 'admin'];
 const HOST_ROLES: Role[] = ['employee', 'reception', 'security', 'admin'];
@@ -52,11 +53,11 @@ export function useFeature() {
 function PremisesSwitcher({ profile }: { profile: Profile }) {
   const { premisesId, switchPremises } = useAuth();
   const list = Array.isArray(profile.premises) ? profile.premises : [];
-  if (list.length < 2) return list[0] ? <span className="muted">{list[0].name}</span> : null;
+  if (list.length < 2) return list[0] ? <span className="muted small premises-name">{list[0].name}</span> : null;
   const active = premisesId ?? profile.activePremisesId ?? '';
   return (
-    <div className="stack">
-      <label htmlFor="premises-switch" className="muted">
+    <div className="stack premises-switch">
+      <label htmlFor="premises-switch" className="muted small">
         Premises
       </label>
       <select id="premises-switch" value={active} onChange={(e) => switchPremises(e.target.value)}>
@@ -93,7 +94,15 @@ function Shell() {
       </div>
 
       <aside id="side-menu" className={`sidebar ${open ? 'sidebar-open' : ''}`}>
-        <strong className="brand sidebar-brand">{businessName ?? 'Visitor BSM'}</strong>
+        <div className="brand-block">
+          <span className="brand-mark" aria-hidden="true">
+            {initials(businessName ?? 'Visitor BSM')}
+          </span>
+          <div>
+            <strong className="brand">{businessName ?? 'Visitor BSM'}</strong>
+            <span className="muted small">Visitor management</span>
+          </div>
+        </div>
         {profile.data && <PremisesSwitcher profile={profile.data} />}
         <nav aria-label="Main">
           {DESK_ROLES.includes(role) && has('dashboard') && (
@@ -120,13 +129,21 @@ function Shell() {
           )}
         </nav>
         <div className="sidebar-user">
-          <span className="muted">{user?.name}</span>
-          <NavLink to="/account/password" onClick={close} className="link">
-            Password
-          </NavLink>
-          <button type="button" className="link" onClick={() => void logout()}>
-            Logout
-          </button>
+          <span className="avatar" aria-hidden="true">
+            {initials(user?.name)}
+          </span>
+          <div className="sidebar-user-name">
+            <span>{user?.name}</span>
+            <span className="muted small">{ROLE_LABEL[role] ?? role}</span>
+          </div>
+          <div className="sidebar-user-links">
+            <NavLink to="/account/password" onClick={close} className="link">
+              Password
+            </NavLink>
+            <button type="button" className="link" onClick={() => void logout()}>
+              Logout
+            </button>
+          </div>
         </div>
       </aside>
 

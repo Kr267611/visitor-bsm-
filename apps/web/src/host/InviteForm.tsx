@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { errorMessage, useApi } from '../api';
+import { PageHeader } from '../ui/Page';
 
 const todayIst = () =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -53,10 +54,11 @@ export function InviteForm() {
 
   return (
     <>
-      <div className="spread">
-        <h1>Naya invite</h1>
-        <Link to="/my">Wapas</Link>
-      </div>
+      <PageHeader
+        title="Naya invite"
+        subtitle="Visitor ko SMS par link jayega. Woh apni photo aur details bharega, phir use QR pass milega."
+        actions={<Link to="/my">Wapas</Link>}
+      />
       <form className="form-card" onSubmit={submit}>
         <div className="form-grid">
           <div>

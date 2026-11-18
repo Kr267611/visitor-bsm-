@@ -80,6 +80,7 @@ describe('admin', () => {
       });
       renderApp('/admin/members', s);
       const user = userEvent.setup();
+      await user.click(await screen.findByRole('button', { name: '+ Naya member' }));
       await user.type(await screen.findByLabelText('Naam'), 'Ravi Kumar');
       await user.type(screen.getByLabelText('Mobile'), '9876543210');
       await user.selectOptions(screen.getByLabelText('Role'), 'employee');
@@ -101,13 +102,29 @@ describe('admin', () => {
         departmentId: 'd-fin',
         password: 'Ravi@2026x',
       });
-      expect(screen.getByLabelText('Naam')).toHaveValue('');
+      // Ban jaane par form band, list saamne.
+      expect(screen.queryByLabelText('Naam')).toBeNull();
+    });
+
+    it('search filters the list by name or phone', async () => {
+      renderApp('/admin/members', server({ 'GET /admin/users': () => json(200, [person(), person({ id: 'u2', name: 'Kavita Rao', phone: '+919855500001' })]) }));
+      const user = userEvent.setup();
+      await screen.findByText('Kavita Rao');
+      await user.type(screen.getByLabelText('Member dhoondein'), 'kavita');
+      expect(screen.queryByText('Amit Guard')).toBeNull();
+      expect(screen.getByText('1 / 2 members')).toBeInTheDocument();
+      await user.clear(screen.getByLabelText('Member dhoondein'));
+      await user.type(screen.getByLabelText('Member dhoondein'), '98555');
+      expect(screen.getByText('Kavita Rao')).toBeInTheDocument();
+      await user.type(screen.getByLabelText('Member dhoondein'), '9');
+      expect(await screen.findByText('Is naam ya number ka koi member nahi mila.')).toBeInTheDocument();
     });
 
     it('needs at least one premises before calling the server', async () => {
       const s = server();
       renderApp('/admin/members', s);
       const user = userEvent.setup();
+      await user.click(await screen.findByRole('button', { name: '+ Naya member' }));
       await user.type(await screen.findByLabelText('Naam'), 'Ravi');
       await user.type(screen.getByLabelText('Mobile'), '9876543210');
       await user.click(screen.getByRole('button', { name: 'Member banayein' }));
@@ -124,6 +141,7 @@ describe('admin', () => {
         }),
       );
       const user = userEvent.setup();
+      await user.click(await screen.findByRole('button', { name: '+ Naya member' }));
       await user.type(await screen.findByLabelText('Naam'), 'Ravi');
       await user.type(screen.getByLabelText('Mobile'), '9876543210');
       await user.click(within(await screen.findByRole('group', { name: 'Premises' })).getByLabelText('Head Office'));

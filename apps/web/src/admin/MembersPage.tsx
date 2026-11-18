@@ -2,6 +2,7 @@ import type { AdminUser, MemberInput, Role } from '@visitor/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useState } from 'react';
 import { errorMessage, useApi } from '../api';
+import { EmptyState, PageHeader, ROLE_LABEL } from '../ui/Page';
 
 const ROLES: { value: Role; label: string }[] = [
   { value: 'guard', label: 'Guard' },
@@ -124,7 +125,13 @@ export function MembersPage() {
   const [premisesIds, setPremisesIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [query, setQuery] = useState('');
 
+  const q = query.trim().toLowerCase();
+  const shown = (members.data ?? []).filter(
+    (m) => !q || m.name.toLowerCase().includes(q) || m.phone.includes(q) || (m.email ?? '').toLowerCase().includes(q),
+  );
   const set = (patch: Partial<typeof EMPTY>) => setForm({ ...form, ...patch });
   const togglePremises = (id: string) =>
     setPremisesIds(premisesIds.includes(id) ? premisesIds.filter((p) => p !== id) : [...premisesIds, id]);
@@ -151,6 +158,7 @@ export function MembersPage() {
       await api.admin.users.create(body);
       setForm(EMPTY);
       setPremisesIds([]);
+      setAdding(false);
       await queryClient.invalidateQueries({ queryKey: KEY });
     } catch (e) {
       setError(errorMessage(e));
@@ -161,81 +169,112 @@ export function MembersPage() {
 
   return (
     <>
-      <h1>Members</h1>
-      <form className="form-card" onSubmit={create}>
-        <h2>Naya member</h2>
-        <div className="form-grid">
-          <div>
-            <label htmlFor="m-name">Naam</label>
-            <input id="m-name" value={form.name} onChange={(e) => set({ name: e.target.value })} required />
+      <PageHeader
+        title="Members"
+        subtitle="Aapke business ke log: guard, reception, employees aur admin. Har member ko kam se kam ek premises chahiye."
+        actions={
+          <button type="button" className="primary" aria-expanded={adding} onClick={() => setAdding(!adding)}>
+            {adding ? 'Form band karein' : '+ Naya member'}
+          </button>
+        }
+      />
+      {adding && (
+        <form className="form-card" onSubmit={create}>
+          <h2>Naya member</h2>
+          <div className="form-grid">
+            <div>
+              <label htmlFor="m-name">Naam</label>
+              <input id="m-name" value={form.name} onChange={(e) => set({ name: e.target.value })} required />
+            </div>
+            <div>
+              <label htmlFor="m-phone">Mobile</label>
+              <input id="m-phone" inputMode="tel" value={form.phone} onChange={(e) => set({ phone: e.target.value })} required />
+            </div>
+            <div>
+              <label htmlFor="m-email">Email</label>
+              <input id="m-email" type="email" value={form.email} onChange={(e) => set({ email: e.target.value })} />
+            </div>
+            <div>
+              <label htmlFor="m-role">Role</label>
+              <select id="m-role" value={form.role} onChange={(e) => set({ role: e.target.value as Role })}>
+                {ROLES.map((r) => (
+                  <option key={r.value} value={r.value}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="m-dept">Department</label>
+              <select id="m-dept" value={form.departmentId} onChange={(e) => set({ departmentId: e.target.value })}>
+                <option value="">Koi nahi</option>
+                {departments.data?.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="m-designation">Designation</label>
+              <input id="m-designation" value={form.designation} onChange={(e) => set({ designation: e.target.value })} />
+            </div>
+            <div>
+              <label htmlFor="m-password">Password (optional)</label>
+              <input
+                id="m-password"
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                value={form.password}
+                onChange={(e) => set({ password: e.target.value })}
+              />
+            </div>
           </div>
-          <div>
-            <label htmlFor="m-phone">Mobile</label>
-            <input id="m-phone" inputMode="tel" value={form.phone} onChange={(e) => set({ phone: e.target.value })} required />
+          <fieldset className="stack">
+            <legend>Premises</legend>
+            {premises.data?.map((p) => (
+              <label key={p.id} className="row">
+                <input type="checkbox" checked={premisesIds.includes(p.id)} onChange={() => togglePremises(p.id)} />
+                {p.name}
+              </label>
+            ))}
+          </fieldset>
+          <label className="row">
+            <input type="checkbox" checked={form.isHost} onChange={(e) => set({ isHost: e.target.checked })} />
+            Visitor isse milne aa sakte hain (host)
+          </label>
+          {error && (
+            <p role="alert" className="error">
+              {error}
+            </p>
+          )}
+          <div className="form-actions">
+            <button type="submit" className="primary" disabled={busy}>
+              Member banayein
+            </button>
+            <button type="button" onClick={() => setAdding(false)}>
+              Rehne dein
+            </button>
           </div>
-          <div>
-            <label htmlFor="m-email">Email</label>
-            <input id="m-email" type="email" value={form.email} onChange={(e) => set({ email: e.target.value })} />
-          </div>
-          <div>
-            <label htmlFor="m-role">Role</label>
-            <select id="m-role" value={form.role} onChange={(e) => set({ role: e.target.value as Role })}>
-              {ROLES.map((r) => (
-                <option key={r.value} value={r.value}>
-                  {r.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="m-dept">Department</label>
-            <select id="m-dept" value={form.departmentId} onChange={(e) => set({ departmentId: e.target.value })}>
-              <option value="">Koi nahi</option>
-              {departments.data?.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="m-designation">Designation</label>
-            <input id="m-designation" value={form.designation} onChange={(e) => set({ designation: e.target.value })} />
-          </div>
-          <div>
-            <label htmlFor="m-password">Password (optional)</label>
-            <input
-              id="m-password"
-              type="password"
-              autoComplete="new-password"
-              minLength={8}
-              value={form.password}
-              onChange={(e) => set({ password: e.target.value })}
-            />
-          </div>
+        </form>
+      )}
+
+      <div className="toolbar">
+        <div className="search">
+          <label htmlFor="m-search">Member dhoondein</label>
+          <input
+            id="m-search"
+            type="search"
+            placeholder="Naam, mobile ya email"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
         </div>
-        <fieldset className="stack">
-          <legend>Premises</legend>
-          {premises.data?.map((p) => (
-            <label key={p.id} className="row">
-              <input type="checkbox" checked={premisesIds.includes(p.id)} onChange={() => togglePremises(p.id)} />
-              {p.name}
-            </label>
-          ))}
-        </fieldset>
-        <label className="row">
-          <input type="checkbox" checked={form.isHost} onChange={(e) => set({ isHost: e.target.checked })} />
-          Visitor isse milne aa sakte hain (host)
-        </label>
-        {error && (
-          <p role="alert" className="error">
-            {error}
-          </p>
-        )}
-        <button type="submit" className="primary" disabled={busy}>
-          Member banayein
-        </button>
-      </form>
+        <span className="muted small">
+          {members.data ? `${shown.length} / ${members.data.length} members` : ''}
+        </span>
+      </div>
 
       {members.isError && (
         <p role="alert" className="error">
@@ -256,14 +295,16 @@ export function MembersPage() {
             </tr>
           </thead>
           <tbody>
-            {members.data?.map((m) => (
+            {shown.map((m) => (
               <tr key={m.id}>
                 <td>
-                  {m.name}
-                  {m.designation && <div className="muted">{m.designation}</div>}
+                  <strong>{m.name}</strong>
+                  {m.designation && <span className="cell-sub">{m.designation}</span>}
                 </td>
                 <td className="mono">{m.phone}</td>
-                <td>{m.role}</td>
+                <td>
+                  <span className={`badge ${m.role === 'admin' ? 'badge-good' : 'badge-neutral'}`}>{ROLE_LABEL[m.role] ?? m.role}</span>
+                </td>
                 <td>{departmentName(m.departmentId)}</td>
                 <td>{(m.premisesIds ?? []).map(premisesName).join(', ') || '-'}</td>
                 <td>
@@ -276,6 +317,9 @@ export function MembersPage() {
             ))}
           </tbody>
         </table>
+        {members.data && shown.length === 0 && (
+          <EmptyState title={q ? 'Is naam ya number ka koi member nahi mila.' : 'Abhi koi member nahi hai.'} />
+        )}
       </section>
     </>
   );

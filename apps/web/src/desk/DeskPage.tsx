@@ -7,6 +7,7 @@ import { useAuth } from '../auth/AuthProvider';
 import { useLive } from './LiveSiteContext';
 import { DASHBOARD_KEY } from './useLiveSite';
 import { VisitRow } from './VisitRow';
+import { EmptyState, PageHeader } from '../ui/Page';
 
 const GATE_KEY = 'visitor.gate';
 
@@ -17,6 +18,36 @@ const TITLES: Record<DeskSection, string> = {
   expected: 'Aane wale',
   inside: 'Andar hain',
 };
+
+const SUBTITLES: Record<DeskSection, string> = {
+  pending: 'Walk-in visitors jinke host ne abhi jawab nahi diya. Der ho to host ko call karein.',
+  expected: 'Aaj ke invited visitors. Pass na ho to yahin se check-in karein.',
+  inside: 'Jo abhi premises ke andar hain. Jaate waqt check-out karein.',
+};
+
+/** Teeno lists ki ginti; mobile par yahi section badalne ka raasta hai. */
+function DeskStats({ section, counts }: { section: DeskSection; counts?: Record<DeskSection, number> & { calls: number } }) {
+  const tiles: { key: DeskSection; label: string }[] = [
+    { key: 'pending', label: 'Approval ke liye' },
+    { key: 'expected', label: 'Aaj aane hain' },
+    { key: 'inside', label: 'Abhi andar' },
+  ];
+  return (
+    <nav aria-label="Aaj ka haal" className="stats">
+      {tiles.map((t) => (
+        <Link
+          key={t.key}
+          to={`/desk/${t.key}`}
+          className={`stat ${section === t.key ? 'active' : ''} ${t.key === 'pending' && counts?.calls ? 'stat-urgent' : ''}`}
+          aria-current={section === t.key ? 'page' : undefined}
+        >
+          <span className="stat-value">{counts ? counts[t.key] : '–'}</span>
+          <span className="stat-label">{t.label}</span>
+        </Link>
+      ))}
+    </nav>
+  );
+}
 
 function storedGate(): string {
   try {
@@ -196,7 +227,9 @@ export function DeskPage({ section }: { section: DeskSection }) {
           </section>
         )}
         <section className="panel">
-          {pending.length === 0 && <p className="empty">Koi approval baaki nahi hai.</p>}
+          {pending.length === 0 && calls.length === 0 && (
+            <EmptyState title="Koi approval baaki nahi hai." hint="Naya walk-in aate hi yahan dikhega." />
+          )}
           {pending.map((visit) => (
             <VisitRow key={visit.id} visit={visit}>
               {canDecide && <DecisionActions visit={visit} />}
@@ -209,7 +242,7 @@ export function DeskPage({ section }: { section: DeskSection }) {
     const rows = filter(data.expected);
     body = (
       <section className="panel">
-        {rows.length === 0 && <p className="empty">Aaj aur koi visitor aane wala nahi hai.</p>}
+        {rows.length === 0 && <EmptyState title="Aaj aur koi visitor aane wala nahi hai." />}
         {rows.map((visit) => (
           <VisitRow key={visit.id} visit={visit}>
             {canGate && visit.status === 'APPROVED' && <CheckInAction visit={visit} gateId={gateId} />}
@@ -221,7 +254,7 @@ export function DeskPage({ section }: { section: DeskSection }) {
     const rows = filter(data.inside);
     body = (
       <section className="panel">
-        {rows.length === 0 && <p className="empty">Abhi koi visitor andar nahi hai.</p>}
+        {rows.length === 0 && <EmptyState title="Abhi koi visitor andar nahi hai." />}
         {rows.map((visit) => (
           <VisitRow key={visit.id} visit={visit}>
             {canGate && <CheckOutAction visit={visit} gateId={gateId} />}
@@ -235,29 +268,46 @@ export function DeskPage({ section }: { section: DeskSection }) {
 
   return (
     <>
-      <div className="spread">
-        <h1>{TITLES[section]}</h1>
-        {!!gates.data && gates.data.length > 1 && canGate && (
-          <div className="row">
-            <label htmlFor="desk-gate">Aapka gate</label>
-            <select
-              id="desk-gate"
-              style={{ width: 'auto' }}
-              value={gateId}
-              onChange={(e) => {
-                setGateId(e.target.value);
-                rememberGate(e.target.value);
-              }}
-            >
-              {gates.data.map((gate) => (
-                <option key={gate.id} value={gate.id}>
-                  {gate.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-      </div>
+      <PageHeader
+        title={TITLES[section]}
+        subtitle={SUBTITLES[section]}
+        actions={
+          !!gates.data &&
+          gates.data.length > 1 &&
+          canGate && (
+            <div className="row">
+              <label htmlFor="desk-gate">Aapka gate</label>
+              <select
+                id="desk-gate"
+                style={{ width: 'auto' }}
+                value={gateId}
+                onChange={(e) => {
+                  setGateId(e.target.value);
+                  rememberGate(e.target.value);
+                }}
+              >
+                {gates.data.map((gate) => (
+                  <option key={gate.id} value={gate.id}>
+                    {gate.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )
+        }
+      />
+
+      <DeskStats
+        section={section}
+        counts={
+          data && {
+            pending: data.pending.length + data.needsCall.length,
+            expected: data.expected.length,
+            inside: data.inside.length,
+            calls: data.needsCall.length,
+          }
+        }
+      />
 
       {section !== 'pending' && callsWaiting > 0 && (
         <Link to="/desk/pending" className="notice notice-link">
@@ -273,7 +323,13 @@ export function DeskPage({ section }: { section: DeskSection }) {
 
       <div className="stack">
         <label htmlFor="desk-search">Naam ya code se dhoondein</label>
-        <input id="desk-search" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <input
+          id="desk-search"
+          type="search"
+          placeholder="Jaise Rahul ya VIS-2026-00012"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
 
       {body}

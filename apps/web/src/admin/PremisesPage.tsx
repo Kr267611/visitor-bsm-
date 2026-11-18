@@ -2,6 +2,7 @@ import type { Premises, PremisesSettings } from '@visitor/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useEffect, useState } from 'react';
 import { errorMessage, useApi } from '../api';
+import { PageHeader } from '../ui/Page';
 
 const toNumber = (v: string) => (v.trim() === '' ? null : Number(v));
 
@@ -152,7 +153,10 @@ export function PremisesPage() {
 
   return (
     <>
-      <h1>Premises aur gates</h1>
+      <PageHeader
+        title="Premises aur gates"
+        subtitle="Har office, plant ya site ek premises hai. Kiosk code se visitor kiosk us premises ko pehchanta hai."
+      />
       {error && (
         <p role="alert" className="error">
           {error}

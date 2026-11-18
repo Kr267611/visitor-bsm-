@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { errorMessage, useApi } from '../api';
+import { PageHeader } from '../ui/Page';
 
 const MIN = 8;
 
@@ -35,9 +36,8 @@ export function PasswordPage() {
 
   return (
     <>
-      <h1>Password</h1>
+      <PageHeader title="Password" subtitle="Password se login karne ke liye set karein. Badalne par aapke baaki devices logout ho jayenge." />
       <form className="form-card" onSubmit={save}>
-        <p className="muted">Password badalne par aapke baaki devices logout ho jayenge.</p>
         <div className="form-grid">
           <div>
             <label htmlFor="pw-current">Purana password</label>

@@ -2,6 +2,7 @@ import type { AdminDevice } from '@visitor/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { errorMessage, useApi } from '../api';
+import { PageHeader } from '../ui/Page';
 
 function RevokeAction({ device }: { device: AdminDevice }) {
   const api = useApi();
@@ -50,8 +51,7 @@ export function DevicesPanel() {
   const devices = useQuery({ queryKey: ['admin', 'devices'], queryFn: () => api.admin.devices.list() });
   return (
     <>
-      <h1>Devices</h1>
-      <p className="muted">Phone kho jaye to yahan se block karein. Access turant band ho jata hai.</p>
+      <PageHeader title="Devices" subtitle="Jin phones aur browsers se log login hain. Phone kho jaye to yahan se block karein; access turant band ho jata hai." />
       {devices.isError && (
         <p role="alert" className="error">
           {errorMessage(devices.error)}
