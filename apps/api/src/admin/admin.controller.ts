@@ -5,6 +5,8 @@ import { z } from 'zod';
 import { AuthUser, CurrentUser, Roles } from '../auth/roles.decorator';
 import { ApiException } from '../common/api-exception';
 import { parseBody, requirePhone } from '../common/parse';
+import { AllowSuperAdmin } from '../auth/permissions';
+import { PlanLimits } from '../plans/plan-limits.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TENANT_PRISMA, TenantPrismaClient } from '../tenancy/tenant-prisma';
 
@@ -93,7 +95,10 @@ const notFound = () => new ApiException(404, 'NOT_FOUND', 'Yeh record nahi mila.
 @Roles('admin')
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly limits: PlanLimits,
+  ) {}
 
   private businessOf(user: AuthUser): string {
     if (!user.businessId) throw new ApiException(403, 'FORBIDDEN', 'Aapko iski permission nahi hai.');
@@ -125,6 +130,7 @@ export class AdminController {
   async createPremises(@CurrentUser() user: AuthUser, @Body() body: unknown) {
     const businessId = this.businessOf(user);
     const data = parseBody(premisesCreate, body);
+    await this.limits.assert(businessId, 'premises');
     const taken = await this.prisma.premises.count({ where: { businessId, webSlug: { startsWith: slugify(data.name) } } });
     const webSlug = taken ? `${slugify(data.name)}-${taken + 1}` : slugify(data.name);
     const isFirst = !(await this.prisma.premises.count({ where: { businessId } }));
@@ -198,6 +204,7 @@ export class AdminController {
     const { premisesIds, ...data } = parseBody(userCreate, body);
     await this.assertPremises(businessId, premisesIds);
     await this.assertDepartment(businessId, data.departmentId);
+    await this.limits.assert(businessId, 'members');
     const created = await friendly(
       this.prisma.user.create({
         data: {
@@ -216,7 +223,10 @@ export class AdminController {
   async updateUser(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body() body: unknown) {
     const businessId = this.businessOf(user);
     const { premisesIds, ...data } = parseBody(userUpdate, body);
-    if (!(await this.prisma.user.count({ where: { id, businessId } }))) throw notFound();
+    const current = await this.prisma.user.findFirst({ where: { id, businessId }, select: { isActive: true } });
+    if (!current) throw notFound();
+    // Band member ko wapas chalu karna bhi member limit mein ginta hai.
+    if (data.isActive && !current.isActive) await this.limits.assert(businessId, 'members');
     if (premisesIds) await this.assertPremises(businessId, premisesIds);
     await this.assertDepartment(businessId, data.departmentId);
     const updated = await friendly(
@@ -266,9 +276,11 @@ export class ProfileController {
       business,
       premises: premisesList,
       activePremisesId: user.premisesId,
+      features: user.features,
     };
   }
 
+  @AllowSuperAdmin()
   @Get('me')
   me(@CurrentUser() user: AuthUser) {
     return this.profile(user);

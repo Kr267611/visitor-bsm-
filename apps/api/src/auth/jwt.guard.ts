@@ -27,7 +27,7 @@ export class SessionResolver {
       include: {
         user: {
           include: {
-            business: { select: { isActive: true } },
+            business: { select: { isActive: true, plan: { select: { features: true } } } },
             premises: { select: { premisesId: true, premises: { select: { isDefault: true } } } },
           },
         },
@@ -55,6 +55,7 @@ export class SessionResolver {
       premisesId: active?.id ?? null,
       premisesIds: premises.map((p) => p.id),
       deviceId: device.id,
+      features: user.business?.plan.features ?? [],
     };
   }
 }

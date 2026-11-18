@@ -1,5 +1,6 @@
 import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import { z } from 'zod';
+import { RequireFeature } from '../auth/permissions';
 import { AuthUser, CurrentUser, Roles } from '../auth/roles.decorator';
 import { parseBody } from '../common/parse';
 import { GateService } from './gate.service';
@@ -58,12 +59,14 @@ export class GateController {
     return this.walkIns.lookup(user, phone);
   }
 
+  @RequireFeature('visitor_desk')
   @Post('gate/walk-ins/otp')
   @HttpCode(204)
   async walkInOtp(@Body() body: unknown) {
     await this.walkIns.sendOtp(parseBody(otpSchema, body).phone);
   }
 
+  @RequireFeature('visitor_desk')
   @Post('gate/walk-ins')
   walkIn(@CurrentUser() user: AuthUser, @Body() body: unknown) {
     return this.walkIns.create(user, parseBody(walkInSchema, body));

@@ -20,6 +20,8 @@ export interface AuthUser {
   /** Jin premises ka access hai (admin: business ke saare). */
   premisesIds: string[];
   deviceId: string;
+  /** Business ke plan ke modules (super admin: khaali). */
+  features: string[];
 }
 
 export const CurrentUser = createParamDecorator(

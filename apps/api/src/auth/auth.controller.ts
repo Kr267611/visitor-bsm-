@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { parseBody, requirePhone } from '../common/parse';
 import { AuthService } from './auth.service';
 import { PASSWORD_MAX, PASSWORD_MIN } from './password';
+import { AllowSuperAdmin } from './permissions';
 import { AuthUser, CurrentUser, Public } from './roles.decorator';
 
 const deviceName = z.string().min(1).max(100);
@@ -79,6 +80,7 @@ export class AuthController {
 export class PasswordController {
   constructor(private readonly auth: AuthService) {}
 
+  @AllowSuperAdmin()
   @Put('password')
   @HttpCode(204)
   async change(@CurrentUser() user: AuthUser, @Body() body: unknown) {

@@ -6,6 +6,7 @@ import { AuthController, PasswordController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtGuard, SessionResolver } from './jwt.guard';
 import { OtpService } from './otp.service';
+import { FeatureGuard } from './permissions';
 import { RolesGuard } from './roles.guard';
 
 @Global()
@@ -25,6 +26,7 @@ import { RolesGuard } from './roles.guard';
     SessionResolver,
     { provide: APP_GUARD, useClass: JwtGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: FeatureGuard },
   ],
   exports: [OtpService, AuthService, SessionResolver, JwtModule],
 })

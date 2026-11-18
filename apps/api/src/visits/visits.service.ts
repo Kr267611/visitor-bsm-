@@ -5,6 +5,7 @@ import { AuthUser } from '../auth/roles.decorator';
 import { ApiException } from '../common/api-exception';
 import { requirePhone } from '../common/parse';
 import { istDayRange } from '../common/time';
+import { PlanLimits } from '../plans/plan-limits.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { inviteLink, newInviteToken } from './invite-tokens';
@@ -33,6 +34,7 @@ export class VisitsService {
     private readonly prisma: PrismaService,
     private readonly lifecycle: VisitLifecycleService,
     private readonly storage: StorageService,
+    private readonly limits: PlanLimits,
   ) {}
 
   async invite(user: AuthUser, input: InviteInput): Promise<Visit> {
@@ -47,6 +49,7 @@ export class VisitsService {
     if (input.validTo.getTime() - input.validFrom.getTime() > MAX_WINDOW_MS) {
       throw new ApiException(422, 'VALIDATION_FAILED', 'Ek pass 24 ghante se zyada ka nahi ho sakta.');
     }
+    await this.limits.assert(businessId, 'visits');
 
     // Purana visitor ho to uska naam nahi badalte, visitor khud form mein theek karega.
     const visitor = await this.prisma.visitor.upsert({

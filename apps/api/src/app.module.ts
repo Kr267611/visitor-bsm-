@@ -10,6 +10,7 @@ import { JobsModule } from './jobs/jobs.service';
 import { LiveModule } from './live/live.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PassesModule } from './passes/passes.module';
+import { PlansModule } from './plans/plan-limits.service';
 import { PrismaModule } from './prisma/prisma.service';
 import { RedisModule } from './redis/redis.service';
 import { TenancyModule } from './tenancy/tenancy.module';
@@ -22,6 +23,7 @@ import { VisitsModule } from './visits/visits.module';
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 600 }]),
     PrismaModule,
     TenancyModule,
+    PlansModule,
     RedisModule,
     JobsModule,
     NotificationsModule,

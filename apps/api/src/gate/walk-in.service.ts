@@ -4,6 +4,7 @@ import { AuthUser } from '../auth/roles.decorator';
 import { OtpService } from '../auth/otp.service';
 import { ApiException } from '../common/api-exception';
 import { requirePhone } from '../common/parse';
+import { PlanLimits } from '../plans/plan-limits.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { VisitLifecycleService } from '../visits/visit-lifecycle.service';
@@ -34,6 +35,7 @@ export class WalkInService {
     private readonly lifecycle: VisitLifecycleService,
     private readonly timers: ApprovalTimerProcessor,
     private readonly gates: GateService,
+    private readonly limits: PlanLimits,
   ) {}
 
   async lookup(user: AuthUser, rawPhone: string) {
@@ -62,6 +64,7 @@ export class WalkInService {
     if (earlier) return this.view(earlier.visit);
 
     const gate = await this.gates.requireGate(user, input.gateId);
+    await this.limits.assert(gate.businessId, 'visits');
     const phone = requirePhone(input.phone);
     if (!input.consent) {
       throw new ApiException(422, 'CONSENT_REQUIRED', 'Visitor ki sahmati ke bina entry nahi ho sakti.');
