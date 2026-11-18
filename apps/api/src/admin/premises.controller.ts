@@ -49,7 +49,7 @@ const settingsUpdate = z
 const gateCreate = z.object({ premisesId: uuid, name: z.string().trim().min(1).max(100) });
 const gateUpdate = z.object({ name: z.string().trim().min(1).max(100), isActive: z.boolean() }).partial();
 
-/** Premises, unki settings aur gates. Scoped client: sab queries apne business tak. */
+/** Premises, their settings and gates. Scoped client: every query stays inside the business. */
 @Roles('admin')
 @Controller('admin')
 export class PremisesController {
@@ -101,7 +101,7 @@ export class PremisesController {
     const data = parseBody(premisesUpdate, body);
     const before = await this.premisesOrThrow(id);
     if (data.isDefault === false && before.isDefault) {
-      throw new ApiException(422, 'VALIDATION_FAILED', 'Ek premises default rehna chahiye; doosre ko default banayein.');
+      throw new ApiException(422, 'VALIDATION_FAILED', 'One premises must stay the default. Make another premises the default instead.');
     }
     return this.db.$transaction(async (tx) => {
       if (data.isDefault) await tx.premises.updateMany({ where: { id: { not: id } }, data: { isDefault: false } });
@@ -125,7 +125,7 @@ export class PremisesController {
     const visitStart = data.visitStart !== undefined ? data.visitStart : before.visitStart;
     const visitEnd = data.visitEnd !== undefined ? data.visitEnd : before.visitEnd;
     if (visitStart && visitEnd && visitStart >= visitEnd) {
-      throw new ApiException(422, 'VALIDATION_FAILED', 'Visit ka end time start ke baad ka hona chahiye.');
+      throw new ApiException(422, 'VALIDATION_FAILED', 'Visiting hours must end after they start.');
     }
     return this.db.$transaction(async (tx) => {
       const after = await tx.premisesSetting.update({ where: { premisesId: id }, data });
@@ -143,7 +143,7 @@ export class PremisesController {
   async createGate(@Body() body: unknown) {
     const data = parseBody(gateCreate, body);
     await this.premisesOrThrow(data.premisesId).catch(() => {
-      throw new ApiException(422, 'VALIDATION_FAILED', 'Chuna gaya premises nahi mila.');
+      throw new ApiException(422, 'VALIDATION_FAILED', 'The selected premises was not found.');
     });
     return this.db.$transaction(async (tx) => {
       const gate = await tx.gate.create({ data: { ...data, businessId: tenantId() } });

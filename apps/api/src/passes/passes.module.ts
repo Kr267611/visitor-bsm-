@@ -9,7 +9,7 @@ import { PassService } from './pass.service';
       useFactory: () => {
         const { QR_PRIVATE_KEY, QR_PUBLIC_KEY } = process.env;
         if (!QR_PRIVATE_KEY || !QR_PUBLIC_KEY) {
-          throw new Error('QR_PRIVATE_KEY aur QR_PUBLIC_KEY set karein. Script: scripts/gen-qr-keys.ts');
+          throw new Error('Set QR_PRIVATE_KEY and QR_PUBLIC_KEY (generate them with scripts/gen-qr-keys.ts).');
         }
         return new PassService(QR_PRIVATE_KEY, QR_PUBLIC_KEY);
       },

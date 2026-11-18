@@ -16,9 +16,9 @@ const MAX_PASSWORD_FAILS = 10;
 const PASSWORD_LOCK_SEC = 15 * 60;
 
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
-const invalidSession = () => new ApiException(401, 'UNAUTHORIZED', 'Dobara login karein.');
+const invalidSession = () => new ApiException(401, 'UNAUTHORIZED', 'Please sign in again.');
 
-/** Active user, aur uska business bhi active (super admin ka business nahi hota). */
+/** Active user whose business is also active (a super admin has no business). */
 const ACTIVE_ACCOUNT: Prisma.UserWhereInput = {
   isActive: true,
   OR: [{ businessId: null }, { business: { isActive: true } }],
@@ -35,7 +35,7 @@ export class AuthService {
     private readonly redis: RedisService,
   ) {}
 
-  /** Ek phone/email kai businesses mein ho sakta hai: sab active accounts. Login lookup saare businesses mein hota hai. */
+  /** One phone/email can exist in several businesses: all active accounts. Sign-in lookups search every business. */
   private accounts(where: Prisma.UserWhereInput): Promise<Account[]> {
     return this.prisma.user.findMany({
       where: { AND: [ACTIVE_ACCOUNT, where] },
@@ -51,7 +51,7 @@ export class AuthService {
     return phone ? this.accounts({ phone }) : Promise.resolve([]);
   }
 
-  /** OTP sirf un businesses ke liye jinme OTP login on hai. */
+  /** OTP only for businesses that have OTP sign-in enabled. */
   private otpAccounts(phone: string) {
     return this.accounts({ phone }).then((all) => all.filter((u) => !u.business || u.business.otpLogin));
   }
@@ -59,7 +59,7 @@ export class AuthService {
   async login(identifier: string, password: string, deviceName: string) {
     const failKey = `login-fail:${sha256(identifier.trim().toLowerCase())}`;
     if (Number(await this.redis.client.get(failKey)) >= MAX_PASSWORD_FAILS) {
-      throw new ApiException(429, 'LOGIN_LOCKED', 'Bahut baar galat password. 15 minute baad koshish karein.');
+      throw new ApiException(429, 'LOGIN_LOCKED', 'Too many incorrect passwords. Please try again in 15 minutes.');
     }
     const candidates = await this.byIdentifier(identifier);
     const matched: Account[] = [];
@@ -70,14 +70,14 @@ export class AuthService {
     if (!matched.length) {
       const fails = await this.redis.client.incr(failKey);
       if (fails === 1) await this.redis.client.expire(failKey, PASSWORD_LOCK_SEC);
-      throw new ApiException(401, 'INVALID_CREDENTIALS', 'Phone/email ya password sahi nahi hai.');
+      throw new ApiException(401, 'INVALID_CREDENTIALS', 'Incorrect phone/email or password.');
     }
     await this.redis.client.del(failKey);
     return this.finish(matched, deviceName);
   }
 
   async requestOtp(phone: string): Promise<void> {
-    // Bahar wale ko pata na chale kaun employee hai: account na ho to bhi 204.
+    // Never reveal who is an employee: answer 204 even when there is no account.
     if (!(await this.otpAccounts(phone)).length) return;
     await this.otp.request(phone, 'LOGIN_OTP');
   }
@@ -85,13 +85,13 @@ export class AuthService {
   async verifyOtp(phone: string, otp: string, deviceName: string) {
     const candidates = await this.otpAccounts(phone);
     const ok = candidates.length > 0 && (await this.otp.verify(phone, otp, 'LOGIN_OTP'));
-    if (!ok) throw new ApiException(401, 'INVALID_OTP', 'OTP sahi nahi hai.');
+    if (!ok) throw new ApiException(401, 'INVALID_OTP', 'Incorrect OTP.');
     return this.finish(candidates, deviceName);
   }
 
   /**
-   * Proof (password/OTP) ke baad hi business list dikhti hai. Ek account ho to seedha session,
-   * kai hon to 409 CHOOSE_BUSINESS aur 5 minute ka ek-baar wala selection token.
+   * The business list is shown only after proof (password/OTP). One account gives a session directly;
+   * several give 409 CHOOSE_BUSINESS with a one-time selection token valid for 5 minutes.
    */
   private async finish(users: Account[], deviceName: string) {
     if (users.length === 1) return this.session(users[0], deviceName);
@@ -102,20 +102,20 @@ export class AuthService {
       'EX',
       SELECTION_TTL_SEC,
     );
-    throw new ApiException(409, 'CHOOSE_BUSINESS', 'Kaunse business mein login karna hai?', {
+    throw new ApiException(409, 'CHOOSE_BUSINESS', 'Which business do you want to sign in to?', {
       selectionToken,
       businesses: users.map((u) => ({ id: u.businessId, name: u.business?.name ?? 'Platform' })),
     });
   }
 
   async selectBusiness(selectionToken: string, businessId: string | null, deviceName: string) {
-    // GET + DEL ek saath (MULTI): token sirf ek baar chale. Redis 5 par bhi chalta hai (GETDEL 6.2+).
+    // GET + DEL in one MULTI so the token works only once. Works on Redis 5 too (GETDEL needs 6.2+).
     const key = `login-select:${sha256(selectionToken)}`;
     const result = await this.redis.client.multi().get(key).del(key).exec();
     const raw = result?.[0]?.[1] as string | null | undefined;
-    if (!raw) throw new ApiException(401, 'UNAUTHORIZED', 'Login ka samay khatam. Dobara login karein.');
+    if (!raw) throw new ApiException(401, 'UNAUTHORIZED', 'Sign-in timed out. Please sign in again.');
     const [user] = await this.accounts({ id: { in: JSON.parse(raw) as string[] }, businessId });
-    if (!user) throw new ApiException(401, 'UNAUTHORIZED', 'Dobara login karein.');
+    if (!user) throw new ApiException(401, 'UNAUTHORIZED', 'Please sign in again.');
     return this.session(user, deviceName);
   }
 
@@ -128,11 +128,11 @@ export class AuthService {
     };
   }
 
-  /** Password badalne par baaki saare devices logout. Pehli baar (OTP user) purana password nahi chahiye. */
+  /** Changing the password signs out every other device. The first password (OTP user) needs no current password. */
   async changePassword(userId: string, deviceId: string, currentPassword: string | undefined, newPassword: string) {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
     if (user.passwordHash && !(currentPassword && (await verifyPassword(currentPassword, user.passwordHash)))) {
-      throw new ApiException(422, 'VALIDATION_FAILED', 'Purana password sahi nahi hai.');
+      throw new ApiException(422, 'VALIDATION_FAILED', 'The current password is incorrect.');
     }
     const now = new Date();
     await this.prisma.$transaction([
@@ -153,7 +153,7 @@ export class AuthService {
       where: { tokenHash: sha256(refreshToken) },
       include: { user: { include: { business: { select: { isActive: true } } } }, device: true },
     });
-    // Jawab raaste mein kho jaye ya do tabs ek saath refresh karein to logout na ho: 30 second ki chhoot.
+    // If the response is lost or two tabs refresh at once, do not sign out: 30-second grace period.
     const graceOver = stored?.revokedAt && Date.now() - stored.revokedAt.getTime() > ROTATION_GRACE_MS;
     if (
       !stored ||
@@ -178,7 +178,7 @@ export class AuthService {
     const now = new Date();
     await this.prisma.$transaction([
       this.prisma.refreshToken.updateMany({ where: { deviceId: stored.deviceId, revokedAt: null }, data: { revokedAt: now } }),
-      // Logout ke baad is phone par visitors ke naam wale push nahi aane chahiye.
+      // After sign-out this phone must not receive pushes with visitor names.
       this.prisma.device.update({ where: { id: stored.deviceId }, data: { revokedAt: now, pushToken: null } }),
     ]);
   }

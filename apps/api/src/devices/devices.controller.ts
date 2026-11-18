@@ -11,7 +11,7 @@ const pushTokenSchema = z.object({ pushToken: z.string().min(1).max(300) });
 export class DevicesController {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Admin poore business ke devices, security sirf apne premises ke logon ke. */
+  /** Admins see every device in the business; security sees only people at their premises. */
   private scope(user: AuthUser) {
     const businessId = user.businessId ?? '';
     return user.role === 'admin'
@@ -23,7 +23,7 @@ export class DevicesController {
   @HttpCode(204)
   async savePushToken(@CurrentUser() user: AuthUser, @Body() body: unknown) {
     const { pushToken } = parseBody(pushTokenSchema, body);
-    // Ek phone ka token sirf aakhri login par, warna doosre user ke push is phone par aayenge.
+    // A phone's push token belongs to its latest sign-in only; otherwise another user's pushes would arrive here.
     await this.prisma.device.updateMany({
       where: { pushToken, id: { not: user.deviceId } },
       data: { pushToken: null },
@@ -56,7 +56,7 @@ export class DevicesController {
   @HttpCode(204)
   async revoke(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
     const exists = await this.prisma.device.count({ where: { id, ...this.scope(user) } });
-    if (!exists) throw new ApiException(404, 'NOT_FOUND', 'Device nahi mila.');
+    if (!exists) throw new ApiException(404, 'NOT_FOUND', 'Device not found.');
     await this.prisma.device.updateMany({
       where: { id, revokedAt: null },
       data: { revokedAt: new Date(), pushToken: null },

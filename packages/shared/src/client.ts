@@ -10,17 +10,17 @@ export interface SessionUser {
   id: string;
   name: string;
   role: Role;
-  /** Super admin ke liye null. */
+  /** null for a super admin. */
   businessId: string | null;
 }
 
-/** Ek phone/email kai businesses mein ho: password/OTP sahi hone ke baad yeh list milti hai. */
+/** When one phone/email exists in several businesses, this list arrives after the password/OTP is verified. */
 export interface BusinessChoice {
   selectionToken: string;
   businesses: { id: string | null; name: string }[];
 }
 
-/** Login ne 409 CHOOSE_BUSINESS diya ho to business list, warna null. */
+/** Business list when sign-in answered 409 CHOOSE_BUSINESS, otherwise null. */
 export function businessChoice(error: unknown): BusinessChoice | null {
   if (!(error instanceof ApiError) || error.code !== 'CHOOSE_BUSINESS') return null;
   return { selectionToken: error.body.selectionToken, businesses: error.body.businesses ?? [] };
@@ -114,7 +114,7 @@ export interface Premises {
   lng: number | null;
   geofenceM: number | null;
   category: PremisesCategory;
-  /** Kiosk par premises pehchanne ka 6 akshar ka code. */
+  /** 6-character code a kiosk uses to identify its premises. */
   code: string;
   webSlug: string;
   isDefault: boolean;
@@ -199,7 +199,7 @@ export interface Profile extends AdminUser {
   business: { id: string; name: string; slug: string } | null;
   premises: { id: string; name: string; isDefault: boolean }[];
   activePremisesId: string | null;
-  /** Business ke plan ke modules; menu inhi se banta hai. */
+  /** Modules in the business plan; the menu is built from these. */
   features: string[];
 }
 
@@ -212,7 +212,7 @@ export interface AdminDevice {
   user: { id: string; name: string; role: Role };
 }
 
-/** Browser mein Blob, React Native mein `{ uri, name, type }`. */
+/** A Blob in the browser, `{ uri, name, type }` in React Native. */
 export type PhotoFile = Blob | { uri: string; name: string; type: string };
 
 export class ApiError extends Error {
@@ -227,9 +227,9 @@ export class ApiError extends Error {
   }
 }
 
-/** Server tak pahunch hi nahi paye. Entry hui ya nahi, pata nahi. */
+/** The server could not be reached. Whether the entry was recorded is unknown. */
 export class NetworkError extends Error {
-  constructor(message = 'Internet ya server se connection nahi ho paya.') {
+  constructor(message = 'Could not reach the server. Check your internet connection.') {
     super(message);
     this.name = 'NetworkError';
   }
@@ -239,7 +239,7 @@ export interface ApiClientOptions {
   baseUrl: string;
   tokens: { get(): Promise<Tokens | null>; set(tokens: Tokens | null): Promise<void> };
   onSessionExpired(): void;
-  /** Chuna hua premises: har login wali request par `X-Premises-Id` header. Na ho to server default leta hai. */
+  /** Selected premises: sent as the `X-Premises-Id` header on signed-in requests. Without it the server uses the default. */
   getPremisesId?: () => string | null | Promise<string | null>;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
@@ -250,7 +250,7 @@ const DEFAULT_TIMEOUT_MS = 15_000;
 interface RequestOptions {
   body?: unknown;
   form?: FormData;
-  /** Login ke bina wale routes. */
+  /** Routes that work without sign-in. */
   anonymous?: boolean;
 }
 
@@ -308,23 +308,23 @@ export function createApiClient(options: ApiClientOptions) {
       throw new ApiError(
         res.status,
         body.error ?? 'INTERNAL',
-        body.message ?? 'Kuch gadbad ho gayi. Dobara koshish karein.',
+        body.message ?? 'Something went wrong. Please try again.',
         body,
       );
     }
     return body as T;
   }
 
-  /** Ek saath kitni bhi requests 401 payein, refresh ek hi baar hota hai. */
+  /** However many requests get a 401 at once, the refresh happens only once. */
   function refresh(): Promise<void> {
     refreshing ??= (async () => {
       try {
         const current = await options.tokens.get();
-        if (!current) throw new ApiError(401, 'UNAUTHORIZED', 'Dobara login karein.', {});
+        if (!current) throw new ApiError(401, 'UNAUTHORIZED', 'Please sign in again.', {});
         const res = await send('POST', '/auth/refresh', { body: { refreshToken: current.refreshToken } });
         await options.tokens.set(await parse<Tokens>(res));
       } catch (error) {
-        // Sirf server ke saaf "login galat hai" par hatao. Internet ya server ki dikkat par nahi.
+        // Clear the session only when the server clearly rejects it, never on network or server trouble.
         if (error instanceof ApiError && error.status === 401) {
           await options.tokens.set(null);
           options.onSessionExpired();
@@ -344,7 +344,7 @@ export function createApiClient(options: ApiClientOptions) {
     const res = await send(method, path, opts, tokens?.accessToken);
     if (res.status !== 401) return parse<T>(res);
 
-    // Sirf login expire hone par refresh. Visitor ka galat OTP bhi 401 hai, usse guard logout nahi hona chahiye.
+    // Refresh only when the session expired. A visitor's wrong OTP is also a 401 and must not sign the guard out.
     const code = await res
       .clone()
       .json()
@@ -363,7 +363,7 @@ export function createApiClient(options: ApiClientOptions) {
     update: (id: string, body: Partial<Input>) => request<Row>('PATCH', `${path}/${id}`, { body }),
   });
 
-  /** Session mila to tokens save. CHOOSE_BUSINESS par ApiError (dekhein `businessChoice`). */
+  /** Saves tokens when a session arrives. CHOOSE_BUSINESS throws an ApiError (see `businessChoice`). */
   async function startSession(path: string, body: object): Promise<Session> {
     const session = await request<Session>('POST', path, { body, anonymous: true });
     await options.tokens.set({ accessToken: session.accessToken, refreshToken: session.refreshToken });

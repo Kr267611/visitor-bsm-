@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 import { currentContext, tenantId } from '../tenancy/request-context';
 import { TenantPrismaClient } from '../tenancy/tenant-prisma';
 
-/** Scoped client ya uska transaction: dono mein auditLog delegate same hai. */
+/** Scoped client or its transaction: both expose the same auditLog delegate. */
 type AuditClient = Pick<TenantPrismaClient, 'auditLog'>;
 
 export interface AuditEntry {
@@ -16,8 +16,8 @@ export interface AuditEntry {
 const json = (v: object | null | undefined) => (v == null ? Prisma.DbNull : (JSON.parse(JSON.stringify(v)) as Prisma.InputJsonValue));
 
 /**
- * Admin ke har badlav ka record (append-only table). Wahi transaction pass karein jisme badlav hua,
- * taaki badlav aur uska record saath mein bane ya saath mein fail ho.
+ * Record of every admin change (append-only table). Pass the same transaction that made the change,
+ * so the change and its record are written together or fail together.
  */
 export function audit(client: AuditClient, entry: AuditEntry) {
   return client.auditLog.create({

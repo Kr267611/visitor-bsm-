@@ -12,7 +12,7 @@ export class DashboardController {
   @Roles('guard', 'reception', 'security', 'admin')
   @Get('live')
   live(@CurrentUser() user: AuthUser) {
-    if (!user.premisesId) throw new ApiException(422, 'VALIDATION_FAILED', 'Aapke account par premises set nahi hai.');
+    if (!user.premisesId) throw new ApiException(422, 'VALIDATION_FAILED', 'Your account has no premises assigned.');
     return this.dashboard.live(user.premisesId);
   }
 }

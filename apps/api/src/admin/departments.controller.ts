@@ -54,7 +54,7 @@ export class DepartmentsController {
     );
   }
 
-  /** Department hatane par uske members bina department ke reh jaate hain, hat-te nahi. */
+  /** Deleting a department keeps its members; they are left without a department. */
   @Delete(':id')
   @HttpCode(204)
   async remove(@Param('id', ParseUUIDPipe) id: string) {

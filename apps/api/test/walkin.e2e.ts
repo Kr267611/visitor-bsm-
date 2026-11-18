@@ -198,10 +198,10 @@ describe('walk-in', () => {
     const w = await world();
     const id = await pendingVisit(w);
     const hostToken = await tokenFor(ctx, w.host.id);
-    await http().post(`/visits/${id}/reject`).set(auth(hostToken)).send({ reason: 'Aaj nahi' }).expect(200);
+    await http().post(`/visits/${id}/reject`).set(auth(hostToken)).send({ reason: 'Not today' }).expect(200);
     const res = await http().get(`/visits/${id}`).set(auth(w.token)).expect(200);
     expect(res.body.status).toBe('REJECTED');
-    expect(res.body.decisionNote).toBe('Aaj nahi');
+    expect(res.body.decisionNote).toBe('Not today');
     expect(await ctx.prisma.outbox.count({ where: { visitId: id, template: 'PASS_READY' } })).toBe(0);
   });
 

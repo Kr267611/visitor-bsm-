@@ -17,7 +17,7 @@ export class ProfileController {
     @Inject(TENANT_PRISMA) private readonly db: TenantPrismaClient,
   ) {}
 
-  /** Raw client: super admin (bina business) bhi apna profile dekhta hai. Sab kuch user.id se bandha hai. */
+  /** Raw client: a super admin (no business) can also read their profile. Everything is keyed by user.id. */
   private async profile(user: AuthUser) {
     const { delegate, premises, business, ...me } = await this.prisma.user.findUniqueOrThrow({
       where: { id: user.id },
@@ -58,7 +58,7 @@ export class ProfileController {
         where: { id: delegateId, isActive: true, premises: { some: { premisesId: { in: user.premisesIds } } } },
       });
       if (delegateId === user.id || !delegate) {
-        throw new ApiException(422, 'VALIDATION_FAILED', 'Backup person apne premises ka active employee hona chahiye.');
+        throw new ApiException(422, 'VALIDATION_FAILED', 'The backup person must be an active employee at your premises.');
       }
     }
     await this.db.user.update({ where: { id: user.id }, data: { delegateId } });

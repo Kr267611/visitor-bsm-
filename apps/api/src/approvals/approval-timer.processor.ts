@@ -13,10 +13,10 @@ const TIMERS: { name: TimerName; env: string; fallbackSec: number }[] = [
   { name: 'reception', env: 'APPROVAL_RECEPTION_SEC', fallbackSec: 300 },
 ];
 
-/** BullMQ ki job id mein `:` allowed nahi. */
+/** BullMQ job ids may not contain `:`. */
 const jobId = (visitId: string, name: TimerName) => `${visitId}_${name}`;
 
-/** Host jawab na de to: reminder, phir backup person, phir reception ko call karne ka task. */
+/** If the host does not respond: a reminder, then the backup person, then a call task for reception. */
 @Injectable()
 export class ApprovalTimerProcessor implements OnModuleInit {
   constructor(
@@ -47,7 +47,7 @@ export class ApprovalTimerProcessor implements OnModuleInit {
       where: { id: job.data.visitId },
       include: { visitor: true, host: true },
     });
-    // Faisla ho chuka ho to kuch nahi karna.
+    // Already decided: nothing to do.
     if (visit?.status !== 'PENDING_APPROVAL') return;
     await runInTenant(visit.businessId, () => this.escalate(job.name, visit));
   }

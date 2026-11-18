@@ -7,16 +7,16 @@ export type LimitKind = 'premises' | 'members' | 'visits';
 const LABEL: Record<LimitKind, string> = {
   premises: 'premises',
   members: 'active members',
-  visits: 'is mahine ke visits',
+  visits: 'visits this month',
 };
 
-/** IST (UTC+5:30) mein is mahine ki shuruaat. */
+/** Start of the current month in IST (UTC+5:30). */
 export function monthStartIst(now = new Date()): Date {
   const ist = new Date(now.getTime() + 330 * 60_000);
   return new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), 1) - 330 * 60_000);
 }
 
-/** Plan ki limit (null = unlimited) se zyada naya premises/member/visit na bane. */
+/** Blocks a new premises/member/visit beyond the plan limit (null = unlimited). */
 @Injectable()
 export class PlanLimits {
   constructor(private readonly prisma: PrismaService) {}
@@ -27,7 +27,7 @@ export class PlanLimits {
     if (limit == null) return;
     const used = await this.count(businessId, kind);
     if (used + adding > limit) {
-      throw new ApiException(422, 'PLAN_LIMIT', `Aapke plan mein ${LABEL[kind]} ki limit (${limit}) poori ho gayi. Plan upgrade karein.`, {
+      throw new ApiException(422, 'PLAN_LIMIT', `Your plan allows ${limit} ${LABEL[kind]}, and that limit has been reached. Please upgrade your plan.`, {
         kind,
         limit,
       });

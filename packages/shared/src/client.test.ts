@@ -67,7 +67,7 @@ describe('createApiClient', () => {
   });
 
   it('refresh failure clears tokens, calls onSessionExpired', async () => {
-    const t = setup(() => json(401, { error: 'UNAUTHORIZED', message: 'Dobara login karein.' }));
+    const t = setup(() => json(401, { error: 'UNAUTHORIZED', message: 'Please sign in again.' }));
     await expect(t.api.gates.list()).rejects.toBeInstanceOf(ApiError);
     expect(t.stored()).toBeNull();
     expect(t.expiredCount()).toBe(1);
@@ -95,14 +95,14 @@ describe('createApiClient', () => {
   });
 
   it('wrong OTP 401 does not trigger refresh', async () => {
-    const t = setup(() => json(401, { error: 'INVALID_OTP', message: 'OTP sahi nahi hai.' }));
+    const t = setup(() => json(401, { error: 'INVALID_OTP', message: 'Incorrect OTP.' }));
     await expect(t.api.auth.verifyOtp({ phone: 'p', otp: '1', deviceName: 'd' })).rejects.toMatchObject({ code: 'INVALID_OTP' });
     expect(t.calls).toHaveLength(1);
     expect(t.expiredCount()).toBe(0);
   });
 
   it('wrong visitor OTP on a logged-in route keeps the session', async () => {
-    const t = setup(() => json(401, { error: 'INVALID_OTP', message: 'OTP sahi nahi hai.' }));
+    const t = setup(() => json(401, { error: 'INVALID_OTP', message: 'Incorrect OTP.' }));
     const err = await t.api.gate
       .walkIn({
         phone: 'p',
@@ -122,12 +122,12 @@ describe('createApiClient', () => {
   });
 
   it('error body becomes ApiError with code', async () => {
-    const t = setup(() => json(409, { error: 'ALREADY_CHECKED_IN', message: 'Andar hain', gate: 'Gate 1' }));
+    const t = setup(() => json(409, { error: 'ALREADY_CHECKED_IN', message: 'Already inside', gate: 'Gate 1' }));
     const err = await t.api.gate.scan({ qr: 'q', gateId: 'g', mode: 'IN', clientEventId: 'c' }).catch((e) => e);
     expect(err).toBeInstanceOf(ApiError);
     expect(err.status).toBe(409);
     expect(err.code).toBe('ALREADY_CHECKED_IN');
-    expect(err.message).toBe('Andar hain');
+    expect(err.message).toBe('Already inside');
     expect(err.body.gate).toBe('Gate 1');
   });
 

@@ -32,13 +32,13 @@ export interface ApplyInput {
   >;
   notify?: OutboxDraft[];
   meta?: object;
-  /** Status badalne ke saath, usi transaction mein. */
+  /** Runs together with the status change, in the same transaction. */
   inTx?: (tx: TenantTx) => Promise<void>;
 }
 
 /**
- * `visits.status` sirf yahin se badalta hai: status, audit event aur outbox ek transaction mein.
- * Scoped client: HTTP request ka business, ya job/public link ka `runInTenant`. Context na ho to throw.
+ * `visits.status` changes only here: status, audit event and outbox in one transaction.
+ * Scoped client: the HTTP request's business, or `runInTenant` for jobs and public links. Throws without a context.
  */
 @Injectable()
 export class VisitLifecycleService {
@@ -53,12 +53,12 @@ export class VisitLifecycleService {
 
     const visit = await this.prisma.$transaction(async (tx) => {
       const current = await tx.visit.findUnique({ where: { id: input.visitId } });
-      if (!current) throw new ApiException(404, 'NOT_FOUND', 'Visit nahi mila.');
+      if (!current) throw new ApiException(404, 'NOT_FOUND', 'Visit not found.');
 
       const to = nextStatus(current.status, input.action);
       if (!to) throw new InvalidTransitionError(current.status);
 
-      // Status ki shart ke saath update: do log ek saath aayein to ek hi jeetega.
+      // Update conditioned on the status: when two people act at once, only one wins.
       const { count } = await tx.visit.updateMany({
         where: { id: current.id, status: current.status },
         data: { status: to, ...input.patch },
@@ -106,7 +106,7 @@ export class VisitLifecycleService {
     return visit;
   }
 
-  /** Naya visit: code, CREATED event aur outbox ek transaction mein. */
+  /** New visit: code, CREATED event and outbox in one transaction. */
   async create(input: {
     data: Omit<Prisma.VisitUncheckedCreateInput, 'code'>;
     actorId: string | null;
@@ -158,7 +158,7 @@ export class VisitLifecycleService {
     return visit;
   }
 
-  /** Bina status change wala event: CREATED, REMINDER_SENT, wagairah. */
+  /** Event without a status change: CREATED, REMINDER_SENT and so on. */
   async recordEvent(
     visitId: string,
     type: string,
@@ -185,7 +185,7 @@ export class VisitLifecycleService {
     ]);
   }
 
-  /** Bina status change ke bhi live screens ko batana ho (jaise reception ka call task). */
+  /** Notify live screens even without a status change (such as reception's call task). */
   announce(visit: Pick<Visit, 'id' | 'businessId' | 'premisesId' | 'status'>): void {
     const event: VisitUpdatedEvent = {
       visitId: visit.id,

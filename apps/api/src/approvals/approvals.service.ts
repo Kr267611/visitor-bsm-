@@ -18,13 +18,13 @@ export class ApprovalsService {
     const visit = await this.visits.load(id);
     const allowed =
       this.visits.isHostOrDelegate(user, visit) || this.visits.isSiteStaff(user, visit, ['reception', 'admin']);
-    if (!allowed) throw new ApiException(403, 'FORBIDDEN', 'Aapko iski permission nahi hai.');
+    if (!allowed) throw new ApiException(403, 'FORBIDDEN', 'You do not have permission to do this.');
     return visit;
   }
 
   async approve(user: AuthUser, id: string, note?: string) {
     const visit = await this.loadForDecision(user, id);
-    // Exit scan ke liye visitor ke paas bhi pass hona chahiye.
+    // The visitor needs a pass for the exit scan too.
     const { token, hash } = newInviteToken();
     const updated = await this.lifecycle.apply({
       visitId: id,

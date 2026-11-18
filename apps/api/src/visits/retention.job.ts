@@ -5,7 +5,7 @@ import { StorageService } from '../storage/storage.service';
 
 const EVERY_MS = 24 * 60 * 60 * 1000;
 
-/** Privacy notice ka wada: 180 din baad photo aur ID ki details delete. Visit ka record rehta hai. */
+/** Privacy promise: photos and ID details are deleted after 180 days. The visit record stays. */
 @Injectable()
 export class RetentionJob implements OnModuleInit {
   private readonly logger = new Logger('Retention');
@@ -33,7 +33,7 @@ export class RetentionJob implements OnModuleInit {
         });
         done += 1;
       } catch (error) {
-        // Agli raat dobara koshish hogi.
+        // It will be retried tomorrow night.
         this.logger.error(`Visitor ${row.id}: ${(error as Error).message}`);
       }
     }

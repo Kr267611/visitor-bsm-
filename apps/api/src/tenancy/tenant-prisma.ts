@@ -1,7 +1,7 @@
 import { Prisma, PrismaClient } from '@prisma/client';
 import { currentContext } from './request-context';
 
-/** Woh tables jinme business_id hai. In par har query apne aap business tak simit hoti hai. */
+/** Tables with business_id. Every query on them is limited to the business automatically. */
 export const TENANT_MODELS = new Set<string>([
   'Premises',
   'PremisesSetting',
@@ -18,7 +18,7 @@ export const TENANT_MODELS = new Set<string>([
 
 export const TENANT_PRISMA = Symbol('TENANT_PRISMA');
 
-/** Jin models mein `business` relation field hai (baaki mein sirf businessId column). */
+/** Models that have a `business` relation field (the rest only have a businessId column). */
 const HAS_BUSINESS_RELATION = new Set(
   Prisma.dmmf.datamodel.models.filter((m) => m.fields.some((f) => f.name === 'business' && f.kind === 'object')).map((m) => m.name),
 );
@@ -45,7 +45,7 @@ const CREATE_OPS = new Set(['create', 'createMany', 'createManyAndReturn']);
 
 type Data = Record<string, unknown>;
 
-/** Relation wale nested writes (connect/create) ho to business bhi relation se jodna padta hai. */
+/** With nested relation writes (connect/create) the business must also be set through the relation. */
 function usesRelationWrites(data: Data): boolean {
   return Object.values(data).some(
     (v) =>
@@ -59,12 +59,12 @@ function usesRelationWrites(data: Data): boolean {
 
 function withBusiness(data: Data, businessId: string, model: string): Data {
   if ('businessId' in data) {
-    if (data.businessId !== businessId) throw new Error(`${model}: doosre business mein likhna mana hai`);
+    if (data.businessId !== businessId) throw new Error(`${model}: writing into another business is not allowed`);
     return data;
   }
   if ('business' in data) {
     const id = (data.business as { connect?: { id?: string } })?.connect?.id;
-    if (id !== businessId) throw new Error(`${model}: doosre business mein likhna mana hai`);
+    if (id !== businessId) throw new Error(`${model}: writing into another business is not allowed`);
     return data;
   }
   return HAS_BUSINESS_RELATION.has(model) && usesRelationWrites(data) ? { ...data, business: { connect: { id: businessId } } } : { ...data, businessId };
@@ -74,7 +74,7 @@ function andBusiness(where: unknown, businessId: string) {
   return where ? { AND: [where, { businessId }] } : { businessId };
 }
 
-/** Raw client ke upar scoped client: context ka business har query mein jodta hai, context na ho to throw. */
+/** Scoped client on top of the raw client: adds the context's business to every query, throws without a context. */
 export function createTenantClient(prisma: PrismaClient) {
   return prisma.$extends({
     name: 'tenant-scope',
@@ -91,7 +91,7 @@ export function createTenantClient(prisma: PrismaClient) {
           if (WHERE_OPS.has(operation)) {
             a.where = andBusiness(a.where, businessId);
           } else if (UNIQUE_OPS.has(operation)) {
-            // Prisma 5+: unique where ke saath extra filter allowed hai.
+            // Prisma 5+: extra filters are allowed alongside a unique where.
             a.where = { ...(a.where as Data), businessId };
             if (operation === 'upsert') a.create = withBusiness(a.create as Data, businessId, model);
           } else if (CREATE_OPS.has(operation)) {
@@ -110,15 +110,15 @@ export function createTenantClient(prisma: PrismaClient) {
   });
 }
 
-/** Update se koi row doosre business mein na chali jaye. */
+/** An update must never move a row into another business. */
 function assertNotMoving(data: Data, businessId: string, model: string) {
   if ('businessId' in data && data.businessId !== businessId) {
-    throw new Error(`${model}: business badalna mana hai`);
+    throw new Error(`${model}: changing the business is not allowed`);
   }
-  if ('business' in data) throw new Error(`${model}: business relation badalna mana hai`);
+  if ('business' in data) throw new Error(`${model}: changing the business relation is not allowed`);
 }
 
 export type TenantPrismaClient = ReturnType<typeof createTenantClient>;
-/** Scoped client ke interactive transaction ke andar ka client. */
+/** Client inside an interactive transaction of the scoped client. */
 export type TenantTx = Omit<TenantPrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
 export type { Prisma };

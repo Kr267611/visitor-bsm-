@@ -9,12 +9,12 @@ import { StorageService } from './storage.service';
 export const PHOTO_MAX_BYTES = 1024 * 1024;
 export const photoInterceptor = () => FileInterceptor('photo', { limits: { fileSize: PHOTO_MAX_BYTES } });
 
-/** File sach mein JPEG hai ya nahi, content type par bharosa nahi. */
+/** Checks that the file really is a JPEG; the content type is not trusted. */
 export function requireJpeg(file: Express.Multer.File | undefined): Buffer {
-  if (!file) throw new ApiException(422, 'VALIDATION_FAILED', 'Photo bhejein.');
+  if (!file) throw new ApiException(422, 'VALIDATION_FAILED', 'Please attach a photo.');
   const b = file.buffer;
   if (!(b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff)) {
-    throw new ApiException(422, 'VALIDATION_FAILED', 'Photo JPEG format mein honi chahiye.');
+    throw new ApiException(422, 'VALIDATION_FAILED', 'The photo must be a JPEG image.');
   }
   return b;
 }
@@ -39,9 +39,9 @@ export class UploadsController {
     try {
       photo = await this.storage.readPhoto(token);
     } catch {
-      throw new ApiException(401, 'UNAUTHORIZED', 'Photo ka link expire ho gaya hai.');
+      throw new ApiException(401, 'UNAUTHORIZED', 'This photo link has expired.');
     }
-    if (!photo) throw new ApiException(404, 'NOT_FOUND', 'Photo nahi mili.');
+    if (!photo) throw new ApiException(404, 'NOT_FOUND', 'Photo not found.');
     res.set({ 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, max-age=300' }).send(photo);
   }
 }

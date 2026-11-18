@@ -12,7 +12,7 @@ function createSmsProvider() {
       return new FakeSmsProvider();
     case 'msg91': {
       const { MSG91_AUTH_KEY, SMS_SENDER } = process.env;
-      if (!MSG91_AUTH_KEY || !SMS_SENDER) throw new Error('MSG91_AUTH_KEY aur SMS_SENDER set karein.');
+      if (!MSG91_AUTH_KEY || !SMS_SENDER) throw new Error('Set MSG91_AUTH_KEY and SMS_SENDER.');
       return new Msg91SmsProvider(MSG91_AUTH_KEY, SMS_SENDER);
     }
     default:

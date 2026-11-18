@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { SmsProvider } from './sms.provider';
 
-/** Development ke liye: SMS bhejne ki jagah log mein dikhata hai. */
+/** For development: logs messages instead of sending SMS. */
 export class ConsoleSmsProvider implements SmsProvider {
   private readonly logger = new Logger('SMS');
   private counter = 0;

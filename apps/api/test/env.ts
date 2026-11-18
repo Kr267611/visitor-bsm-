@@ -6,7 +6,7 @@ process.env.API_URL = 'http://api.test';
 process.env.CONSENT_VERSION = 'v1';
 process.env.SMS_PROVIDER = 'fake';
 
-// Har test run ke liye naya QR key pair.
+// Fresh QR key pair for every test run.
 import { generateKeyPairSync } from 'node:crypto';
 const qrKeys = generateKeyPairSync('ed25519');
 process.env.QR_PRIVATE_KEY = Buffer.from(qrKeys.privateKey.export({ type: 'pkcs8', format: 'pem' })).toString('base64');

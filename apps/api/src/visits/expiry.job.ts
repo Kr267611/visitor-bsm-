@@ -7,7 +7,7 @@ import { VisitLifecycleService } from './visit-lifecycle.service';
 
 const EVERY_MS = 5 * 60 * 1000;
 
-/** `valid_to` nikal chuka ho to visit EXPIRED. Andar baithe visitor ko nahi chhuta. */
+/** Once `valid_to` has passed the visit becomes EXPIRED. Visitors still inside are left alone. */
 @Injectable()
 export class ExpiryJob implements OnModuleInit {
   constructor(
@@ -27,13 +27,13 @@ export class ExpiryJob implements OnModuleInit {
       select: { id: true, businessId: true },
     });
     let expired = 0;
-    // Job saare businesses dekhta hai (raw client); har badlav usi visit ke business ke andar.
+    // The job reads across businesses (raw client); each change runs inside that visit's business.
     for (const { id, businessId } of rows) {
       try {
         await runInTenant(businessId, () => this.lifecycle.apply({ visitId: id, action: 'EXPIRE', actorId: null }));
         expired += 1;
       } catch (error) {
-        // Isi beech kisi ne check-in kar diya: theek hai.
+        // Someone checked in meanwhile: that is fine.
         if (!(error instanceof InvalidTransitionError)) throw error;
       }
     }

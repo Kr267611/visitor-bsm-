@@ -3,7 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { ApiException } from '../common/api-exception';
 import { AuthUser } from './roles.decorator';
 
-/** Plan ke modules. Plan.features mein inhi ke code hote hain. */
+/** Plan modules. Plan.features holds these codes. */
 export const FEATURES = [
   'visitor_desk',
   'dashboard',
@@ -22,15 +22,15 @@ export type Feature = (typeof FEATURES)[number];
 export const FEATURE_KEY = 'feature';
 export const SUPER_ADMIN_OK_KEY = 'superAdminOk';
 
-/** Yeh route tabhi khulega jab business ke plan mein yeh module ho. */
+/** The route opens only when the business plan includes this module. */
 export const RequireFeature = (feature: Feature) => SetMetadata(FEATURE_KEY, feature);
 
-/** Super admin ka koi business nahi; sirf in routes (jaise /me) par aa sakta hai. */
+/** A super admin has no business; they can reach only routes marked like this (such as /me). */
 export const AllowSuperAdmin = () => SetMetadata(SUPER_ADMIN_OK_KEY, true);
 
-export const FEATURE_RESTRICTED_MESSAGE = 'Access Restricted: yeh module aapke plan mein nahi hai.';
+export const FEATURE_RESTRICTED_MESSAGE = 'Access restricted: this module is not included in your plan.';
 
-/** Permission = role (RolesGuard) ∩ plan ke features (yeh guard). */
+/** Permission = role (RolesGuard) AND plan features (this guard). */
 @Injectable()
 export class FeatureGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}

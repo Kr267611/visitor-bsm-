@@ -108,7 +108,7 @@ describe('admin v2', () => {
       await http().delete(`/admin/departments/${dept.body.id}`).set(auth(a.token)).expect(404);
       const list = await http().get('/admin/departments').set(auth(a.token)).expect(200);
       expect(list.body).toEqual([]);
-      // Apne member ko doosre business ka department nahi de sakte.
+      // An admin cannot give their member another business's department.
       await http()
         .patch(`/admin/users/${a.admin.id}`)
         .set(auth(a.token))

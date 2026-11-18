@@ -16,7 +16,7 @@ describe('permissions: role ∩ plan', () => {
   beforeEach(() => resetData(ctx));
   afterAll(() => ctx.app.close());
 
-  /** Test business ko ek naye plan par daalo. */
+  /** Moves the test business onto a new plan. */
   async function onPlan(
     businessId: string,
     plan: { features?: string[]; premisesLimit?: number; memberLimit?: number; visitLimit?: number },
@@ -67,7 +67,7 @@ describe('permissions: role ∩ plan', () => {
       await onPlan(business.id, { features: ['dashboard', 'invites'] });
       await http().get('/dashboard/live').set(auth(guardToken)).expect(200);
       expect((await invite(adminToken)).status).toBe(201);
-      // Guard ka role invite nahi kar sakta, plan mein ho tab bhi.
+      // A guard's role cannot invite, even when the plan includes invites.
       expect((await invite(guardToken)).body.error).toBe('FORBIDDEN');
     });
 
@@ -105,7 +105,7 @@ describe('permissions: role ∩ plan', () => {
         .expect(422);
       expect(res.body.kind).toBe('members');
       await http().patch(`/admin/users/${off.id}`).set(auth(adminToken)).send({ isActive: true }).expect(422);
-      // Naam badalna limit mein nahi aata.
+      // Renaming does not count against the limit.
       await http().patch(`/admin/users/${off.id}`).set(auth(adminToken)).send({ name: 'Renamed' }).expect(200);
     });
 

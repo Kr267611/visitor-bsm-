@@ -13,20 +13,20 @@ const nextCode = () => {
   return `T${String(codeCounter).padStart(5, '0')}`;
 };
 
-/** Naya business (tenant). Cross-tenant tests ke liye alag-alag bana sakte hain. */
+/** New business (tenant). Cross-tenant tests create several. */
 export async function seedBusiness(prisma: PrismaService, slug = `biz-${randomUUID().slice(0, 8)}`) {
   const plan = await prisma.plan.findUniqueOrThrow({ where: { code: 'standard' } });
   return prisma.business.create({ data: { name: `Business ${slug}`, slug, planId: plan.id } });
 }
 
-/** Test ka default business: har test ke liye ek hi. */
+/** Default test business: one shared by every test. */
 async function defaultBusiness(prisma: PrismaService) {
   return (await prisma.business.findUnique({ where: { slug: 'test-biz' } })) ?? seedBusiness(prisma, 'test-biz');
 }
 
 /**
- * Premises + gate. Naam purana rakha (`seedSite`) taaki tests seedha padhe jayein; `site` ab ek premises hai.
- * businessId na do to sab ek hi test business mein bante hain.
+ * Premises + gate. The old name (`seedSite`) is kept so tests read naturally; `site` is now a premises.
+ * Without a businessId everything is created in the one test business.
  */
 export async function seedSite(prisma: PrismaService, name = 'Main Site', businessId?: string) {
   const business = businessId

@@ -32,13 +32,13 @@ export async function createTestApp(): Promise<TestContext> {
   };
 }
 
-/** OTP ke bina test user ka access token. */
+/** Access token for a test user without going through OTP. */
 export async function tokenFor(ctx: TestContext, userId: string): Promise<string> {
   const device = await ctx.prisma.device.create({ data: { userId, name: 'test device' } });
   return ctx.app.get(JwtService).signAsync({ sub: userId, deviceId: device.id });
 }
 
-/** Har test se pehle saara data saaf. TRUNCATE par append-only trigger nahi chalta. */
+/** Clears all data before each test. TRUNCATE does not fire the append-only trigger. */
 export async function resetData(ctx: TestContext): Promise<void> {
   await ctx.prisma.$executeRawUnsafe(
     'TRUNCATE audit_logs, visit_events, outbox, refresh_tokens, devices, visits, visitors, user_premises, users, departments, gates, premises_settings, premises, businesses CASCADE',
@@ -51,8 +51,8 @@ export async function resetData(ctx: TestContext): Promise<void> {
 }
 
 /**
- * Service ko test business ke andar chalata hai (HTTP request jaisa). Scoped client bina business ke
- * throw karta hai, isliye seedhe service bulane wale tests isse lapet kar bulate hain.
+ * Runs a service inside the test business (like an HTTP request). The scoped client throws without
+ * a business, so tests that call services directly wrap them with this.
  */
 export function inTenant<T extends object>(ctx: TestContext, service: T, slug = 'test-biz'): T {
   return new Proxy(service, {

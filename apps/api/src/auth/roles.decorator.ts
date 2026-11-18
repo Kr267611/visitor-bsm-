@@ -4,23 +4,23 @@ import type { Role } from '@visitor/shared';
 export const ROLES_KEY = 'roles';
 export const PUBLIC_KEY = 'public';
 
-/** Sirf in roles ko access. */
+/** Only these roles may access the route. */
 export const Roles = (...roles: Role[]) => SetMetadata(ROLES_KEY, roles);
 
-/** Login ke bina khulne wala route. Baaki sab par login zaroori hai. */
+/** Route that works without sign-in. Every other route requires it. */
 export const Public = () => SetMetadata(PUBLIC_KEY, true);
 
 export interface AuthUser {
   id: string;
   role: Role;
-  /** Super admin ke liye null. */
+  /** null for a super admin. */
   businessId: string | null;
-  /** Abhi chuna hua premises. */
+  /** Currently selected premises. */
   premisesId: string | null;
-  /** Jin premises ka access hai (admin: business ke saare). */
+  /** Premises the user can access (admin: every premises of the business). */
   premisesIds: string[];
   deviceId: string;
-  /** Business ke plan ke modules (super admin: khaali). */
+  /** Modules in the business plan (empty for a super admin). */
   features: string[];
 }
 

@@ -8,7 +8,7 @@ import { TENANT_PRISMA, TenantContextMissingError, TenantPrismaClient } from '..
 import { seedBusiness, seedSite, seedUser, seedVisit, seedVisitor } from './factories';
 import { createTestApp, resetData, TestContext, tokenFor } from './setup';
 
-describe('tenancy: ek business ka data doosre ko nahi', () => {
+describe('tenancy: one business never sees another', () => {
   let ctx: TestContext;
   const http = () => request(ctx.app.getHttpServer());
   const auth = (t: string) => ({ Authorization: `Bearer ${t}` });
@@ -19,7 +19,7 @@ describe('tenancy: ek business ka data doosre ko nahi', () => {
   beforeEach(() => resetData(ctx));
   afterAll(() => ctx.app.close());
 
-  /** Do businesses, har ek ka premises, admin aur guard. */
+  /** Two businesses, each with a premises, an admin and a guard. */
   async function twoBusinesses() {
     const make = async () => {
       const business = await seedBusiness(ctx.prisma);
@@ -109,7 +109,7 @@ describe('tenancy: ek business ka data doosre ko nahi', () => {
       const otherVisit = await seedVisit(ctx.prisma, { premisesId: b.site.id, hostId: b.host.id });
       const list = await http().get('/visits?scope=site').set(auth(a.guardToken)).expect(200);
       expect(list.body.map((v: { id: string }) => v.id)).not.toContain(otherVisit.id);
-      // Doosre business ka visit milta hi nahi: hone ka pata bhi na chale.
+      // Another business's visit simply does not exist: not even its existence is revealed.
       await http().get(`/visits/${otherVisit.id}`).set(auth(a.guardToken)).expect(404);
       await http().post(`/visits/${otherVisit.id}/cancel`).set(auth(a.adminToken)).expect(404);
     });
@@ -215,16 +215,16 @@ describe('tenancy: ek business ka data doosre ko nahi', () => {
       const dept = await runInTenant(a.business.id, () => db().department.create({ data: { name: 'Finance', businessId: tenantId() } }));
       expect(dept.businessId).toBe(a.business.id);
       const many = await runInTenant(a.business.id, () =>
-        // Types businessId maangte hain; runtime bhool jaye to bhi khud bhar deta hai.
+        // Types require businessId; if code forgets it at runtime, the client fills it in.
         db().department.createManyAndReturn({ data: [{ name: 'HR' }, { name: 'IT' }] as never }),
       );
       expect(many.every((d) => d.businessId === a.business.id)).toBe(true);
       await expect(
         runInTenant(a.business.id, () => db().department.create({ data: { name: 'X', businessId: b.business.id } })),
-      ).rejects.toThrow(/doosre business/);
+      ).rejects.toThrow(/another business/);
       await expect(
         runInTenant(a.business.id, () => db().gate.update({ where: { id: a.gate.id }, data: { businessId: b.business.id } })),
-      ).rejects.toThrow(/business badalna/);
+      ).rejects.toThrow(/changing the business/);
     });
 
     it('create with relation connect also gets the business', async () => {
@@ -256,7 +256,7 @@ describe('tenancy: ek business ka data doosre ko nahi', () => {
       await expect(db().gate.findMany()).rejects.toThrow(TenantContextMissingError);
       await expect(db().gate.count()).rejects.toThrow(/Tenant context missing/);
       expect(await runAsSystem(() => db().gate.count())).toBe(2);
-      // Business table tenant model nahi, bina context bhi chalta hai.
+      // Business is not a tenant model, so it works without a context.
       expect(await db().business.count()).toBe(2);
     });
 
@@ -323,7 +323,7 @@ describe('tenancy: ek business ka data doosre ko nahi', () => {
           clientEventId: randomUUID(),
         })
         .expect(422);
-      expect(res.body.message).toMatch(/Host/);
+      expect(res.body.message).toMatch(/host/i);
     });
 
     it('expiry job expires each business visit inside its own business', async () => {

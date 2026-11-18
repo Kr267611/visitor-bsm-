@@ -7,11 +7,11 @@ export interface PushMessage {
 }
 
 export interface PushProvider {
-  /** Fail hone par throw karta hai. */
+  /** Throws on failure. */
   send(message: PushMessage): Promise<void>;
 }
 
-/** Sirf tests ke liye. */
+/** Tests only. */
 export class FakePushProvider implements PushProvider {
   readonly sent: PushMessage[] = [];
   failing = false;
@@ -22,7 +22,7 @@ export class FakePushProvider implements PushProvider {
   }
 }
 
-/** Expo push service. Android par yeh FCM se bhejta hai. */
+/** Expo push service. On Android it delivers through FCM. */
 export class ExpoPushProvider implements PushProvider {
   constructor(private readonly fetchImpl: typeof fetch = fetch) {}
 

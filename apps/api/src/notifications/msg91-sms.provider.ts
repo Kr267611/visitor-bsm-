@@ -1,6 +1,6 @@
 import { SmsProvider } from './sms.provider';
 
-/** MSG91 gateway. Asli account aur DLT templates ke saath staging par check karna hai. */
+/** MSG91 gateway. Must be verified on staging with a real account and DLT templates. */
 export class Msg91SmsProvider implements SmsProvider {
   constructor(
     private readonly authKey: string,

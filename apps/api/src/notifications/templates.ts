@@ -1,16 +1,16 @@
-/** Saare notification messages. SMS wale DLT par isi text se register honge. */
+/** All notification texts. SMS templates must be registered on DLT with exactly this text. */
 export const TEMPLATES = {
   INVITE_LINK: {
     channel: 'SMS',
-    text: '{hostName} ne aapko {siteName} bulaya hai. Apni details bharein: {link}',
+    text: '{hostName} has invited you to {siteName}. Please add your details: {link}',
   },
-  PASS_READY: { channel: 'SMS', text: 'Aapka visitor pass taiyaar hai: {link}' },
-  VISITOR_ARRIVED: { channel: 'PUSH', text: '{visitorName} {gateName} par aa gaye hain.' },
+  PASS_READY: { channel: 'SMS', text: 'Your visitor pass is ready: {link}' },
+  VISITOR_ARRIVED: { channel: 'PUSH', text: '{visitorName} has arrived at {gateName}.' },
   APPROVAL_REQUEST: {
     channel: 'PUSH',
-    text: '{visitorName} ({company}) aapse milne gate par hain. Approve ya reject karein.',
+    text: '{visitorName} ({company}) is at the gate to meet you. Please approve or reject.',
   },
-  APPROVAL_REMINDER: { channel: 'PUSH', text: '{visitorName} abhi bhi gate par intezaar kar rahe hain.' },
+  APPROVAL_REMINDER: { channel: 'PUSH', text: '{visitorName} is still waiting at the gate.' },
 } as const;
 
 export type TemplateKey = keyof typeof TEMPLATES;
@@ -26,11 +26,11 @@ export interface OutboxDraft {
 
 const PLACEHOLDER = /\{(\w+)\}/g;
 
-/** Template bharta hai. Koi variable kam ho to throw, taaki adhoora message na jaye. */
+/** Fills a template. Throws when a variable is missing, so no half-filled message goes out. */
 export function renderTemplate(template: TemplateKey, vars: Record<string, string>): string {
   return TEMPLATES[template].text.replace(PLACEHOLDER, (_, name: string) => {
     const value = vars[name];
-    if (value === undefined) throw new Error(`Template ${template} mein ${name} missing hai`);
+    if (value === undefined) throw new Error(`Template ${template} is missing ${name}`);
     return value;
   });
 }

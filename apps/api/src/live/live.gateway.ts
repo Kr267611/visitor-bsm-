@@ -6,11 +6,11 @@ import { VISIT_UPDATED, VisitUpdatedEvent } from '../visits/visit-lifecycle.serv
 
 const allowedOrigin = (origin: string | undefined, callback: (err: Error | null, ok?: boolean) => void) => {
   const allowed = (process.env.CORS_ORIGINS ?? '').split(',').map((o) => o.trim());
-  // Mobile app origin nahi bhejti; browsers ko list mein hona zaroori hai.
+  // The mobile app sends no origin; browsers must be on the allow-list.
   callback(null, !origin || allowed.includes(origin));
 };
 
-/** Live screens ko sirf "yeh visit badla" batata hai. Client data API se dobara laata hai. */
+/** Tells live screens only that a visit changed. Clients reload the data from the API. */
 @WebSocketGateway({ namespace: '/live', cors: { origin: allowedOrigin } })
 export class LiveGateway implements OnGatewayConnection {
   @WebSocketServer() private readonly server!: Namespace;
@@ -20,7 +20,7 @@ export class LiveGateway implements OnGatewayConnection {
   async handleConnection(client: Socket): Promise<void> {
     const token: unknown = client.handshake.auth?.token;
     const user = typeof token === 'string' ? await this.sessions.resolve(token) : null;
-    // App doosra premises chune to woh user ke apne premises mein se hi ho (HTTP ke X-Premises-Id jaisa).
+    // If the app picks another premises it must be one of the user's own (like X-Premises-Id over HTTP).
     const wanted: unknown = client.handshake.auth?.premisesId;
     const premisesId = typeof wanted === 'string' && wanted ? wanted : user?.premisesId;
     if (!user || !premisesId || !user.premisesIds.includes(premisesId)) {

@@ -22,14 +22,14 @@ export async function hashPassword(password: string): Promise<string> {
   return `scrypt$${N}$${R}$${P}$${salt.toString('base64')}$${hash.toString('base64')}`;
 }
 
-// Jinka password set nahi, unke liye bhi utna hi time lage, taaki timing se pata na chale.
+// Accounts without a password take the same time, so timing reveals nothing.
 const DUMMY = `scrypt$${N}$${R}$${P}$${Buffer.alloc(16).toString('base64')}$${Buffer.alloc(KEY_LEN).toString('base64')}`;
 
 export async function verifyPassword(password: string, stored: string | null | undefined): Promise<boolean> {
   const parts = (stored ?? DUMMY).split('$');
   if (parts.length !== 6 || parts[0] !== 'scrypt') return false;
   const [n, r, p] = parts.slice(1, 4).map(Number);
-  // Database mein koi ajeeb value ho to server atak na jaye.
+  // A strange value in the database must not hang the server.
   if (!(n >= 1024 && n <= 2 ** 17 && r >= 1 && r <= 16 && p >= 1 && p <= 4)) return false;
   const salt = Buffer.from(parts[4], 'base64');
   const expected = Buffer.from(parts[5], 'base64');

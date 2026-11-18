@@ -10,7 +10,7 @@ const BATCH_SIZE = 50;
 const LEASE_MS = 120_000;
 const BASE_BACKOFF_MS = 30_000;
 const MAX_BACKOFF_MS = 30 * 60_000;
-// Lagbhag 3.5 ghante tak koshish, taaki gateway ka lamba outage message na khaaye.
+// Keeps retrying for about 3.5 hours so a long gateway outage does not lose the message.
 const MAX_ATTEMPTS = 12;
 const TICK_MS = 5_000;
 const APPROVAL_TEMPLATES: string[] = ['APPROVAL_REQUEST', 'APPROVAL_REMINDER'];
@@ -31,7 +31,7 @@ export class OutboxWorker implements OnModuleInit {
     this.jobs.repeat('outbox.tick', TICK_MS);
   }
 
-  /** Baaki messages bhejta hai. Lautata hai kitne uthaye. */
+  /** Sends pending messages. Returns how many were picked up. */
   async tick(now: Date = new Date()): Promise<number> {
     const rows = await this.claim(now);
     for (const row of rows) {
@@ -48,7 +48,7 @@ export class OutboxWorker implements OnModuleInit {
     return rows.length;
   }
 
-  /** Rows ko thodi der ke liye apna bana leta hai, taaki doosra tick wahi message na bheje. */
+  /** Leases rows briefly so another tick does not send the same message. */
   private async claim(now: Date): Promise<Outbox[]> {
     const iso = now.toISOString();
     const lease = new Date(now.getTime() + LEASE_MS).toISOString();
@@ -87,7 +87,7 @@ export class OutboxWorker implements OnModuleInit {
     return this.fallbackToSms(row, text);
   }
 
-  /** Push nahi pahuncha: wahi baat SMS par. Approval mein web link, taaki app ke bina bhi jawab de sakein. */
+  /** Push did not arrive: send the same text by SMS. Approvals include a web link so the host can respond without the app. */
   private async fallbackToSms(row: Outbox, text: string): Promise<string> {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: row.recipient } });
     const link =

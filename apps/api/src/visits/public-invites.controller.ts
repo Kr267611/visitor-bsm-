@@ -38,17 +38,17 @@ export class PublicInvitesController {
     private readonly storage: StorageService,
   ) {}
 
-  /** Link ka token hi pehchan hai: raw client se dhoondhte hain, phir badlav usi visit ke business mein. */
+  /** The link token is the identity: look it up with the raw client, then change things inside that visit's business. */
   private async load(token: string): Promise<VisitWithPeople> {
     const visit = await this.prisma.visit.findUnique({
       where: { inviteTokenHash: hashInviteToken(token) },
       include: VISIT_INCLUDE,
     });
-    if (!visit) throw new ApiException(404, 'NOT_FOUND', 'Yeh link sahi nahi hai.');
+    if (!visit) throw new ApiException(404, 'NOT_FOUND', 'This link is not valid.');
     return visit;
   }
 
-  /** Visitor ko dikhne wali jaankari. Phone ya doosra personal data nahi. */
+  /** What the visitor sees. No phone or other personal data. */
   private view(v: VisitWithPeople) {
     const hasPass = v.status === 'APPROVED' || v.status === 'CHECKED_IN';
     return {
@@ -88,24 +88,24 @@ export class PublicInvitesController {
   ) {
     const visit = await this.load(token);
 
-    // Do baar submit: wahi pass, koi error nahi.
+    // Submitted twice: return the same pass, no error.
     if (visit.status === 'APPROVED' || visit.status === 'CHECKED_IN') {
       res.status(200);
       return this.view(visit);
     }
 
-    // Band link se visitor ka record kabhi nahi badalna chahiye.
+    // A closed link must never change the visitor's record.
     if (visit.status !== 'INVITED') throw new InvalidTransitionError(visit.status);
 
     const body = parseBody(registerSchema, rawBody);
     if (!body.consent) {
-      throw new ApiException(422, 'CONSENT_REQUIRED', 'Aage badhne ke liye sahmati dena zaroori hai.');
+      throw new ApiException(422, 'CONSENT_REQUIRED', 'Please give consent to continue.');
     }
     if (visit.validTo < new Date()) {
-      throw new ApiException(410, 'INVITE_EXPIRED', 'Is link ka time khatam ho gaya hai. Apne host se naya link maangein.');
+      throw new ApiException(410, 'INVITE_EXPIRED', 'This link has expired. Please ask your host for a new one.');
     }
     if (!body.photoKey.startsWith(`visitors/${visit.id}/`) || !(await this.storage.exists(body.photoKey))) {
-      throw new ApiException(422, 'VALIDATION_FAILED', 'Photo dobara upload karein.');
+      throw new ApiException(422, 'VALIDATION_FAILED', 'Please upload the photo again.');
     }
 
     const consentAt = new Date();
@@ -133,7 +133,7 @@ export class PublicInvitesController {
         }),
       );
     } catch (error) {
-      // Doosri request pehle jeet gayi: wahi pass de do.
+      // Another request won the race: return the same pass.
       const fresh = await this.load(token);
       if (error instanceof InvalidTransitionError && fresh.status === 'APPROVED') {
         res.status(200);

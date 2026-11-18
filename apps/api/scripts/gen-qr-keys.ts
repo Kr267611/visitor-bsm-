@@ -1,4 +1,4 @@
-// Naya QR signing key pair banata hai. Chalayein: npx tsx scripts/gen-qr-keys.ts
+// Generates a new QR signing key pair. Run: npx tsx scripts/gen-qr-keys.ts
 import { generateKeyPairSync } from 'node:crypto';
 
 const { publicKey, privateKey } = generateKeyPairSync('ed25519');

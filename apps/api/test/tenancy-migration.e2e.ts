@@ -14,7 +14,7 @@ function sql(url: string, statement: string) {
   execSync(`npx prisma db execute --url "${url}" --stdin`, { cwd: API_DIR, input: statement, stdio: 'pipe' });
 }
 
-/** Ek temp folder jisme sirf diye gaye migrations hain. */
+/** Temporary folder that holds only the given migrations. */
 function deploy(migrations: string[]) {
   const dir = mkdtempSync(join(tmpdir(), 'vms-mig-'));
   cpSync(join(API_DIR, 'prisma', 'schema.prisma'), join(dir, 'schema.prisma'));
@@ -37,7 +37,7 @@ describe('multi-tenant migration keeps Phase 1 data', () => {
     sql(ADMIN_URL, `DROP DATABASE IF EXISTS ${DB};`);
     sql(ADMIN_URL, `CREATE DATABASE ${DB};`);
     deploy(before);
-    // Phase 1 jaisa data, purane schema mein.
+    // Phase 1 style data in the old schema.
     sql(
       DB_URL,
       `

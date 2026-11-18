@@ -6,7 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { fillContext } from '../tenancy/request-context';
 import { AuthUser, PUBLIC_KEY } from './roles.decorator';
 
-/** Access token se user nikalta hai. HTTP aur live connection dono yahi use karte hain. */
+/** Resolves the user from an access token. Used by both HTTP and the live connection. */
 @Injectable()
 export class SessionResolver {
   constructor(
@@ -21,7 +21,7 @@ export class SessionResolver {
     } catch {
       return null;
     }
-    // Device revoke hote hi access band ho, 15 minute ka intezaar nahi.
+    // Access stops as soon as the device is revoked, not after up to 15 minutes.
     const device = await this.prisma.device.findUnique({
       where: { id: payload.deviceId },
       include: {
@@ -35,9 +35,9 @@ export class SessionResolver {
     });
     if (!device || device.revokedAt || !device.user.isActive || device.userId !== payload.sub) return null;
     const user = device.user;
-    // Business band ho to uske log bhi andar nahi aa sakte.
+    // When a business is turned off, its people cannot get in either.
     if (user.businessId && !user.business?.isActive) return null;
-    // Token jis business ke liye bana tha, user ab bhi usi mein ho.
+    // The user must still belong to the business the token was issued for.
     if (payload.businessId !== undefined && payload.businessId !== user.businessId) return null;
 
     let premises = user.premises.map((p) => ({ id: p.premisesId, isDefault: p.premises.isDefault }));
@@ -60,7 +60,7 @@ export class SessionResolver {
   }
 }
 
-/** Default: har route par login zaroori, jab tak @Public na ho. */
+/** Default: every route needs sign-in unless marked @Public. */
 @Injectable()
 export class JwtGuard implements CanActivate {
   constructor(
@@ -78,17 +78,17 @@ export class JwtGuard implements CanActivate {
     const req = context.switchToHttp().getRequest();
     const header: string | undefined = req.headers.authorization;
     const user = header?.startsWith('Bearer ') ? await this.sessions.resolve(header.slice(7)) : null;
-    if (!user) throw new ApiException(401, 'UNAUTHORIZED', 'Dobara login karein.');
-    // App premises badalne ke liye X-Premises-Id bhejti hai; sirf apne premises allowed.
+    if (!user) throw new ApiException(401, 'UNAUTHORIZED', 'Please sign in again.');
+    // Apps send X-Premises-Id to switch premises; only the user's own premises are allowed.
     const wanted = req.headers['x-premises-id'];
     if (typeof wanted === 'string' && wanted) {
       if (!user.premisesIds.includes(wanted)) {
-        throw new ApiException(403, 'PREMISES_FORBIDDEN', 'Is premises ka access aapke paas nahi hai.');
+        throw new ApiException(403, 'PREMISES_FORBIDDEN', 'You do not have access to this premises.');
       }
       user.premisesId = wanted;
     }
     req.user = user;
-    // Is request ke scoped database queries ab sirf isi business tak.
+    // Scoped database queries in this request now stay inside this business.
     fillContext({
       businessId: user.businessId,
       userId: user.id,

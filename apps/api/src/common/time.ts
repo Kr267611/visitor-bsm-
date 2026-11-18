@@ -1,6 +1,6 @@
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 
-/** India ke din ki shuruaat aur ant, UTC mein. `date` format YYYY-MM-DD, nahi diya to aaj. */
+/** Start and end of an India day, in UTC. `date` is YYYY-MM-DD; defaults to today. */
 export function istDayRange(date?: string, now: Date = new Date()): { start: Date; end: Date } {
   const day = date ?? new Date(now.getTime() + IST_OFFSET_MS).toISOString().slice(0, 10);
   const start = new Date(new Date(`${day}T00:00:00.000Z`).getTime() - IST_OFFSET_MS);

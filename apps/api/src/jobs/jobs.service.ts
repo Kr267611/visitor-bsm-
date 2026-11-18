@@ -6,8 +6,8 @@ type Handler = (data: any) => Promise<unknown>;
 const QUEUE_NAME = 'visitor-jobs';
 
 /**
- * Background jobs ka ek hi darwaza. Worker sirf `startWorker()` par chalta hai (main.ts se),
- * isliye tests mein jobs apne aap nahi chalte.
+ * Single entry point for background jobs. The worker runs only after `startWorker()` (from main.ts),
+ * so jobs never run on their own during tests.
  */
 @Injectable()
 export class JobsService implements OnModuleDestroy {
@@ -25,7 +25,7 @@ export class JobsService implements OnModuleDestroy {
     this.handlers.set(name, handler);
   }
 
-  /** `startWorker` ke baad har `everyMs` par chalega. */
+  /** Runs every `everyMs` once `startWorker` has been called. */
   repeat(name: string, everyMs: number): void {
     this.repeats.set(name, everyMs);
   }
@@ -47,7 +47,7 @@ export class JobsService implements OnModuleDestroy {
       QUEUE_NAME,
       async (job) => {
         const handler = this.handlers.get(job.name);
-        if (!handler) throw new Error(`Job handler nahi mila: ${job.name}`);
+        if (!handler) throw new Error(`No handler registered for job: ${job.name}`);
         return handler(job.data);
       },
       { connection: this.connection, concurrency: 5 },

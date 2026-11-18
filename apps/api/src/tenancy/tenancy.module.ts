@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { runInEmptyContext } from './request-context';
 import { createTenantClient, TENANT_PRISMA } from './tenant-prisma';
 
-/** Har HTTP request apne khaali context mein chalti hai, taaki ek request ka business doosri mein na jaye. */
+/** Every HTTP request runs in its own empty context, so one request's business never leaks into another. */
 export function contextMiddleware(_req: Request, _res: Response, next: NextFunction) {
   runInEmptyContext(next);
 }

@@ -4,13 +4,13 @@ import type { Response } from 'express';
 import { ApiException } from './api-exception';
 
 const CODE_BY_STATUS: Record<number, { error: string; message: string }> = {
-  400: { error: 'VALIDATION_FAILED', message: 'Bheji gayi jaankari sahi nahi hai.' },
-  401: { error: 'UNAUTHORIZED', message: 'Dobara login karein.' },
-  422: { error: 'VALIDATION_FAILED', message: 'Bheji gayi jaankari sahi nahi hai.' },
-  403: { error: 'FORBIDDEN', message: 'Aapko iski permission nahi hai.' },
-  404: { error: 'NOT_FOUND', message: 'Yeh cheez nahi mili.' },
-  413: { error: 'VALIDATION_FAILED', message: 'File bahut badi hai.' },
-  429: { error: 'RATE_LIMITED', message: 'Bahut zyada requests aayi hain. Thodi der baad koshish karein.' },
+  400: { error: 'VALIDATION_FAILED', message: 'The request is not valid.' },
+  401: { error: 'UNAUTHORIZED', message: 'Please sign in again.' },
+  422: { error: 'VALIDATION_FAILED', message: 'The request is not valid.' },
+  403: { error: 'FORBIDDEN', message: 'You do not have permission to do this.' },
+  404: { error: 'NOT_FOUND', message: 'Not found.' },
+  413: { error: 'VALIDATION_FAILED', message: 'The file is too large.' },
+  429: { error: 'RATE_LIMITED', message: 'Too many requests. Please try again shortly.' },
 };
 
 @Catch()
@@ -32,6 +32,6 @@ export class ApiErrorFilter implements ExceptionFilter {
     }
     this.logger.error(exception);
     Sentry.captureException(exception);
-    res.status(500).json({ error: 'INTERNAL', message: 'Kuch gadbad ho gayi. Dobara koshish karein.' });
+    res.status(500).json({ error: 'INTERNAL', message: 'Something went wrong. Please try again.' });
   }
 }

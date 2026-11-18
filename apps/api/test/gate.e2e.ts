@@ -106,7 +106,7 @@ describe('gate', () => {
     const res = await scan(w.token, { qr: w.qr, gateId: w.gate.id, mode: 'IN' });
     expect(res.status).toBe(422);
     expect(res.body.error).toBe('PASS_EXPIRED');
-    expect(res.body.message).toBe('Yeh pass 5 Nov ke liye tha');
+    expect(res.body.message).toBe('This pass was valid for 5 Nov');
   });
 
   it('visit already marked EXPIRED also says PASS_EXPIRED', async () => {

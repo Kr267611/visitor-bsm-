@@ -1,8 +1,8 @@
-// Development aur staging ke test accounts. Production par nahi chalta.
+// Test accounts for development and staging. Refuses to run in production.
 import { PrismaClient, Role } from '@prisma/client';
 
 if (process.env.NODE_ENV === 'production') {
-  throw new Error('Seed production par nahi chalega.');
+  throw new Error('The seed must not run in production.');
 }
 
 const prisma = new PrismaClient();
@@ -49,12 +49,12 @@ async function main() {
       },
     });
   }
-  // Local testing ka platform super admin (kisi business ka nahi). Sirf OTP se login.
+  // Platform super admin for local testing (belongs to no business). Signs in with OTP only.
   const superPhone = '+919000000009';
   if (!(await prisma.user.findFirst({ where: { phone: superPhone, businessId: null } }))) {
     await prisma.user.create({ data: { name: 'Platform Admin', phone: superPhone, role: 'super_admin' } });
   }
-  console.log(`Seed ho gaya: business "${business.name}", ${USERS.length} users, premises "${premises.name}"`);
+  console.log(`Seed complete: business "${business.name}", ${USERS.length} users, premises "${premises.name}"`);
 }
 
 main().finally(() => prisma.$disconnect());

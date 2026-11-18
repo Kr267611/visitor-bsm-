@@ -41,7 +41,7 @@ const userUpdate = z
   })
   .partial();
 
-/** passwordHash kabhi select nahi hota: na jawab mein, na audit mein. */
+/** passwordHash is never selected: not in responses, not in the audit log. */
 export const USER_FIELDS = {
   id: true,
   name: true,
@@ -67,15 +67,15 @@ export class UsersController {
     private readonly limits: PlanLimits,
   ) {}
 
-  /** Diye gaye premises sab isi business ke hon. */
+  /** All given premises must belong to this business. */
   private async assertPremises(ids: string[]) {
     const found = await this.db.premises.count({ where: { id: { in: ids } } });
-    if (found !== new Set(ids).size) throw new ApiException(422, 'VALIDATION_FAILED', 'Chuna gaya premises nahi mila.');
+    if (found !== new Set(ids).size) throw new ApiException(422, 'VALIDATION_FAILED', 'The selected premises was not found.');
   }
 
   private async assertDepartment(id: string | null | undefined) {
     if (id && !(await this.db.department.count({ where: { id } }))) {
-      throw new ApiException(422, 'VALIDATION_FAILED', 'Chuna gaya department nahi mila.');
+      throw new ApiException(422, 'VALIDATION_FAILED', 'The selected department was not found.');
     }
   }
 
@@ -131,7 +131,7 @@ export class UsersController {
     const before = await this.userOrThrow(id);
     if (premisesIds) await this.assertPremises(premisesIds);
     await this.assertDepartment(data.departmentId);
-    // Band member ko wapas chalu karna bhi member limit mein ginta hai.
+    // Turning an inactive member back on also counts against the member limit.
     if (data.isActive && !before.isActive) await this.limits.assert(businessId, 'members');
     return friendly(
       this.db.$transaction(async (tx) => {
@@ -146,7 +146,7 @@ export class UsersController {
     );
   }
 
-  /** Admin naya password set kare: us member ke saare devices logout. */
+  /** Admin sets a new password; the member is signed out of all devices. */
   @Put('users/:id/password')
   @HttpCode(204)
   async resetPassword(@Param('id', ParseUUIDPipe) id: string, @Body() body: unknown) {
@@ -156,7 +156,7 @@ export class UsersController {
     const now = new Date();
     await this.db.$transaction(async (tx) => {
       await tx.user.update({ where: { id }, data: { passwordHash } });
-      // Device aur refresh token tenant tables nahi; user upar check ho chuka hai.
+      // Devices and refresh tokens are not tenant tables; the user was checked above.
       await tx.refreshToken.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: now } });
       await tx.device.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: now, pushToken: null } });
       await audit(tx, { entity: 'user', entityId: id, action: 'password_reset' });

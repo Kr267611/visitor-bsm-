@@ -10,7 +10,7 @@ export interface BlobStore {
   delete(key: string): Promise<void>;
 }
 
-/** Tests aur local kaam ke liye. */
+/** For tests and local development. */
 export class MemoryBlobStore implements BlobStore {
   private readonly blobs = new Map<string, Buffer>();
 
@@ -28,7 +28,7 @@ export class MemoryBlobStore implements BlobStore {
   }
 }
 
-/** Koi bhi S3-compatible bucket: MinIO, Cloudflare R2, AWS S3. */
+/** Any S3-compatible bucket: MinIO, Cloudflare R2, AWS S3. */
 export class S3BlobStore implements BlobStore {
   private readonly client = new S3Client({
     endpoint: process.env.S3_ENDPOINT,
@@ -76,7 +76,7 @@ export class S3BlobStore implements BlobStore {
 export class StorageService {
   private readonly store: BlobStore =
     process.env.STORAGE_DRIVER === 'memory' ? new MemoryBlobStore() : new S3BlobStore();
-  // Access tokens se alag secret, taaki photo link kabhi login ke kaam na aaye.
+  // A secret separate from access tokens, so a photo link can never be used to sign in.
   private readonly photoSecret = `${process.env.JWT_SECRET}:photo`;
 
   constructor(private readonly jwt: JwtService) {}
@@ -93,13 +93,13 @@ export class StorageService {
     return this.store.delete(key);
   }
 
-  /** Short-lived link hamare API par. Storage ka host client ko kabhi nahi dikhta. */
+  /** Short-lived link on our API. Clients never see the storage host. */
   photoUrl(key: string, seconds = 300): string {
     const token = this.jwt.sign({ k: key }, { secret: this.photoSecret, expiresIn: seconds });
     return `${process.env.API_URL}/photos/${token}`;
   }
 
-  /** Token sahi ho to photo. Galat ya expired ho to throw. */
+  /** Returns the photo for a valid token. Throws when it is invalid or expired. */
   async readPhoto(token: string): Promise<Buffer | null> {
     const { k } = await this.jwt.verifyAsync<{ k: string }>(token, { secret: this.photoSecret });
     return this.store.get(k);

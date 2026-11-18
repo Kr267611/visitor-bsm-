@@ -1,6 +1,6 @@
 import { SmsProvider } from './sms.provider';
 
-/** Sirf tests ke liye. Bheje gaye messages `sent` mein save hote hain. */
+/** Tests only. Sent messages are kept in `sent`. */
 export class FakeSmsProvider implements SmsProvider {
   readonly sent: { to: string; text: string }[] = [];
   failing = false;

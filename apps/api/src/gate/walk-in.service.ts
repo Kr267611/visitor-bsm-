@@ -57,7 +57,7 @@ export class WalkInService {
   }
 
   async create(user: AuthUser, input: WalkInInput) {
-    // Retry par wahi visit, OTP dobara nahi maangte.
+    // On retry return the same visit; do not ask for the OTP again.
     const earlier = await this.prisma.visitEvent.findUnique({
       where: { clientEventId: input.clientEventId },
       include: { visit: true },
@@ -68,7 +68,7 @@ export class WalkInService {
     await this.limits.assert(gate.businessId, 'visits');
     const phone = requirePhone(input.phone);
     if (!input.consent) {
-      throw new ApiException(422, 'CONSENT_REQUIRED', 'Visitor ki sahmati ke bina entry nahi ho sakti.');
+      throw new ApiException(422, 'CONSENT_REQUIRED', "Entry is not allowed without the visitor's consent.");
     }
     const host = await this.prisma.user.findFirst({
       where: {
@@ -79,16 +79,16 @@ export class WalkInService {
       },
     });
     if (!host) {
-      throw new ApiException(422, 'VALIDATION_FAILED', 'Host is premises ka active employee hona chahiye.');
+      throw new ApiException(422, 'VALIDATION_FAILED', 'The host must be an active employee at this premises.');
     }
     const known = await this.prisma.visitor.findUnique({
       where: { businessId_phone: { businessId: gate.businessId, phone } },
     });
     const photoKey = await this.resolvePhoto(user, input.photoKey, known?.photoKey ?? null);
 
-    // OTP sabse aakhir mein, taaki baaki galti par OTP bekaar na jaye.
+    // OTP is checked last, so other mistakes do not waste it.
     if (!(await this.otp.verify(phone, input.otp, 'WALKIN_OTP'))) {
-      throw new ApiException(401, 'INVALID_OTP', 'OTP sahi nahi hai.');
+      throw new ApiException(401, 'INVALID_OTP', 'Incorrect OTP.');
     }
 
     const consentAt = new Date();
@@ -134,7 +134,7 @@ export class WalkInService {
         ],
       })
       .catch((error: unknown) => {
-        // Id kisi doosre business ke event ki thi (apne business ki hoti to upar mil jati).
+        // The id belonged to another business's event (our own would have been found above).
         throw isUniqueViolation(error) ? usedRequestId() : error;
       });
     await this.timers.schedule(visit.id);
@@ -144,11 +144,11 @@ export class WalkInService {
   private async resolvePhoto(user: AuthUser, key: string | undefined, existing: string | null): Promise<string> {
     if (!key) {
       if (existing) return existing;
-      throw new ApiException(422, 'VALIDATION_FAILED', 'Naye visitor ki photo zaroori hai.');
+      throw new ApiException(422, 'VALIDATION_FAILED', 'A photo is required for a new visitor.');
     }
     if (key === existing) return key;
     if (!key.startsWith(`uploads/${user.id}/`) || !(await this.storage.exists(key))) {
-      throw new ApiException(422, 'VALIDATION_FAILED', 'Photo dobara upload karein.');
+      throw new ApiException(422, 'VALIDATION_FAILED', 'Please upload the photo again.');
     }
     return key;
   }

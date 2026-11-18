@@ -18,7 +18,7 @@ const DESK_STAFF = ['reception', 'admin'];
 export const VISIT_INCLUDE = { visitor: true, host: true, premises: true } as const;
 export type VisitWithPeople = Prisma.VisitGetPayload<{ include: typeof VISIT_INCLUDE }>;
 
-const forbidden = () => new ApiException(403, 'FORBIDDEN', 'Aapko iski permission nahi hai.');
+const forbidden = () => new ApiException(403, 'FORBIDDEN', 'You do not have permission to do this.');
 
 export interface InviteInput {
   visitorName: string;
@@ -39,19 +39,19 @@ export class VisitsService {
 
   async invite(user: AuthUser, input: InviteInput): Promise<Visit> {
     if (!user.businessId || !user.premisesId) {
-      throw new ApiException(422, 'VALIDATION_FAILED', 'Aapke account par premises set nahi hai.');
+      throw new ApiException(422, 'VALIDATION_FAILED', 'Your account has no premises assigned.');
     }
     const { businessId, premisesId } = user;
     const phone = requirePhone(input.visitorPhone);
     if (input.validTo <= input.validFrom || input.validTo <= new Date()) {
-      throw new ApiException(422, 'VALIDATION_FAILED', 'Khatam hone ka time shuru hone ke baad ka hona chahiye.');
+      throw new ApiException(422, 'VALIDATION_FAILED', 'The end time must be after the start time.');
     }
     if (input.validTo.getTime() - input.validFrom.getTime() > MAX_WINDOW_MS) {
-      throw new ApiException(422, 'VALIDATION_FAILED', 'Ek pass 24 ghante se zyada ka nahi ho sakta.');
+      throw new ApiException(422, 'VALIDATION_FAILED', 'A pass cannot be longer than 24 hours.');
     }
     await this.limits.assert(businessId, 'visits');
 
-    // Purana visitor ho to uska naam nahi badalte, visitor khud form mein theek karega.
+    // Keep an existing visitor's name; the visitor corrects it in the form.
     const visitor = await this.prisma.visitor.upsert({
       where: { businessId_phone: { businessId, phone } },
       update: {},
@@ -88,7 +88,7 @@ export class VisitsService {
   }
 
   async list(user: AuthUser, q: { scope: 'mine' | 'site'; date?: string; status?: VisitStatus }) {
-    // Business filter scoped client khud lagata hai.
+    // The scoped client adds the business filter itself.
     const where: Prisma.VisitWhereInput = {};
     if (q.scope === 'site') {
       if (!SITE_STAFF.includes(user.role)) throw forbidden();
@@ -142,12 +142,12 @@ export class VisitsService {
     return { id: updated.id, status: updated.status };
   }
 
-  /** Naya link: purana band ho jata hai. */
+  /** New link: the old one stops working. */
   async resendInvite(user: AuthUser, id: string): Promise<void> {
     const visit = await this.load(id);
     if (!this.isHostOrDelegate(user, visit) && !this.isSiteStaff(user, visit, DESK_STAFF)) throw forbidden();
     if (visit.status !== 'INVITED' && visit.status !== 'APPROVED') {
-      throw new ApiException(409, 'INVALID_TRANSITION', 'Is visit ka link dobara nahi bheja ja sakta.', {
+      throw new ApiException(409, 'INVALID_TRANSITION', 'The link for this visit cannot be resent.', {
         status: visit.status,
       });
     }
@@ -181,10 +181,10 @@ export class VisitsService {
     });
   }
 
-  /** Doosre business ka visit scoped client se milta hi nahi, isliye 404 (hone ka pata bhi nahi chalta). */
+  /** Another business's visit is invisible to the scoped client, so 404 (its existence is not revealed). */
   async load(id: string): Promise<VisitWithPeople> {
     const visit = await this.prisma.visit.findUnique({ where: { id }, include: VISIT_INCLUDE });
-    if (!visit) throw new ApiException(404, 'NOT_FOUND', 'Visit nahi mila.');
+    if (!visit) throw new ApiException(404, 'NOT_FOUND', 'Visit not found.');
     return visit;
   }
 
@@ -198,8 +198,8 @@ export class VisitsService {
   }
 
   toSummary(v: VisitWithPeople): VisitSummary {
-    // Visitor ke form bharne se pehle host ko sirf wahi dikhe jo usne khud likha.
-    // Warna kisi ka bhi number daal kar uska saved naam aur photo dekha ja sakta tha.
+    // Before the visitor fills the form, the host sees only what the host typed.
+    // Otherwise anyone could enter a number and see the saved name and photo behind it.
     const invited = v.status === 'INVITED';
     return {
       id: v.id,

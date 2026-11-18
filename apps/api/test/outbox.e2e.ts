@@ -32,7 +32,7 @@ describe('outbox', () => {
   it('sends pending SMS and marks SENT with provider id', async () => {
     const row = await addSms();
     expect(await worker.tick(T0)).toBe(1);
-    expect(ctx.sms.sent).toEqual([{ to: '+919876543210', text: 'Aapka visitor pass taiyaar hai: http://x/y' }]);
+    expect(ctx.sms.sent).toEqual([{ to: '+919876543210', text: 'Your visitor pass is ready: http://x/y' }]);
     const after = await ctx.prisma.outbox.findUniqueOrThrow({ where: { id: row.id } });
     expect(after.status).toBe('SENT');
     expect(after.providerMsgId).toBeTruthy();
@@ -123,7 +123,7 @@ describe('outbox', () => {
     expect(ctx.push.sent).toEqual([
       {
         token: 'tok-1',
-        body: 'Rahul Main Gate 1 par aa gaye hain.',
+        body: 'Rahul has arrived at Main Gate 1.',
         data: { visitId: visit.id, template: 'VISITOR_ARRIVED' },
       },
     ]);
@@ -143,7 +143,7 @@ describe('outbox', () => {
       },
     });
     await worker.tick(T0);
-    expect(ctx.sms.sent).toEqual([{ to: host.phone, text: 'Rahul Gate par aa gaye hain.' }]);
+    expect(ctx.sms.sent).toEqual([{ to: host.phone, text: 'Rahul has arrived at Gate.' }]);
   });
 
   it('failed push falls back to SMS, approval text gets web link', async () => {
@@ -164,7 +164,7 @@ describe('outbox', () => {
     });
     await worker.tick(T0);
     expect(ctx.sms.sent[0].text).toBe(
-      `Rahul (ACME) aapse milne gate par hain. Approve ya reject karein. http://web.test/my/visits/${visit.id}`,
+      `Rahul (ACME) is at the gate to meet you. Please approve or reject. http://web.test/my/visits/${visit.id}`,
     );
   });
 

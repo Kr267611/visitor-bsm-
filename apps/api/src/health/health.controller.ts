@@ -24,7 +24,7 @@ export class HealthController {
     return body;
   }
 
-  /** Monitoring ke liye: SMS atak to nahi rahe, background jobs chal rahe hain ya nahi. */
+  /** For monitoring: are SMS messages stuck, and are background jobs running? */
   @Roles('admin')
   @Get('details')
   async details() {

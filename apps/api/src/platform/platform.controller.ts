@@ -37,7 +37,7 @@ const businessUpdate = z
   .object({ name: z.string().trim().min(1).max(150), planId: z.string().uuid(), otpLogin: z.boolean(), isActive: z.boolean() })
   .partial();
 
-/** Super admin: plans aur businesses (tenants). Yahan raw client, kyunki yeh kisi ek business ke andar nahi. */
+/** Super admin: plans and businesses (tenants). Raw client here, because this is not inside any one business. */
 @Roles('super_admin')
 @Controller('platform')
 export class PlatformController {
@@ -69,13 +69,13 @@ export class PlatformController {
     });
   }
 
-  /** Naya business ek hi transaction mein: default premises + settings + gate + pehla admin. */
+  /** New business in one transaction: default premises + settings + gate + first admin. */
   @Post('businesses')
   async createBusiness(@Body() body: unknown) {
     const input = parseBody(businessCreate, body);
     const phone = requirePhone(input.admin.phone);
     if (!(await this.prisma.plan.count({ where: { id: input.planId } }))) {
-      throw new ApiException(422, 'VALIDATION_FAILED', 'Chuna gaya plan nahi mila.');
+      throw new ApiException(422, 'VALIDATION_FAILED', 'The selected plan was not found.');
     }
     const passwordHash = input.admin.password ? await hashPassword(input.admin.password) : null;
     return friendly(

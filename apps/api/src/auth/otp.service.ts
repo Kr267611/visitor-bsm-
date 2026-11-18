@@ -14,9 +14,9 @@ const MAX_REQUESTS = 3;
 export type OtpPurpose = 'LOGIN_OTP' | 'WALKIN_OTP';
 
 const TEXT: Record<OtpPurpose, (otp: string) => string> = {
-  LOGIN_OTP: (otp) => `Aapka login OTP ${otp} hai. 5 minute mein expire hoga.`,
+  LOGIN_OTP: (otp) => `Your sign-in OTP is ${otp}. It expires in 5 minutes.`,
   WALKIN_OTP: (otp) =>
-    `Gate entry ka OTP ${otp} hai. Aapki details visitor record ke liye save hongi: ${process.env.PUBLIC_WEB_URL}/privacy`,
+    `Your gate entry OTP is ${otp}. Your details will be stored for the visitor record: ${process.env.PUBLIC_WEB_URL}/privacy`,
 };
 
 @Injectable()
@@ -30,13 +30,13 @@ export class OtpService {
     return createHmac('sha256', process.env.JWT_SECRET as string).update(`${phone}:${otp}`).digest('hex');
   }
 
-  /** OTP sidha SMS se jata hai, outbox se nahi, taaki database mein na rahe. */
+  /** The OTP goes straight out by SMS, not through the outbox, so it never sits in the database. */
   async request(phone: string, purpose: OtpPurpose): Promise<void> {
     const rateKey = `otp-rate:${purpose}:${phone}`;
     const count = await this.redis.client.incr(rateKey);
     if (count === 1) await this.redis.client.expire(rateKey, RATE_WINDOW_SEC);
     if (count > MAX_REQUESTS) {
-      throw new ApiException(429, 'OTP_RATE_LIMITED', 'Bahut baar OTP maanga gaya. 10 minute baad koshish karein.');
+      throw new ApiException(429, 'OTP_RATE_LIMITED', 'Too many OTP requests. Please try again in 10 minutes.');
     }
 
     const otp = String(randomInt(0, 1_000_000)).padStart(6, '0');
@@ -50,10 +50,10 @@ export class OtpService {
     try {
       await this.sms.send(phone, TEXT[purpose](otp));
     } catch {
-      // Jo SMS gaya hi nahi, use limit mein nahi ginte.
+      // An SMS that was never sent does not count against the limit.
       await this.redis.client.decr(rateKey);
       await this.redis.client.del(key);
-      throw new ApiException(503, 'SMS_UNAVAILABLE', 'SMS abhi nahi ja raha. Thodi der baad koshish karein, ya paper register par likhein.');
+      throw new ApiException(503, 'SMS_UNAVAILABLE', 'SMS is unavailable right now. Please try again shortly, or use the paper register.');
     }
   }
 
@@ -64,7 +64,7 @@ export class OtpService {
     if (!stored) return false;
     if (Number(await this.redis.client.get(failKey)) >= MAX_DAILY_FAILURES) return false;
 
-    // Pehle attempt ginte hain, taaki parallel requests limit par se na nikal sakein.
+    // Count the attempt first so parallel requests cannot slip past the limit.
     const attempts = await this.redis.client.hincrby(key, 'attempts', 1);
     if (attempts > MAX_ATTEMPTS) return false;
 

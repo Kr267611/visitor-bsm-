@@ -13,7 +13,7 @@ export interface PassPayload {
 
 const decodeKey = (base64Pem: string) => Buffer.from(base64Pem, 'base64').toString('utf8');
 
-/** QR pass: `v1.<payload>.<signature>`. Payload mein koi naam ya phone nahi. */
+/** QR pass: `v1.<payload>.<signature>`. The payload holds no name or phone. */
 export class PassService {
   private readonly privateKey: KeyObject;
   private readonly publicKey: KeyObject;

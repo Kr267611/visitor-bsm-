@@ -14,19 +14,19 @@ const REQUIRED_ENV = [
   'CONSENT_VERSION',
 ];
 
-/** Render khud apna public URL deta hai, to API_URL alag se bharna zaroori nahi. */
+/** Render provides its own public URL, so API_URL does not have to be set separately. */
 export function applyPlatformDefaults(env: Record<string, string | undefined>): void {
   env.API_URL ??= env.RENDER_EXTERNAL_URL;
 }
 
-/** Server start hone se pehle zaroori settings check. Kami ho to saaf error, baad mein ajeeb crash nahi. */
+/** Checks required settings before the server starts: a clear error now instead of a strange crash later. */
 export function assertRequiredEnv(env: Record<string, string | undefined>): void {
   const missing = REQUIRED_ENV.filter((name) => !env[name]);
-  if (missing.length) throw new Error(`Yeh settings missing hain: ${missing.join(', ')}`);
-  if (env.JWT_SECRET === 'change-me') throw new Error('JWT_SECRET ko asli random value se badlein.');
+  if (missing.length) throw new Error(`Missing required settings: ${missing.join(', ')}`);
+  if (env.JWT_SECRET === 'change-me') throw new Error('Replace JWT_SECRET with a real random value.');
 }
 
-/** Sirf poore domain. `*` ya `*.vercel.app` jaisa kuch nahi chalega. */
+/** Full domains only. Wildcards such as `*` or `*.vercel.app` are ignored. */
 export function allowedOrigins(): string[] {
   return (process.env.CORS_ORIGINS ?? '')
     .split(',')
@@ -34,14 +34,14 @@ export function allowedOrigins(): string[] {
     .filter((origin) => origin && !origin.includes('*'));
 }
 
-/** main.ts aur tests dono yahi setup use karte hain. */
+/** Shared setup for main.ts and the tests. */
 export function configureApp(app: INestApplication): void {
   const express = app as NestExpressApplication;
   app.useGlobalFilters(new ApiErrorFilter());
-  // Render ke proxy ke peeche asli visitor ka IP, warna rate limit sab par saath lagega.
+  // Real client IP behind Render's proxy; otherwise the rate limit would hit everyone at once.
   express.set('trust proxy', 1);
   express.disable('x-powered-by');
-  // Photos web app ke domain par dikhani hain, isliye cross-origin allowed.
+  // Photos are shown on the web app's domain, so cross-origin loading is allowed.
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
   app.enableCors({ origin: allowedOrigins() });
 }
