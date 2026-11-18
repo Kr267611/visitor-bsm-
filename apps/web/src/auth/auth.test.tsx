@@ -10,7 +10,12 @@ const session = (role: keyof typeof USERS) => ({
   user: USERS[role],
 });
 
+async function otpTab(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole('tab', { name: 'OTP' }));
+}
+
 async function login(user: ReturnType<typeof userEvent.setup>) {
+  await otpTab(user);
   await user.type(screen.getByLabelText('Mobile number'), '9876543210');
   await user.click(screen.getByRole('button', { name: 'OTP bhejein' }));
   await user.type(await screen.findByLabelText('OTP'), '123456');
@@ -61,6 +66,7 @@ describe('login', () => {
     });
     renderApp('/login', server);
     const user = userEvent.setup();
+    await otpTab(user);
     await user.type(screen.getByLabelText('Mobile number'), '9876543210');
     await user.click(screen.getByRole('button', { name: 'OTP bhejein' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('10 minute baad');
@@ -71,6 +77,7 @@ describe('login', () => {
     const server = fakeServer();
     renderApp('/login', server);
     const user = userEvent.setup();
+    await otpTab(user);
     await user.type(screen.getByLabelText('Mobile number'), '123');
     await user.click(screen.getByRole('button', { name: 'OTP bhejein' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Mobile number sahi nahi hai');
@@ -85,6 +92,7 @@ describe('login', () => {
     });
     renderApp('/login', server);
     const user = userEvent.setup();
+    await otpTab(user);
     await user.type(screen.getByLabelText('Mobile number'), '9876543210');
     await user.click(screen.getByRole('button', { name: 'OTP bhejein' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('connection');
@@ -98,7 +106,7 @@ describe('login', () => {
 
   it('logged out user goes to login', async () => {
     renderApp('/desk', fakeServer());
-    expect(await screen.findByLabelText('Mobile number')).toBeInTheDocument();
+    expect(await screen.findByLabelText('Mobile ya email')).toBeInTheDocument();
   });
 
   it('session expiry goes to /login?next=<page> and returns after login', async () => {
@@ -111,7 +119,7 @@ describe('login', () => {
       'POST /auth/otp/verify': () => json(200, session('employee')),
     });
     renderApp('/my', server);
-    const phone = await screen.findByLabelText('Mobile number');
+    const phone = await screen.findByLabelText('Mobile ya email');
     expect(phone).toBeInTheDocument();
     server.handlers['GET /visits'] = () => json(200, []);
     server.handlers['GET /me'] = () => json(200, { delegateId: null });
@@ -128,7 +136,134 @@ describe('login', () => {
     });
     renderApp('/my', server);
     await userEvent.setup().click(await screen.findByRole('button', { name: 'Logout' }));
-    expect(await screen.findByLabelText('Mobile number')).toBeInTheDocument();
+    expect(await screen.findByLabelText('Mobile ya email')).toBeInTheDocument();
     expect(localStorage.getItem('visitor.tokens')).toBeNull();
+  });
+
+  describe('password and business choice', () => {
+    async function passwordLogin(user: ReturnType<typeof userEvent.setup>, password = 'Secret@123') {
+      await user.type(await screen.findByLabelText('Mobile ya email'), 'asha@acme.test');
+      await user.type(screen.getByLabelText('Password'), password);
+      await user.click(screen.getByRole('button', { name: 'Login karein' }));
+    }
+
+    it('password login is the default and lands by role', async () => {
+      const server = fakeServer({
+        'POST /auth/login': () => json(200, session('employee')),
+        'GET /visits': () => json(200, []),
+        'GET /me': () => json(200, { delegateId: null }),
+      });
+      renderApp('/login', server);
+      await passwordLogin(userEvent.setup());
+      expect(await screen.findByRole('heading', { level: 1, name: 'Mere visitors' })).toBeInTheDocument();
+      expect(server.calls[0].body).toEqual({ identifier: 'asha@acme.test', password: 'Secret@123', deviceName: 'Web browser' });
+    });
+
+    it('wrong password shows message and clears the password', async () => {
+      const server = fakeServer({
+        'POST /auth/login': () => json(401, { error: 'INVALID_CREDENTIALS', message: 'Phone/email ya password sahi nahi hai.' }),
+      });
+      renderApp('/login', server);
+      await passwordLogin(userEvent.setup());
+      expect(await screen.findByRole('alert')).toHaveTextContent('password sahi nahi');
+      expect(screen.getByLabelText('Password')).toHaveValue('');
+      expect(screen.getByLabelText('Mobile ya email')).toHaveValue('asha@acme.test');
+    });
+
+    it('several businesses: choose one, then signed in to it', async () => {
+      const server = fakeServer({
+        'POST /auth/login': () =>
+          json(409, {
+            error: 'CHOOSE_BUSINESS',
+            message: 'Kaunse business mein login karna hai?',
+            selectionToken: 'sel-1',
+            businesses: [
+              { id: 'b1', name: 'Acme Pvt Ltd' },
+              { id: 'b2', name: 'Globex' },
+            ],
+          }),
+        'POST /auth/select-business': () => json(200, session('employee')),
+        'GET /visits': () => json(200, []),
+        'GET /me': () => json(200, { delegateId: null }),
+      });
+      renderApp('/login', server);
+      const user = userEvent.setup();
+      await passwordLogin(user);
+      expect(await screen.findByRole('heading', { name: 'Business chunein' })).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Globex' }));
+      expect(await screen.findByRole('heading', { level: 1, name: 'Mere visitors' })).toBeInTheDocument();
+      expect(server.calls.find((c) => c.key === 'POST /auth/select-business')!.body).toEqual({
+        selectionToken: 'sel-1',
+        businessId: 'b2',
+        deviceName: 'Web browser',
+      });
+      expect(localStorage.getItem('visitor.tokens')).toContain('"a"');
+    });
+
+    it('expired choice goes back to login with the message', async () => {
+      const server = fakeServer({
+        'POST /auth/login': () =>
+          json(409, { error: 'CHOOSE_BUSINESS', message: 'x', selectionToken: 's', businesses: [{ id: 'b1', name: 'Acme' }] }),
+        'POST /auth/select-business': () => json(401, { error: 'UNAUTHORIZED', message: 'Login ka samay khatam. Dobara login karein.' }),
+      });
+      renderApp('/login', server);
+      const user = userEvent.setup();
+      await passwordLogin(user);
+      await user.click(await screen.findByRole('button', { name: 'Acme' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('samay khatam');
+      expect(screen.getByLabelText('Mobile ya email')).toBeInTheDocument();
+    });
+
+    it('OTP can also ask to choose a business', async () => {
+      const server = fakeServer({
+        'POST /auth/otp/request': () => json(204),
+        'POST /auth/otp/verify': () =>
+          json(409, { error: 'CHOOSE_BUSINESS', message: 'x', selectionToken: 's', businesses: [{ id: 'b1', name: 'Acme' }] }),
+      });
+      renderApp('/login', server);
+      await login(userEvent.setup());
+      expect(await screen.findByRole('button', { name: 'Acme' })).toBeInTheDocument();
+    });
+
+    it('new login forgets the premises chosen before', async () => {
+      localStorage.setItem('visitor.premises', JSON.stringify('old-premises'));
+      const server = fakeServer({
+        'POST /auth/login': () => json(200, session('employee')),
+        'GET /visits': () => json(200, []),
+        'GET /me': () => json(200, { delegateId: null }),
+      });
+      renderApp('/login', server);
+      await passwordLogin(userEvent.setup());
+      await screen.findByRole('heading', { level: 1, name: 'Mere visitors' });
+      expect(localStorage.getItem('visitor.premises')).toBeNull();
+      const visits = server.calls.find((c) => c.key === 'GET /visits')!;
+      expect((visits.init.headers as Record<string, string>)['X-Premises-Id']).toBeUndefined();
+    });
+
+    it('change password page', async () => {
+      signIn(USERS.employee);
+      const server = fakeServer({ 'PUT /me/password': () => json(204), 'GET /me': () => json(200, { delegateId: null }) });
+      renderApp('/account/password', server);
+      const user = userEvent.setup();
+      await user.type(await screen.findByLabelText('Naya password'), 'NewPass@12');
+      await user.type(screen.getByLabelText('Naya password dobara'), 'NewPass@13');
+      await user.click(screen.getByRole('button', { name: 'Password save karein' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('ek jaise nahi');
+      await user.clear(screen.getByLabelText('Naya password dobara'));
+      await user.type(screen.getByLabelText('Naya password dobara'), 'NewPass@12');
+      await user.click(screen.getByRole('button', { name: 'Password save karein' }));
+      expect(await screen.findByRole('status')).toHaveTextContent('save ho gaya');
+      expect(server.calls.find((c) => c.key === 'PUT /me/password')!.body).toEqual({ newPassword: 'NewPass@12' });
+    });
+
+    it('super admin lands on the platform notice', async () => {
+      const server = fakeServer({
+        'POST /auth/login': () =>
+          json(200, { ...session('admin'), user: { id: 'sa', name: 'Platform', role: 'super_admin', businessId: null } }),
+      });
+      renderApp('/login', server);
+      await passwordLogin(userEvent.setup());
+      expect(await screen.findByRole('heading', { name: 'Platform admin' })).toBeInTheDocument();
+    });
   });
 });

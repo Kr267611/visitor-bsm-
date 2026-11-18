@@ -10,7 +10,20 @@ export interface SessionUser {
   id: string;
   name: string;
   role: Role;
-  siteId: string | null;
+  /** Super admin ke liye null. */
+  businessId: string | null;
+}
+
+/** Ek phone/email kai businesses mein ho: password/OTP sahi hone ke baad yeh list milti hai. */
+export interface BusinessChoice {
+  selectionToken: string;
+  businesses: { id: string | null; name: string }[];
+}
+
+/** Login ne 409 CHOOSE_BUSINESS diya ho to business list, warna null. */
+export function businessChoice(error: unknown): BusinessChoice | null {
+  if (!(error instanceof ApiError) || error.code !== 'CHOOSE_BUSINESS') return null;
+  return { selectionToken: error.body.selectionToken, businesses: error.body.businesses ?? [] };
 }
 
 export interface Session extends Tokens {
@@ -85,14 +98,61 @@ export interface RegisterRequest {
 export interface Gate {
   id: string;
   name: string;
-  siteId: string;
+  premisesId: string;
   isActive?: boolean;
 }
 
-export interface Site {
+export type PremisesCategory = 'business' | 'events' | 'exhibition';
+
+export interface Premises {
   id: string;
   name: string;
   address: string | null;
+  mobile: string | null;
+  email: string | null;
+  lat: number | null;
+  lng: number | null;
+  geofenceM: number | null;
+  category: PremisesCategory;
+  /** Kiosk par premises pehchanne ka 6 akshar ka code. */
+  code: string;
+  webSlug: string;
+  isDefault: boolean;
+  purposes: string[];
+}
+
+export interface PremisesInput {
+  name: string;
+  address?: string;
+  mobile?: string;
+  email?: string;
+  category?: PremisesCategory;
+  purposes?: string[];
+  isDefault?: boolean;
+}
+
+export interface PremisesSettings {
+  premisesId: string;
+  visitStart: string | null;
+  visitEnd: string | null;
+  checkinOnApproval: boolean;
+  onlyCheckin: boolean;
+  autoCheckoutHrs: number | null;
+  overstayMin: number | null;
+  waitingMin: number | null;
+  defaultVisitMin: number;
+  slotMin: number;
+  delayAlertMin: number | null;
+  onlyMemberCheckin: boolean;
+  reportEmails: string[];
+  reportSchedule: 'daily' | 'weekly' | 'monthly' | null;
+  googleReviewUrl: string | null;
+}
+
+export interface Department {
+  id: string;
+  name: string;
+  memberCount?: number;
 }
 
 export interface AdminUser {
@@ -101,14 +161,46 @@ export interface AdminUser {
   phone: string;
   email: string | null;
   role: Role;
-  department: string | null;
-  siteId: string | null;
+  departmentId: string | null;
+  designation: string | null;
+  joiningDate: string | null;
+  isHost: boolean;
   isActive: boolean;
+  premisesIds: string[];
+}
+
+export interface MemberInput {
+  name: string;
+  phone: string;
+  role: Role;
+  premisesIds: string[];
+  email?: string;
+  departmentId?: string | null;
+  designation?: string;
+  isHost?: boolean;
+  isActive?: boolean;
+  password?: string;
+}
+
+export interface AuditEntry {
+  id: string;
+  actorId: string | null;
+  entity: string;
+  entityId: string;
+  action: string;
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown> | null;
+  at: string;
 }
 
 export interface Profile extends AdminUser {
   delegateId: string | null;
   delegateName: string | null;
+  business: { id: string; name: string; slug: string } | null;
+  premises: { id: string; name: string; isDefault: boolean }[];
+  activePremisesId: string | null;
+  /** Business ke plan ke modules; menu inhi se banta hai. */
+  features: string[];
 }
 
 export interface AdminDevice {
@@ -147,6 +239,8 @@ export interface ApiClientOptions {
   baseUrl: string;
   tokens: { get(): Promise<Tokens | null>; set(tokens: Tokens | null): Promise<void> };
   onSessionExpired(): void;
+  /** Chuna hua premises: har login wali request par `X-Premises-Id` header. Na ho to server default leta hai. */
+  getPremisesId?: () => string | null | Promise<string | null>;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
 }
@@ -178,7 +272,11 @@ export function createApiClient(options: ApiClientOptions) {
 
   async function send(method: string, path: string, opts: RequestOptions, accessToken?: string): Promise<Response> {
     const headers: Record<string, string> = {};
-    if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+    if (accessToken) {
+      headers.Authorization = `Bearer ${accessToken}`;
+      const premisesId = await options.getPremisesId?.();
+      if (premisesId) headers['X-Premises-Id'] = premisesId;
+    }
     if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
 
     const controller = new AbortController();
@@ -259,21 +357,28 @@ export function createApiClient(options: ApiClientOptions) {
     return parse<T>(await send(method, path, opts, next?.accessToken));
   }
 
-  const crud = <Row>(path: string) => ({
+  const crud = <Row, Input extends object = object>(path: string) => ({
     list: () => request<Row[]>('GET', path),
-    create: (body: object) => request<Row>('POST', path, { body }),
-    update: (id: string, body: object) => request<Row>('PATCH', `${path}/${id}`, { body }),
+    create: (body: Input) => request<Row>('POST', path, { body }),
+    update: (id: string, body: Partial<Input>) => request<Row>('PATCH', `${path}/${id}`, { body }),
   });
+
+  /** Session mila to tokens save. CHOOSE_BUSINESS par ApiError (dekhein `businessChoice`). */
+  async function startSession(path: string, body: object): Promise<Session> {
+    const session = await request<Session>('POST', path, { body, anonymous: true });
+    await options.tokens.set({ accessToken: session.accessToken, refreshToken: session.refreshToken });
+    return session;
+  }
 
   return {
     auth: {
       requestOtp: (phone: string) =>
         request<void>('POST', '/auth/otp/request', { body: { phone }, anonymous: true }),
-      verifyOtp: async (body: { phone: string; otp: string; deviceName: string }) => {
-        const session = await request<Session>('POST', '/auth/otp/verify', { body, anonymous: true });
-        await options.tokens.set({ accessToken: session.accessToken, refreshToken: session.refreshToken });
-        return session;
-      },
+      verifyOtp: (body: { phone: string; otp: string; deviceName: string }) => startSession('/auth/otp/verify', body),
+      /** Phone ya email + password. */
+      login: (body: { identifier: string; password: string; deviceName: string }) => startSession('/auth/login', body),
+      selectBusiness: (body: { selectionToken: string; businessId: string | null; deviceName: string }) =>
+        startSession('/auth/select-business', body),
       logout: async () => {
         const tokens = await options.tokens.get();
         await options.tokens.set(null);
@@ -288,6 +393,8 @@ export function createApiClient(options: ApiClientOptions) {
     me: {
       get: () => request<Profile>('GET', '/me'),
       update: (body: { delegateId: string | null }) => request<Profile>('PATCH', '/me', { body }),
+      changePassword: (body: { currentPassword?: string; newPassword: string }) =>
+        request<void>('PUT', '/me/password', { body }),
     },
     devices: {
       savePushToken: (pushToken: string) => request<void>('POST', '/devices/push-token', { body: { pushToken } }),
@@ -341,9 +448,25 @@ export function createApiClient(options: ApiClientOptions) {
     },
     dashboard: { live: () => request<LiveDashboard>('GET', '/dashboard/live') },
     admin: {
-      users: crud<AdminUser>('/admin/users'),
-      sites: crud<Site>('/admin/sites'),
-      gates: crud<Gate>('/admin/gates'),
+      users: {
+        ...crud<AdminUser, MemberInput>('/admin/users'),
+        search: (q: string) => request<AdminUser[]>('GET', `/admin/users${queryString({ q })}`),
+        resetPassword: (id: string, password: string) =>
+          request<void>('PUT', `/admin/users/${id}/password`, { body: { password } }),
+      },
+      premises: {
+        ...crud<Premises, PremisesInput>('/admin/premises'),
+        settings: (id: string) => request<PremisesSettings>('GET', `/admin/premises/${id}/settings`),
+        updateSettings: (id: string, body: Partial<Omit<PremisesSettings, 'premisesId'>>) =>
+          request<PremisesSettings>('PUT', `/admin/premises/${id}/settings`, { body }),
+      },
+      gates: crud<Gate, { premisesId: string; name: string; isActive?: boolean }>('/admin/gates'),
+      departments: {
+        ...crud<Department, { name: string }>('/admin/departments'),
+        remove: (id: string) => request<void>('DELETE', `/admin/departments/${id}`),
+      },
+      audit: (q: { entity?: string; entityId?: string } = {}) =>
+        request<AuditEntry[]>('GET', `/admin/audit${queryString(q)}`),
       devices: {
         list: () => request<AdminDevice[]>('GET', '/admin/devices'),
         revoke: (id: string) => request<void>('POST', `/admin/devices/${id}/revoke`),

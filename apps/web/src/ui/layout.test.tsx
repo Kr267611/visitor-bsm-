@@ -32,7 +32,8 @@ function server(over: Handlers = {}) {
     'GET /gates': () => json(200, []),
     'GET /visits': () => json(200, []),
     'GET /admin/users': () => json(200, []),
-    'GET /admin/sites': () => json(200, []),
+    'GET /admin/premises': () => json(200, []),
+    'GET /admin/departments': () => json(200, []),
     'GET /me': () => json(200, { delegateId: null, delegateName: null }),
     ...over,
   });
@@ -65,10 +66,11 @@ describe('side menu', () => {
 
   it('admin sees all three groups', async () => {
     signIn(USERS.admin);
-    renderApp('/admin/users', server());
-    await screen.findByRole('heading', { level: 1, name: 'Users' });
+    renderApp('/admin/members', server());
+    await screen.findByRole('heading', { level: 1, name: 'Members' });
     expect(groups()).toEqual(['Gate desk', 'Mere visitors', 'Admin']);
-    expect(within(menu()).getByRole('link', { name: 'Sites aur gates' })).toBeInTheDocument();
+    expect(within(menu()).getByRole('link', { name: 'Premises aur gates' })).toBeInTheDocument();
+    expect(within(menu()).getByRole('link', { name: 'Departments' })).toBeInTheDocument();
     expect(within(menu()).getByRole('link', { name: 'Devices' })).toBeInTheDocument();
   });
 
@@ -128,5 +130,52 @@ describe('side menu', () => {
     renderApp('/my/backup', server());
     expect(await screen.findByLabelText('Backup person dhoondein')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: 'Backup person' })).toBeInTheDocument();
+  });
+
+  describe('business, premises and plan', () => {
+    const profile = (over: object = {}) => ({
+      delegateId: null,
+      delegateName: null,
+      business: { id: 'b1', name: 'Acme Pvt Ltd', slug: 'acme' },
+      premises: [
+        { id: 'p1', name: 'Head Office', isDefault: true },
+        { id: 'p2', name: 'Plant 2', isDefault: false },
+      ],
+      activePremisesId: 'p1',
+      features: ['dashboard', 'invites', 'visitor_desk'],
+      ...over,
+    });
+
+    it('shows business name and switches premises for every request', async () => {
+      signIn(USERS.reception);
+      const s = server({ 'GET /me': () => json(200, profile()) });
+      renderApp('/desk/pending', s);
+      expect(await within(menu().parentElement as HTMLElement).findByText('Acme Pvt Ltd')).toBeInTheDocument();
+      const select = await screen.findByLabelText('Premises');
+      expect(select).toHaveValue('p1');
+      const before = s.calls.length;
+      await userEvent.setup().selectOptions(select, 'p2');
+      expect(localStorage.getItem('visitor.premises')).toBe('"p2"');
+      await screen.findByRole('heading', { level: 1, name: 'Approval baaki' });
+      await vi.waitFor(() => {
+        const later = s.calls.slice(before).find((c) => c.key === 'GET /dashboard/live');
+        expect((later?.init.headers as Record<string, string>)['X-Premises-Id']).toBe('p2');
+      });
+    });
+
+    it('one premises shows its name, no switcher', async () => {
+      signIn(USERS.employee);
+      renderApp('/my', server({ 'GET /me': () => json(200, profile({ premises: [{ id: 'p1', name: 'Head Office', isDefault: true }] })) }));
+      expect(await screen.findByText('Head Office')).toBeInTheDocument();
+      expect(screen.queryByLabelText('Premises')).toBeNull();
+    });
+
+    it('modules not in the plan are hidden from the menu', async () => {
+      signIn(USERS.reception);
+      renderApp('/my', server({ 'GET /me': () => json(200, profile({ features: ['visitor_desk'] })) }));
+      await screen.findByRole('heading', { level: 1, name: 'Mere visitors' });
+      await vi.waitFor(() => expect(groups()).toEqual(['Mere visitors']));
+      expect(within(menu()).queryByRole('link', { name: 'Naya invite' })).toBeNull();
+    });
   });
 });

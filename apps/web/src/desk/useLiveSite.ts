@@ -2,7 +2,7 @@ import type { LiveDashboard } from '@visitor/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
-import { accessToken, useWebClient } from '../api';
+import { accessToken, loadPremisesId, useWebClient } from '../api';
 
 const POLL_MS = 30_000;
 const RECONNECT_MS = 3_000;
@@ -20,7 +20,7 @@ export function useLiveSite(): {
     const socket = io(`${web.apiUrl}/live`, {
       transports: ['websocket'],
       // Har reconnect par naya token.
-      auth: (callback) => callback({ token: accessToken() }),
+      auth: (callback) => callback({ token: accessToken(), premisesId: loadPremisesId() ?? undefined }),
     });
     let retry: ReturnType<typeof setTimeout> | null = null;
     socket.on('ready', () => {

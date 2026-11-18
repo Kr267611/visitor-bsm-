@@ -1,4 +1,4 @@
-import { ApiError, createApiClient, NetworkError, Tokens } from './client';
+import { ApiError, businessChoice, createApiClient, NetworkError, Tokens } from './client';
 
 function json(status: number, body?: unknown) {
   return new Response(body === undefined ? null : JSON.stringify(body), { status });
@@ -178,5 +178,70 @@ describe('createApiClient', () => {
     const t = setup(() => json(200, []));
     await t.api.visits.list({ scope: 'site', date: '2026-11-05' });
     expect(t.calls[0].url).toBe('http://api.test/visits?scope=site&date=2026-11-05');
+  });
+});
+
+describe('login v2 and premises', () => {
+  const session = { accessToken: 'a2', refreshToken: 'r2', deviceId: 'd', user: { id: 'u', name: 'U', role: 'admin', businessId: 'b1' } };
+
+  function withPremises(premisesId: string | null) {
+    const calls: { url: string; init: RequestInit }[] = [];
+    let stored: Tokens | null = { accessToken: 'acc', refreshToken: 'ref' };
+    const api = createApiClient({
+      baseUrl: 'http://api.test',
+      tokens: { get: async () => stored, set: async (t) => void (stored = t) },
+      onSessionExpired: () => undefined,
+      getPremisesId: () => premisesId,
+      fetchImpl: (async (url: string, init: RequestInit) => {
+        calls.push({ url, init });
+        if (url.endsWith('/auth/login')) {
+          return json(409, { error: 'CHOOSE_BUSINESS', message: 'Kaunsa?', selectionToken: 'sel', businesses: [{ id: 'b1', name: 'Acme' }] });
+        }
+        if (url.endsWith('/auth/select-business')) return json(200, session);
+        return json(200, []);
+      }) as unknown as typeof fetch,
+    });
+    return { api, calls, stored: () => stored };
+  }
+  const header = (init: RequestInit, name: string) => (init.headers as Record<string, string>)[name];
+
+  it('sends X-Premises-Id on logged-in routes only', async () => {
+    const t = withPremises('p2');
+    await t.api.gates.list();
+    await t.api.publicInvites.get('tok');
+    expect(header(t.calls[0].init, 'X-Premises-Id')).toBe('p2');
+    expect(header(t.calls[1].init, 'X-Premises-Id')).toBeUndefined();
+  });
+
+  it('no premises chosen sends no header', async () => {
+    const t = withPremises(null);
+    await t.api.gates.list();
+    expect(header(t.calls[0].init, 'X-Premises-Id')).toBeUndefined();
+  });
+
+  it('CHOOSE_BUSINESS gives a business list, select-business saves the session', async () => {
+    const t = withPremises(null);
+    const error = await t.api.auth.login({ identifier: 'a@b.test', password: 'pw', deviceName: 'Web' }).catch((e) => e);
+    expect(businessChoice(error)).toEqual({ selectionToken: 'sel', businesses: [{ id: 'b1', name: 'Acme' }] });
+    expect(businessChoice(new Error('x'))).toBeNull();
+    await t.api.auth.selectBusiness({ selectionToken: 'sel', businessId: 'b1', deviceName: 'Web' });
+    expect(t.stored()).toEqual({ accessToken: 'a2', refreshToken: 'r2' });
+    expect(JSON.parse(t.calls[1].init.body as string)).toEqual({ selectionToken: 'sel', businessId: 'b1', deviceName: 'Web' });
+  });
+
+  it('admin v2 paths', async () => {
+    const t = withPremises(null);
+    await t.api.admin.premises.updateSettings('p1', { slotMin: 15 });
+    await t.api.admin.departments.remove('d1');
+    await t.api.admin.users.resetPassword('u1', 'Secret@123');
+    await t.api.admin.audit({ entity: 'user' });
+    await t.api.me.changePassword({ newPassword: 'Secret@123' });
+    expect(t.calls.map((c) => `${c.init.method} ${c.url.replace('http://api.test', '')}`)).toEqual([
+      'PUT /admin/premises/p1/settings',
+      'DELETE /admin/departments/d1',
+      'PUT /admin/users/u1/password',
+      'GET /admin/audit?entity=user',
+      'PUT /me/password',
+    ]);
   });
 });

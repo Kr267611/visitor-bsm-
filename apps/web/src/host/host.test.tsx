@@ -175,6 +175,7 @@ describe('host screens', () => {
       });
       renderApp('/my/visits/v1', s);
       const user = userEvent.setup();
+      await user.click(await screen.findByRole('tab', { name: 'OTP' }));
       await user.type(await screen.findByLabelText('Mobile number'), '9876543210');
       await user.click(screen.getByRole('button', { name: 'OTP bhejein' }));
       await user.type(await screen.findByLabelText('OTP'), '123456');

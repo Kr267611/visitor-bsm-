@@ -33,10 +33,10 @@ export function fakeServer(handlers: Handlers = {}): FakeServer {
 }
 
 export const USERS: Record<string, SessionUser> = {
-  guard: { id: 'u-guard', name: 'Guard', role: 'guard', siteId: 's1' },
-  employee: { id: 'u-emp', name: 'Anita', role: 'employee', siteId: 's1' },
-  admin: { id: 'u-admin', name: 'Admin', role: 'admin', siteId: 's1' },
-  reception: { id: 'u-desk', name: 'Desk', role: 'reception', siteId: 's1' },
+  guard: { id: 'u-guard', name: 'Guard', role: 'guard', businessId: 'b1' },
+  employee: { id: 'u-emp', name: 'Anita', role: 'employee', businessId: 'b1' },
+  admin: { id: 'u-admin', name: 'Admin', role: 'admin', businessId: 'b1' },
+  reception: { id: 'u-desk', name: 'Desk', role: 'reception', businessId: 'b1' },
 };
 
 export async function signIn(user: SessionUser) {

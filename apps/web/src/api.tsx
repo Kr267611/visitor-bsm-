@@ -3,6 +3,7 @@ import { createContext, ReactNode, useContext } from 'react';
 
 const TOKENS_KEY = 'visitor.tokens';
 const USER_KEY = 'visitor.user';
+const PREMISES_KEY = 'visitor.premises';
 
 function read<T>(key: string): T | null {
   try {
@@ -25,6 +26,9 @@ function write(key: string, value: unknown): void {
 export const loadUser = () => read<SessionUser>(USER_KEY);
 export const saveUser = (user: SessionUser | null) => write(USER_KEY, user);
 export const saveTokens = (tokens: Tokens | null) => write(TOKENS_KEY, tokens);
+/** Side menu mein chuna gaya premises; har request par X-Premises-Id. */
+export const loadPremisesId = () => read<string>(PREMISES_KEY);
+export const savePremisesId = (id: string | null) => write(PREMISES_KEY, id);
 
 export interface WebClient {
   client: ApiClient;
@@ -41,6 +45,7 @@ export function createWebClient(baseUrl: string, fetchImpl?: typeof fetch): WebC
       get: async () => read<Tokens>(TOKENS_KEY),
       set: async (tokens) => saveTokens(tokens),
     },
+    getPremisesId: loadPremisesId,
     onSessionExpired: () => listeners.forEach((listener) => listener()),
   });
   return {

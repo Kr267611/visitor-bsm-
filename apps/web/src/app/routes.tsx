@@ -1,10 +1,12 @@
 import type { Role } from '@visitor/shared';
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { DevicesPanel } from '../admin/DevicesPanel';
-import { SitesPage } from '../admin/SitesPage';
-import { UsersPage } from '../admin/UsersPage';
+import { DepartmentsPage } from '../admin/DepartmentsPage';
+import { MembersPage } from '../admin/MembersPage';
+import { PremisesPage } from '../admin/PremisesPage';
 import { useAuth } from '../auth/AuthProvider';
 import { LoginPage } from '../auth/LoginPage';
+import { PasswordPage } from '../auth/PasswordPage';
 import { homeFor, RequireRole } from '../auth/RequireRole';
 import { DeskPage } from '../desk/DeskPage';
 import { ApprovalPage } from '../host/ApprovalPage';
@@ -16,6 +18,22 @@ import { InvitePage } from '../visitor/InvitePage';
 import { PrivacyPage } from '../visitor/PrivacyPage';
 
 const ALL_ROLES: Role[] = ['guard', 'employee', 'reception', 'security', 'admin'];
+
+/** Super admin ka platform panel baad mein (web par abhi sirf yeh suchna). */
+function PlatformHome() {
+  const { logout } = useAuth();
+  return (
+    <main className="auth-page">
+      <div className="auth-card">
+        <h1>Platform admin</h1>
+        <p className="muted">Plans aur businesses ka panel jaldi aa raha hai. Abhi yeh kaam API se hota hai.</p>
+        <button type="button" onClick={() => void logout()}>
+          Logout
+        </button>
+      </div>
+    </main>
+  );
+}
 
 function Home() {
   const { user } = useAuth();
@@ -34,6 +52,14 @@ export function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/v/:token" element={<InvitePage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
+      <Route
+        path="/platform"
+        element={
+          <RequireRole roles={['super_admin']}>
+            <PlatformHome />
+          </RequireRole>
+        }
+      />
 
       {/* Side menu ek hi baar banta hai, sirf andar ka page badalta hai. */}
       <Route
@@ -58,10 +84,15 @@ export function AppRoutes() {
         <Route path="/admin/devices" element={<Allow roles={['admin', 'security']} />}>
           <Route index element={<DevicesPanel />} />
         </Route>
+        <Route path="/account/password" element={<PasswordPage />} />
         <Route path="/admin" element={<Allow roles={['admin']} />}>
-          <Route index element={<Navigate to="users" replace />} />
-          <Route path="users" element={<UsersPage />} />
-          <Route path="sites" element={<SitesPage />} />
+          <Route index element={<Navigate to="members" replace />} />
+          <Route path="members" element={<MembersPage />} />
+          <Route path="premises" element={<PremisesPage />} />
+          <Route path="departments" element={<DepartmentsPage />} />
+          {/* Purane bookmarks. */}
+          <Route path="users" element={<Navigate to="/admin/members" replace />} />
+          <Route path="sites" element={<Navigate to="/admin/premises" replace />} />
         </Route>
       </Route>
 

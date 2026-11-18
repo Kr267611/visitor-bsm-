@@ -121,7 +121,9 @@ button.link { border: 0; background: none; color: var(--accent); padding: 4px; m
 .menu-link.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 .menu-count { font-family: var(--mono); font-size: 0.78rem; padding: 0 7px; border-radius: 999px; background: var(--neutral-soft); color: var(--muted); font-variant-numeric: tabular-nums; }
 .menu-count-urgent { background: var(--wait-soft); color: var(--wait); font-weight: 500; }
-.sidebar-user { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 10px 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
+.sidebar-user { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 12px 10px 0; border-top: 1px solid var(--line); }
+.sidebar-user > span { flex-basis: 100%; overflow-wrap: anywhere; }
+.sidebar-user .link { white-space: nowrap; }
 .notice-link { display: block; text-decoration: none; font-weight: 500; }
 .content { width: 100%; max-width: 980px; margin: 0 auto; padding: 28px max(16px, env(safe-area-inset-right)) 48px max(16px, env(safe-area-inset-left)); display: grid; gap: 20px; align-content: start; }
 @media (max-width: 860px) {
