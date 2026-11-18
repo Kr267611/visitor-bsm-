@@ -49,6 +49,11 @@ async function main() {
       },
     });
   }
+  // Local testing ka platform super admin (kisi business ka nahi). Sirf OTP se login.
+  const superPhone = '+919000000009';
+  if (!(await prisma.user.findFirst({ where: { phone: superPhone, businessId: null } }))) {
+    await prisma.user.create({ data: { name: 'Platform Admin', phone: superPhone, role: 'super_admin' } });
+  }
   console.log(`Seed ho gaya: business "${business.name}", ${USERS.length} users, premises "${premises.name}"`);
 }
 

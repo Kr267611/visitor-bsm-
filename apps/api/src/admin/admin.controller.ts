@@ -1,10 +1,10 @@
-import { randomInt } from 'node:crypto';
 import { Body, Controller, Get, Inject, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { AuthUser, CurrentUser, Roles } from '../auth/roles.decorator';
 import { ApiException } from '../common/api-exception';
 import { parseBody, requirePhone } from '../common/parse';
+import { friendly, kioskCode, notFound, slugify } from '../common/records';
 import { AllowSuperAdmin } from '../auth/permissions';
 import { PlanLimits } from '../plans/plan-limits.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -66,31 +66,6 @@ export const USER_FIELDS = {
 
 type UserRow = Prisma.UserGetPayload<{ select: typeof USER_FIELDS }>;
 const toUser = ({ premises, ...u }: UserRow) => ({ ...u, premisesIds: premises.map((p) => p.premisesId) });
-
-/** Prisma ke unique/foreign-key errors ko saaf 422 mein badalta hai. */
-async function friendly<T>(work: Promise<T>): Promise<T> {
-  try {
-    return await work;
-  } catch (e) {
-    if (e instanceof Prisma.PrismaClientKnownRequestError) {
-      if (e.code === 'P2002') throw new ApiException(422, 'VALIDATION_FAILED', 'Yeh pehle se maujood hai.');
-      if (e.code === 'P2003') throw new ApiException(422, 'VALIDATION_FAILED', 'Chuna gaya premises, gate ya department nahi mila.');
-      if (e.code === 'P2025') throw new ApiException(404, 'NOT_FOUND', 'Yeh record nahi mila.');
-    }
-    throw e;
-  }
-}
-
-const KIOSK_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const kioskCode = () => Array.from({ length: 6 }, () => KIOSK_ALPHABET[randomInt(KIOSK_ALPHABET.length)]).join('');
-const slugify = (name: string) =>
-  name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 40) || 'premises';
-
-const notFound = () => new ApiException(404, 'NOT_FOUND', 'Yeh record nahi mila.');
 
 @Roles('admin')
 @Controller('admin')

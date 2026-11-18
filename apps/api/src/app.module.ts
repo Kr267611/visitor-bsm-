@@ -10,6 +10,7 @@ import { JobsModule } from './jobs/jobs.service';
 import { LiveModule } from './live/live.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PassesModule } from './passes/passes.module';
+import { PlatformController } from './platform/platform.controller';
 import { PlansModule } from './plans/plan-limits.service';
 import { PrismaModule } from './prisma/prisma.service';
 import { RedisModule } from './redis/redis.service';
@@ -34,7 +35,7 @@ import { VisitsModule } from './visits/visits.module';
     GateModule,
     LiveModule,
   ],
-  controllers: [HealthController, AdminController, ProfileController],
+  controllers: [HealthController, AdminController, ProfileController, PlatformController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}
