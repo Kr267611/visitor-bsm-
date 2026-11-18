@@ -4,6 +4,7 @@ import { DevicesPanel } from '../admin/DevicesPanel';
 import { DepartmentsPage } from '../admin/DepartmentsPage';
 import { MembersPage } from '../admin/MembersPage';
 import { PremisesPage } from '../admin/PremisesPage';
+import { PremisesPosterPage } from '../admin/PremisesPosterPage';
 import { useAuth } from '../auth/AuthProvider';
 import { LoginPage } from '../auth/LoginPage';
 import { PasswordPage } from '../auth/PasswordPage';
@@ -16,6 +17,7 @@ import { MyVisitsPage } from '../host/MyVisitsPage';
 import { Layout } from '../ui/Layout';
 import { InvitePage } from '../visitor/InvitePage';
 import { PrivacyPage } from '../visitor/PrivacyPage';
+import { SelfCheckInPage } from '../visitor/SelfCheckInPage';
 
 const ALL_ROLES: Role[] = ['guard', 'employee', 'reception', 'security', 'admin'];
 
@@ -52,6 +54,16 @@ export function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/v/:token" element={<InvitePage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
+      {/* Premises QR poster: visitors check themselves in. */}
+      <Route path="/p/:business/:premises" element={<SelfCheckInPage />} />
+      <Route
+        path="/admin/premises/:id/poster"
+        element={
+          <RequireRole roles={['admin']}>
+            <PremisesPosterPage />
+          </RequireRole>
+        }
+      />
       <Route
         path="/platform"
         element={

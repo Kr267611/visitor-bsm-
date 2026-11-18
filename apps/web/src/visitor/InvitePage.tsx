@@ -10,8 +10,29 @@ const MESSAGES: Partial<Record<VisitStatus, string>> = {
   CANCELLED: 'This visit has been cancelled. Please contact your host.',
   EXPIRED: 'This link has expired. Please ask your host for a new one.',
   REJECTED: 'This visit was not approved. Please contact your host.',
-  PENDING_APPROVAL: 'Waiting for your host to respond. The guard will let you know.',
+  PENDING_APPROVAL: 'Waiting for your host to respond. This page updates by itself.',
 };
+
+const WAITING_POLL_MS = 4_000;
+
+/** Shown while the host decides. The page polls and turns into the pass on approval. */
+function WaitingCard({ invite }: { invite: PublicInvite }) {
+  return (
+    <section className="pass-card status-card" aria-live="polite">
+      <div className="eyebrow">{invite.siteName}</div>
+      <span className="pulse" aria-hidden="true" />
+      <div className="pass-name">Waiting for {invite.hostName}</div>
+      <p className="muted">{MESSAGES.PENDING_APPROVAL}</p>
+      <dl className="pass-meta">
+        <dt>Visitor</dt>
+        <dd>{invite.visitorName}</dd>
+        <dt>Host</dt>
+        <dd>{invite.hostName}</dd>
+      </dl>
+      <p className="muted small">You can close this page: the same link was sent to you by SMS.</p>
+    </section>
+  );
+}
 
 export function InvitePage() {
   const { token = '' } = useParams();
@@ -23,6 +44,8 @@ export function InvitePage() {
     queryFn: () => api.publicInvites.get(token),
     retry: false,
     refetchOnWindowFocus: false,
+    // Waiting screen: turns into the pass as soon as the host approves.
+    refetchInterval: (q) => (q.state.data?.status === 'PENDING_APPROVAL' ? WAITING_POLL_MS : false),
   });
 
   let body;
@@ -52,6 +75,8 @@ export function InvitePage() {
     );
   } else if (query.data.pass) {
     body = <PassView invite={query.data} />;
+  } else if (query.data.status === 'PENDING_APPROVAL') {
+    body = <WaitingCard invite={query.data} />;
   } else {
     body = <p className="page-message">{MESSAGES[query.data.status]}</p>;
   }

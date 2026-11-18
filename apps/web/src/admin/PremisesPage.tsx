@@ -1,6 +1,7 @@
 import type { Premises, PremisesSettings } from '@visitor/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { errorMessage, useApi } from '../api';
 import { PageHeader } from '../ui/Page';
 
@@ -215,9 +216,12 @@ export function PremisesPage() {
                     .join(', ') || '-'}
                 </td>
                 <td>
-                  <button type="button" onClick={() => setSelected(selected === p.id ? null : p.id)}>
-                    {selected === p.id ? 'Hide settings' : 'Settings'}
-                  </button>
+                  <div className="row">
+                    <button type="button" onClick={() => setSelected(selected === p.id ? null : p.id)}>
+                      {selected === p.id ? 'Hide settings' : 'Settings'}
+                    </button>
+                    <Link to={`/admin/premises/${p.id}/poster`}>QR poster</Link>
+                  </div>
                 </td>
               </tr>
             ))}

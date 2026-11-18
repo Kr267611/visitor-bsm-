@@ -212,6 +212,41 @@ export interface AdminDevice {
   user: { id: string; name: string; role: Role };
 }
 
+/** What the premises QR page shows before anything else. */
+export interface SelfCheckInInfo {
+  businessName: string;
+  premisesName: string;
+  purposes: string[];
+  needsLocation: boolean;
+  status: 'open' | 'closed' | 'unavailable';
+  visitStart: string | null;
+  visitEnd: string | null;
+}
+
+export interface GeoPosition {
+  lat: number;
+  lng: number;
+  accuracy?: number;
+}
+
+export interface SelfCheckInSession {
+  sessionToken: string;
+  /** Returning visitor: prefill the form; their photo is already on file. */
+  visitor: { name: string; company: string | null; hasPhoto: boolean } | null;
+  /** A visit already open at this premises; `token` opens its status page. */
+  activeVisit: { status: VisitStatus; token: string } | null;
+}
+
+export interface SelfCheckInRequest {
+  name: string;
+  company?: string;
+  purpose: string;
+  hostId: string;
+  photoKey?: string;
+  consent: boolean;
+  location?: GeoPosition;
+}
+
 /** A Blob in the browser, `{ uri, name, type }` in React Native. */
 export type PhotoFile = Blob | { uri: string; name: string; type: string };
 
@@ -252,6 +287,7 @@ interface RequestOptions {
   form?: FormData;
   /** Routes that work without sign-in. */
   anonymous?: boolean;
+  headers?: Record<string, string>;
 }
 
 function queryString(params: Record<string, string | undefined>): string {
@@ -271,7 +307,7 @@ export function createApiClient(options: ApiClientOptions) {
   let refreshing: Promise<void> | null = null;
 
   async function send(method: string, path: string, opts: RequestOptions, accessToken?: string): Promise<Response> {
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = { ...opts.headers };
     if (accessToken) {
       headers.Authorization = `Bearer ${accessToken}`;
       const premisesId = await options.getPremisesId?.();
@@ -438,6 +474,32 @@ export function createApiClient(options: ApiClientOptions) {
     uploads: {
       uploadPhoto: (file: PhotoFile) =>
         request<{ key: string }>('POST', '/uploads/photo', { form: photoForm(file) }),
+    },
+    /** Visitor self check-in from the premises QR poster. No sign-in; a short session after OTP. */
+    selfCheckIn: (businessSlug: string, premisesSlug: string) => {
+      const base = `/public/premises/${encodeURIComponent(businessSlug)}/${encodeURIComponent(premisesSlug)}`;
+      const withSession = (session: string) => ({ anonymous: true, headers: { 'x-checkin-session': session } });
+      return {
+        info: () => request<SelfCheckInInfo>('GET', base, { anonymous: true }),
+        requestOtp: (phone: string) => request<void>('POST', `${base}/otp`, { body: { phone }, anonymous: true }),
+        verify: (body: { phone: string; otp: string; location?: GeoPosition }) =>
+          request<SelfCheckInSession>('POST', `${base}/verify`, { body, anonymous: true }),
+        hosts: (session: string, q: string) =>
+          request<{ id: string; name: string; department: string | null }[]>(
+            'GET',
+            `${base}/hosts${queryString({ q })}`,
+            withSession(session),
+          ),
+        uploadPhoto: (session: string, file: PhotoFile) =>
+          request<{ key: string }>('POST', `${base}/photo`, { ...withSession(session), form: photoForm(file) }),
+        checkIn: (session: string, body: SelfCheckInRequest) =>
+          request<{ status: VisitStatus; token: string; existing: boolean }>('POST', `${base}/check-in`, {
+            ...withSession(session),
+            body,
+          }),
+        checkOut: (session: string) =>
+          request<{ status: VisitStatus }>('POST', `${base}/check-out`, withSession(session)),
+      };
     },
     publicInvites: {
       get: (token: string) => request<PublicInvite>('GET', `/public/invites/${token}`, { anonymous: true }),

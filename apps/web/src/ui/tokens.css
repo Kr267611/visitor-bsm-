@@ -304,4 +304,26 @@ tbody tr:hover { background: var(--surface-2); }
 .pass-meta dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
 .photo-preview { width: 96px; height: 96px; border-radius: 8px; object-fit: cover; }
 
+/* Visitor waiting screen */
+.status-card { padding-top: 0; text-align: center; }
+.pulse { width: 18px; height: 18px; border-radius: 50%; background: var(--wait); box-shadow: 0 0 0 0 var(--wait-soft); animation: pulse 1.6s ease-out infinite; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 var(--wait-soft); } 100% { box-shadow: 0 0 0 18px transparent; } }
+
+/* Premises QR poster */
+.poster-page { min-height: 100vh; display: grid; justify-items: center; align-content: start; gap: 16px; padding: 24px 16px; }
+.poster-tools { width: 100%; max-width: 560px; display: flex; justify-content: space-between; align-items: center; }
+.poster { width: 100%; max-width: 560px; background: #ffffff; color: #13211d; border: 1px solid var(--line); border-radius: 16px; padding: 36px 28px; display: grid; justify-items: center; gap: 14px; text-align: center; }
+.poster h1 { font-size: 2.4rem; }
+.poster .eyebrow { color: #56675f; }
+.poster-place { font-size: 1.3rem; font-weight: 600; }
+.poster-qr { padding: 12px; border: 2px solid #0b6e5f; border-radius: 12px; line-height: 0; }
+.poster-steps { text-align: left; margin: 0; padding-left: 1.4em; display: grid; gap: 4px; font-size: 1.05rem; }
+.poster-url { color: #56675f; overflow-wrap: anywhere; }
+@media print {
+  .no-print { display: none !important; }
+  body { background: #ffffff; }
+  .poster-page { padding: 0; }
+  .poster { border: 0; max-width: none; }
+}
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
