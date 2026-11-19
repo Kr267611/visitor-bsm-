@@ -24,6 +24,12 @@
   --bad: #b42318;
   --bad-soft: #fde4e1;
   --neutral-soft: #eeedf8;
+  /* Side menu: maroon with lavender-white text. */
+  --side-bg: #6b0f1a;
+  --side-ink: #f4f3fc;
+  --side-muted: #dcbfc4;
+  --side-line: rgba(244, 243, 252, 0.16);
+  --side-hover: rgba(244, 243, 252, 0.1);
   --shadow: 0 1px 2px rgba(27, 26, 58, 0.05), 0 4px 14px rgba(27, 26, 58, 0.06);
   --radius: 10px;
   --display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
@@ -342,3 +348,24 @@ tbody tr:hover { background: var(--surface-2); }
 /* Peach marks what needs attention: urgent counts and the open gate-desk card. */
 .menu-count-urgent { background: var(--peach); color: var(--peach-ink); }
 .stat.active { border-color: var(--powder); background: var(--accent-soft); }
+
+/* Maroon side menu (and the phone top bar). Local colour tokens so every child follows. */
+.sidebar,
+.mobile-bar {
+  --ink: var(--side-ink);
+  --muted: var(--side-muted);
+  --line: var(--side-line);
+  --surface-2: var(--side-hover);
+  --accent: var(--side-ink);
+  --accent-soft: var(--side-hover);
+  --neutral-soft: rgba(244, 243, 252, 0.16);
+  background: var(--side-bg);
+  color: var(--side-ink);
+  border-color: var(--side-line);
+}
+.sidebar .menu-link.active { background: var(--lavender); color: var(--side-bg); }
+.sidebar .menu-link.active .menu-count { background: rgba(107, 15, 26, 0.12); color: var(--side-bg); }
+.sidebar .brand-mark,
+.sidebar .avatar { background: var(--lavender); color: var(--side-bg); }
+.sidebar select { background: #ffffff; color: #1b1a3a; border-color: transparent; }
+.mobile-bar button { background: transparent; color: var(--side-ink); border-color: var(--side-line); }
