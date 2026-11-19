@@ -35,8 +35,32 @@
   color-scheme: light;
 }
 
+/* Night colours: chosen with the Day / Night switch, or from the device when nothing is chosen. */
+:root[data-theme='dark'] {
+  --bg: #170c0d;
+  --surface: #211315;
+  --surface-2: #29181b;
+  --ink: #fbefe3;
+  --muted: #c4aca4;
+  --line: #3a2528;
+  --line-strong: #4b3034;
+  --accent: #f2b3b0;
+  --accent-hover: #f8cdca;
+  --accent-ink: #3b060a;
+  --accent-soft: #3e1a1e;
+  --good: #74d39f;
+  --good-soft: #13301f;
+  --wait: #e9b35a;
+  --wait-soft: #3a2b10;
+  --bad: #ff9466;
+  --bad-soft: #3e1f14;
+  --neutral-soft: #2f1f21;
+  --side-bg: #3b0a0f;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
+}
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #170c0d;
     --surface: #211315;
     --surface-2: #29181b;
@@ -177,7 +201,7 @@ button.link:hover:not(:disabled) { background: none; }
 .auth-brand li { display: flex; gap: 10px; align-items: flex-start; }
 .auth-brand li::before { content: ''; flex: none; width: 8px; height: 8px; margin-top: 8px; border-radius: 50%; background: #f2b3b0; }
 .auth-brand .eyebrow { color: #e9c9b8; }
-.auth-side { display: grid; place-items: center; padding: 24px 16px; }
+.auth-side { position: relative; display: grid; place-items: center; padding: 24px 16px; }
 .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 10px; background: var(--neutral-soft); }
 .tabs button { border: 0; background: none; min-height: 38px; color: var(--muted); }
 .tabs button:hover:not(:disabled) { background: none; color: var(--ink); }
@@ -388,3 +412,11 @@ tbody tr:hover { background: var(--surface-2); }
 .sidebar .avatar { background: var(--side-ink); color: var(--side-bg); }
 .sidebar select { background: #fffdf9; color: #2a1214; border-color: transparent; }
 .mobile-bar button { background: transparent; color: var(--side-ink); border-color: var(--side-line); }
+
+/* Day / Night switch */
+.theme-toggle { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 4px 12px; border-radius: 999px; font-size: 0.85rem; }
+.theme-toggle span { font-size: 1rem; line-height: 1; }
+.theme-toggle-side { margin-left: auto; min-height: 28px; padding: 2px 10px; background: transparent; color: var(--side-ink); border-color: var(--side-line); }
+.theme-toggle-side:hover:not(:disabled) { background: var(--side-hover); border-color: var(--side-line); }
+.theme-toggle-corner { position: absolute; top: 16px; right: 16px; }
+.mobile-bar .row { flex-wrap: nowrap; gap: 8px; }

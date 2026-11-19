@@ -7,6 +7,7 @@ import { useAuth } from '../auth/AuthProvider';
 import { useModules } from '../auth/RequireModule';
 import { LiveSiteProvider, useLiveOptional } from '../desk/LiveSiteContext';
 import { initials, ROLE_LABEL } from './Page';
+import { ThemeToggle } from './theme';
 
 const DESK_ROLES: Role[] = ['reception', 'security', 'guard', 'admin'];
 
@@ -90,9 +91,12 @@ function Shell() {
     <div className="shell">
       <div className="mobile-bar">
         <strong className="brand">{businessName ?? 'Visitor BSM'}</strong>
-        <button type="button" aria-expanded={open} aria-controls="side-menu" onClick={() => setOpen(!open)}>
-          Menu
-        </button>
+        <div className="row">
+          <ThemeToggle />
+          <button type="button" aria-expanded={open} aria-controls="side-menu" onClick={() => setOpen(!open)}>
+            Menu
+          </button>
+        </div>
       </div>
 
       <aside id="side-menu" className={`sidebar ${open ? 'sidebar-open' : ''}`}>
@@ -146,6 +150,7 @@ function Shell() {
             <button type="button" className="link" onClick={() => void logout()}>
               Log out
             </button>
+            <ThemeToggle className="theme-toggle-side" />
           </div>
         </div>
       </aside>
