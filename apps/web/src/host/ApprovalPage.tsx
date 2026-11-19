@@ -73,6 +73,12 @@ export function ApprovalPage() {
           <dd>{v.company ?? '-'}</dd>
           <dt>Purpose</dt>
           <dd>{v.purpose}</dd>
+          {v.purposeNote && (
+            <>
+              <dt>About the visit</dt>
+              <dd>{v.purposeNote}</dd>
+            </>
+          )}
           <dt>From</dt>
           <dd>{WHEN.format(new Date(v.validFrom))}</dd>
           <dt>Until</dt>

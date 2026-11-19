@@ -118,7 +118,7 @@ describe('walk-in', () => {
     const box = await ctx.prisma.outbox.findFirstOrThrow({ where: { visitId: visit.id } });
     expect(box.template).toBe('APPROVAL_REQUEST');
     expect(box.recipient).toBe(w.host.id);
-    expect(box.vars).toEqual({ visitorName: 'Rahul Verma', company: 'ACME' });
+    expect(box.vars).toEqual({ visitorName: 'Rahul Verma', company: 'ACME', purpose: 'Delivery' });
     const jobs = await ctx.app.get(JobsService).queue.getDelayed();
     const delays = Object.fromEntries(jobs.map((j) => [j.name, j.opts.delay]));
     expect(delays).toEqual({ 'approval.reminder': 90_000, 'approval.delegate': 180_000, 'approval.reception': 300_000 });

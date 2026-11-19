@@ -43,7 +43,7 @@ describe('QR self check-in', () => {
     return http()
       .post(`${base}/check-in`)
       .set('x-checkin-session', session)
-      .send({ name: 'Rahul Verma', company: 'ACME', purpose: 'Meeting', hostId, photoKey: photo.body.key, consent: true, ...over });
+      .send({ name: 'Rahul Verma', company: 'ACME', purpose: 'Meeting', purposeNote: 'Yarn delivery for order 452', hostId, photoKey: photo.body.key, consent: true, ...over });
   }
 
   it('landing shows business, premises and that it is open', async () => {
@@ -61,7 +61,7 @@ describe('QR self check-in', () => {
     expect(activeVisit).toBeNull();
 
     const hosts = await http().get(`${base}/hosts?q=ani`).set('x-checkin-session', sessionToken).expect(200);
-    expect(hosts.body).toEqual([{ id: host.id, name: 'Anita Singh', department: null }]);
+    expect(hosts.body).toEqual([{ id: host.id, name: 'Anita Singh', department: null, designation: null }]);
 
     const res = await checkIn(base, sessionToken, host.id);
     expect(res.status).toBe(201);
@@ -140,7 +140,7 @@ describe('QR self check-in', () => {
     const res = await http()
       .post(`${base}/check-in`)
       .set('x-checkin-session', back.sessionToken)
-      .send({ name: 'Rahul Verma', purpose: 'Meeting', hostId: host.id, consent: true })
+      .send({ name: 'Rahul Verma', purpose: 'Meeting', purposeNote: 'Yarn delivery', hostId: host.id, consent: true })
       .expect(201);
     expect(res.body.existing).toBe(false);
     expect(first.body.token).not.toBe(res.body.token);
@@ -149,7 +149,7 @@ describe('QR self check-in', () => {
   it('new visitor needs a photo and consent; photo must come from this session', async () => {
     const { base, host } = await setup();
     const { sessionToken } = await verify(base);
-    const send = (body: object) => http().post(`${base}/check-in`).set('x-checkin-session', sessionToken).send({ name: 'R', purpose: 'Meeting', hostId: host.id, consent: true, ...body });
+    const send = (body: object) => http().post(`${base}/check-in`).set('x-checkin-session', sessionToken).send({ name: 'R', purpose: 'Meeting', purposeNote: 'Yarn delivery', hostId: host.id, consent: true, ...body });
     expect((await send({})).body.message).toMatch(/photo is required/);
     expect((await send({ photoKey: 'self/other/session/x.jpg' })).status).toBe(422);
     const res = await checkIn(base, sessionToken, host.id, { consent: false });
@@ -166,6 +166,47 @@ describe('QR self check-in', () => {
     expect(hosts.body.map((h: { name: string }) => h.name)).toEqual(['Anita Singh']);
     const res = await checkIn(base, sessionToken, elsewhere.id);
     expect(res.status).toBe(422);
+  });
+
+  it('lists everyone a visitor can meet, with department and designation, never a phone', async () => {
+    const { site, base, host } = await setup();
+    const dept = await ctx.prisma.department.create({ data: { businessId: site.businessId, name: 'Weaving' } });
+    const master = await seedUser(ctx.prisma, site.id, 'employee', { name: 'Rakesh Patel' });
+    await ctx.prisma.user.update({ where: { id: master.id }, data: { departmentId: dept.id, designation: 'Master' } });
+    await seedUser(ctx.prisma, site.id, 'employee', { name: 'Not A Host', isHost: false });
+    const { sessionToken } = await verify(base);
+    const all = await http().get(`${base}/hosts`).set('x-checkin-session', sessionToken).expect(200);
+    expect(all.body).toEqual([
+      { id: host.id, name: 'Anita Singh', department: null, designation: null },
+      { id: master.id, name: 'Rakesh Patel', department: 'Weaving', designation: 'Master' },
+    ]);
+    expect(JSON.stringify(all.body)).not.toMatch(/\+91|phone/);
+    // Without a session there is no list.
+    await http().get(`${base}/hosts`).expect(401);
+  });
+
+  it('the visitor must say what the visit is about; the host and desk see it', async () => {
+    const { base, host } = await setup();
+    const { sessionToken } = await verify(base);
+    expect((await checkIn(base, sessionToken, host.id, { purposeNote: '' })).status).toBe(422);
+    expect((await checkIn(base, sessionToken, host.id, { purposeNote: 'ab' })).status).toBe(422);
+    const res = await checkIn(base, sessionToken, host.id, { purpose: 'Delivery / Dispatch', purposeNote: 'Yarn for order 452' });
+    expect(res.status).toBe(201);
+    const visit = await ctx.prisma.visit.findFirstOrThrow({ where: { hostId: host.id } });
+    expect(visit).toMatchObject({ purpose: 'Delivery / Dispatch', purposeNote: 'Yarn for order 452' });
+    const detail = await http().get(`/visits/${visit.id}`).set('Authorization', `Bearer ${await tokenFor(ctx, host.id)}`).expect(200);
+    expect(detail.body).toMatchObject({ purpose: 'Delivery / Dispatch', purposeNote: 'Yarn for order 452' });
+    const push = await ctx.prisma.outbox.findFirstOrThrow({ where: { visitId: visit.id, template: 'APPROVAL_REQUEST' } });
+    expect(push.vars).toMatchObject({ purpose: 'Delivery / Dispatch' });
+  });
+
+  it('new premises start with the textile purpose list', async () => {
+    const { base } = await setup();
+    const info = await http().get(base).expect(200);
+    expect(info.body.purposes).toEqual([
+      'Meeting', 'Delivery / Dispatch', 'Raw material supply', 'Job work', 'Machine service / repair',
+      'Sample / Order', 'Payment / Accounts', 'Interview', 'Other',
+    ]);
   });
 
   describe('location', () => {

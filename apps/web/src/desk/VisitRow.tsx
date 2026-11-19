@@ -17,6 +17,12 @@ export function VisitRow({ visit, children, note }: { visit: VisitSummary; child
         <span className="muted">
           {visit.company ? `${visit.company} · ` : ''}Host: {visit.hostName}
         </span>
+        {visit.purpose && (
+          <span className="visit-purpose">
+            <strong>{visit.purpose}</strong>
+            {visit.purposeNote ? ` — ${visit.purposeNote}` : ''}
+          </span>
+        )}
         <span className="mono muted">
           {visit.code} · {visit.checkedInAt ? `In since ${TIME.format(new Date(visit.checkedInAt))}` : `${TIME.format(new Date(visit.validFrom))} – ${TIME.format(new Date(visit.validTo))}`}
         </span>

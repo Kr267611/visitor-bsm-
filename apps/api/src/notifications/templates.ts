@@ -12,7 +12,7 @@ export const TEMPLATES = {
   VISITOR_ARRIVED: { channel: 'PUSH', text: '{visitorName} has arrived at {gateName}.' },
   APPROVAL_REQUEST: {
     channel: 'PUSH',
-    text: '{visitorName} ({company}) is at the gate to meet you. Please approve or reject.',
+    text: '{visitorName} ({company}) is at the gate to meet you for {purpose}. Please approve or reject.',
   },
   APPROVAL_REMINDER: { channel: 'PUSH', text: '{visitorName} is still waiting at the gate.' },
 } as const;
@@ -31,9 +31,12 @@ export interface OutboxDraft {
 const PLACEHOLDER = /\{(\w+)\}/g;
 
 /** Fills a template. Throws when a variable is missing, so no half-filled message goes out. */
+/** Values added after messages were already queued: older rows render with these instead of failing. */
+const LATER_VARS: Record<string, string> = { purpose: 'a visit' };
+
 export function renderTemplate(template: TemplateKey, vars: Record<string, string>): string {
   return TEMPLATES[template].text.replace(PLACEHOLDER, (_, name: string) => {
-    const value = vars[name];
+    const value = vars[name] ?? LATER_VARS[name];
     if (value === undefined) throw new Error(`Template ${template} is missing ${name}`);
     return value;
   });

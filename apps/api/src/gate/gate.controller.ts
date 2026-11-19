@@ -23,6 +23,7 @@ const walkInSchema = z.object({
   photoKey: z.string().min(1).optional(),
   hostId: z.string().uuid(),
   purpose: z.string().trim().min(1).max(200),
+  purposeNote: z.string().trim().max(300).optional(),
   gateId: z.string().uuid(),
   consent: z.boolean(),
   clientEventId,

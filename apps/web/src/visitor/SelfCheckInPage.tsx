@@ -1,4 +1,4 @@
-import { ApiError, GeoPosition, normalizeIndianPhone, SelfCheckInSession } from '@visitor/shared';
+import { ApiError, GeoPosition, normalizeIndianPhone, SelfCheckInSession, type SelfCheckInHost } from '@visitor/shared';
 import { useQuery } from '@tanstack/react-query';
 import { ChangeEvent, FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -42,6 +42,9 @@ function Shell({ title, subtitle, children }: { title: string; subtitle?: string
  * Visitor self check-in from the premises QR poster. The poster only starts the flow:
  * OTP proves the phone, the host approves, and the visitor's status page becomes the gate pass.
  */
+/** Department filter value for staff who have no department. */
+const NO_DEPARTMENT = '__none__';
+
 export function SelfCheckInPage() {
   const { business = '', premises = '' } = useParams();
   const api = useApi();
@@ -57,8 +60,10 @@ export function SelfCheckInPage() {
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [purpose, setPurpose] = useState('');
+  const [purposeNote, setPurposeNote] = useState('');
+  const [department, setDepartment] = useState('');
   const [hostQuery, setHostQuery] = useState('');
-  const [host, setHost] = useState<{ id: string; name: string } | null>(null);
+  const [host, setHost] = useState<SelfCheckInHost | null>(null);
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [consent, setConsent] = useState(false);
@@ -66,11 +71,24 @@ export function SelfCheckInPage() {
   const [busy, setBusy] = useState(false);
   const uploadedKey = useRef<string | null>(null);
 
+  // Everyone the visitor can meet here (name, department, designation); filtered on the phone.
   const hosts = useQuery({
-    queryKey: ['self-checkin-hosts', business, premises, hostQuery],
-    queryFn: () => desk.hosts(session!.sessionToken, hostQuery.trim()),
-    enabled: step === 'details' && !!session && hostQuery.trim().length >= 2 && !host,
+    queryKey: ['self-checkin-hosts', business, premises],
+    queryFn: () => desk.hosts(session!.sessionToken, ''),
+    enabled: step === 'details' && !!session,
   });
+  const departments = useMemo(
+    () => [...new Set((hosts.data ?? []).map((h) => h.department).filter((d): d is string => !!d))].sort(),
+    [hosts.data],
+  );
+  const shownHosts = useMemo(() => {
+    const q = hostQuery.trim().toLowerCase();
+    return (hosts.data ?? []).filter(
+      (h) =>
+        (!department || (department === NO_DEPARTMENT ? !h.department : h.department === department)) &&
+        (!q || h.name.toLowerCase().includes(q) || (h.designation ?? '').toLowerCase().includes(q)),
+    );
+  }, [hosts.data, department, hostQuery]);
 
   useEffect(
     () => () => {
@@ -148,7 +166,8 @@ export function SelfCheckInPage() {
   }
 
   const needsPhoto = !session?.visitor?.hasPhoto;
-  const canSubmit = !!name.trim() && !!purpose.trim() && !!host && consent && (!needsPhoto || !!photo) && !busy;
+  const canSubmit =
+    !!name.trim() && !!purpose.trim() && purposeNote.trim().length >= 3 && !!host && consent && (!needsPhoto || !!photo) && !busy;
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -160,6 +179,7 @@ export function SelfCheckInPage() {
         name: name.trim(),
         company: company.trim() || undefined,
         purpose: purpose.trim(),
+        purposeNote: purposeNote.trim(),
         hostId: host.id,
         photoKey: uploadedKey.current ?? undefined,
         consent,
@@ -281,8 +301,14 @@ export function SelfCheckInPage() {
         <label htmlFor="sc-name">Your name</label>
         <input id="sc-name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" required />
 
-        <label htmlFor="sc-company">Company</label>
-        <input id="sc-company" value={company} onChange={(e) => setCompany(e.target.value)} autoComplete="organization" />
+        <label htmlFor="sc-company">Company or firm</label>
+        <input
+          id="sc-company"
+          value={company}
+          onChange={(e) => setCompany(e.target.value)}
+          autoComplete="organization"
+          placeholder="e.g. ABC Traders (leave blank if personal)"
+        />
 
         <label htmlFor="sc-purpose">Purpose of visit</label>
         <select id="sc-purpose" value={purpose} onChange={(e) => setPurpose(e.target.value)} required>
@@ -291,33 +317,58 @@ export function SelfCheckInPage() {
           ))}
         </select>
 
-        <label htmlFor="sc-host">Who are you meeting?</label>
-        {host ? (
-          <div className="row">
-            <strong>{host.name}</strong>
-            <button type="button" className="link" onClick={() => setHost(null)}>
-              Change
-            </button>
-          </div>
-        ) : (
-          <>
-            <input
-              id="sc-host"
-              placeholder="Type at least 2 letters of the name"
-              value={hostQuery}
-              onChange={(e) => setHostQuery(e.target.value)}
-            />
-            <div className="stack" style={{ gap: 6 }}>
-              {hosts.data?.map((h) => (
-                <button type="button" key={h.id} onClick={() => setHost({ id: h.id, name: h.name })}>
-                  {h.name}
-                  {h.department ? ` (${h.department})` : ''}
-                </button>
-              ))}
-              {hosts.data?.length === 0 && <p className="muted small">No one found with that name.</p>}
+        <label htmlFor="sc-note">What is the visit about?</label>
+        <textarea
+          id="sc-note"
+          rows={2}
+          maxLength={300}
+          value={purposeNote}
+          onChange={(e) => setPurposeNote(e.target.value)}
+          placeholder="e.g. Yarn delivery for order 452, or interview for the weaving master post"
+          required
+        />
+        <p className="muted small">The person you meet sees this before approving.</p>
+
+        <fieldset className="stack host-picker">
+          <legend>Who do you want to meet?</legend>
+          {host ? (
+            <div className="host-chosen">
+              <span>
+                <strong>{host.name}</strong>
+                <span className="cell-sub">{[host.designation, host.department].filter(Boolean).join(' · ') || 'Staff'}</span>
+              </span>
+              <button type="button" className="link" onClick={() => setHost(null)}>
+                Change
+              </button>
             </div>
-          </>
-        )}
+          ) : (
+            <>
+              <label htmlFor="sc-dept">Department</label>
+              <select id="sc-dept" value={department} onChange={(e) => setDepartment(e.target.value)}>
+                <option value="">All departments</option>
+                {departments.map((d) => (
+                  <option key={d}>{d}</option>
+                ))}
+                {hosts.data?.some((h) => !h.department) && <option value={NO_DEPARTMENT}>Other staff</option>}
+              </select>
+              <label htmlFor="sc-host">Search by name or designation</label>
+              <input id="sc-host" placeholder="e.g. Rakesh or Master" value={hostQuery} onChange={(e) => setHostQuery(e.target.value)} />
+              {hosts.isPending && <p className="muted small">Loading staff…</p>}
+              <div className="host-list" role="list" aria-label="People you can meet">
+                {shownHosts.slice(0, 60).map((h) => (
+                  <div role="listitem" key={h.id}>
+                    <button type="button" className="host-option" onClick={() => setHost(h)}>
+                      <strong>{h.name}</strong>
+                      <span className="cell-sub">{[h.designation, h.department].filter(Boolean).join(' · ') || 'Staff'}</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+              {hosts.data && shownHosts.length === 0 && <p className="muted small">No one found. Try another department or name.</p>}
+              {shownHosts.length > 60 && <p className="muted small">Showing 60 of {shownHosts.length}. Choose a department or type a name.</p>}
+            </>
+          )}
+        </fieldset>
 
         <label htmlFor="sc-photo">{needsPhoto ? 'Your photo' : 'New photo (optional)'}</label>
         <input id="sc-photo" type="file" accept="image/*" capture="user" onChange={choosePhoto} />

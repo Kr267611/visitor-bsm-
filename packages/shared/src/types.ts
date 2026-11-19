@@ -13,6 +13,10 @@ export interface VisitSummary {
   validFrom: string;
   validTo: string;
   checkedInAt: string | null;
+  /** Kind of visit, chosen from the premises list. */
+  purpose: string;
+  /** What the visit is about, in the visitor's own words (QR self check-in, walk-in). */
+  purposeNote: string | null;
 }
 
 export interface LiveDashboard {

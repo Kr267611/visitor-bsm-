@@ -164,7 +164,7 @@ describe('outbox', () => {
     });
     await worker.tick(T0);
     expect(ctx.sms.sent[0].text).toBe(
-      `Rahul (ACME) is at the gate to meet you. Please approve or reject. http://web.test/my/visits/${visit.id}`,
+      `Rahul (ACME) is at the gate to meet you for a visit. Please approve or reject. http://web.test/my/visits/${visit.id}`,
     );
   });
 

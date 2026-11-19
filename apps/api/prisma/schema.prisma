@@ -97,7 +97,7 @@ model Premises {
   geofenceM  Int?             @map("geofence_m")
   category   PremisesCategory @default(business)
   isDefault  Boolean          @default(false) @map("is_default")
-  purposes   String[]         @default(["Enquiry", "Casual Meet", "Appointment", "Meeting", "Visitor"])
+  purposes   String[]         @default(["Meeting", "Delivery / Dispatch", "Raw material supply", "Job work", "Machine service / repair", "Sample / Order", "Payment / Accounts", "Interview", "Other"])
   timezone   String           @default("Asia/Kolkata")
   createdAt  DateTime         @default(now()) @map("created_at")
   business   Business         @relation(fields: [businessId], references: [id])
@@ -265,6 +265,8 @@ model Visit {
   groupId                  String?     @map("group_id") @db.Uuid
   type                     VisitType
   purpose                  String
+  /// In the visitor's own words: what the visit is about.
+  purposeNote              String?     @map("purpose_note")
   invitedName              String?     @map("invited_name")
   status                   VisitStatus
   validFrom                DateTime    @map("valid_from")

@@ -29,6 +29,8 @@ const visit = (id: string, over: object = {}) => ({
   validFrom: '2026-11-05T04:30:00.000Z',
   validTo: '2026-11-05T07:30:00.000Z',
   checkedInAt: null,
+  purpose: 'Meeting',
+  purposeNote: null,
   ...over,
 });
 
@@ -60,6 +62,14 @@ describe('desk pages', () => {
   it('/desk opens the approval page', async () => {
     renderApp('/desk', server());
     expect(await screen.findByRole('heading', { level: 1, name: 'Awaiting approval' })).toBeInTheDocument();
+  });
+
+  it('shows why the visitor came: purpose and their own words', async () => {
+    const withNote = { ...dashboard, pending: [visit('pe1', { status: 'PENDING_APPROVAL', purpose: 'Delivery / Dispatch', purposeNote: 'Yarn for order 452' })] };
+    renderApp('/desk/pending', server({ 'GET /dashboard/live': () => json(200, withNote) }));
+    expect(await within(main()).findByText('Visitor pe1')).toBeInTheDocument();
+    expect(within(main()).getByText('Delivery / Dispatch')).toBeInTheDocument();
+    expect(within(main()).getByText(/Yarn for order 452/)).toBeInTheDocument();
   });
 
   it('each page shows only its own list', async () => {

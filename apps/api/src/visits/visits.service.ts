@@ -212,6 +212,8 @@ export class VisitsService {
       validFrom: v.validFrom.toISOString(),
       validTo: v.validTo.toISOString(),
       checkedInAt: v.checkedInAt?.toISOString() ?? null,
+      purpose: v.purpose,
+      purposeNote: invited ? null : v.purposeNote,
     };
   }
 }

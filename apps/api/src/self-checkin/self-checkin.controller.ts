@@ -20,6 +20,8 @@ const checkInBody = z.object({
   name: z.string().trim().min(1).max(100),
   company: z.string().trim().max(100).optional(),
   purpose: z.string().trim().min(1).max(200),
+  /** What the visit is about, in the visitor's own words. */
+  purposeNote: z.string().trim().min(3, 'Please tell us what the visit is about.').max(300),
   hostId: z.string().uuid(),
   photoKey: z.string().min(1).max(300).optional(),
   consent: z.boolean(),
@@ -61,7 +63,7 @@ export class SelfCheckInController {
     @Query('q') q = '',
   ) {
     const { p } = await this.service.session(business, premises, token);
-    return this.service.hosts(p, q.slice(0, 60));
+    return this.service.hosts(p, q.trim().slice(0, 60));
   }
 
   @Post('photo')

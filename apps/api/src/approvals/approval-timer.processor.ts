@@ -73,7 +73,7 @@ export class ApprovalTimerProcessor implements OnModuleInit {
           channel: 'PUSH',
           template: 'APPROVAL_REQUEST',
           recipient: visit.host.delegateId,
-          vars: { visitorName: visit.visitor.name, company: visit.visitor.company ?? '-' },
+          vars: { visitorName: visit.visitor.name, company: visit.visitor.company ?? '-', purpose: visit.purpose },
         },
       ]);
     } else {

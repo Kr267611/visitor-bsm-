@@ -40,6 +40,7 @@ export interface CheckInInput {
   name: string;
   company?: string;
   purpose: string;
+  purposeNote: string;
   hostId: string;
   photoKey?: string;
   consent: boolean;
@@ -197,6 +198,10 @@ export class SelfCheckInService {
     return { status: visit.status, token };
   }
 
+  /**
+   * People a visitor can ask to meet at this premises: name, department and designation only (never a phone).
+   * The visitor picks a department, then a person; an empty search lists everyone.
+   */
   hosts(p: LoadedPremises, q: string) {
     return this.prisma.user
       .findMany({
@@ -205,14 +210,16 @@ export class SelfCheckInService {
           isActive: true,
           isHost: true,
           role: { in: [...HOST_ROLES] },
-          name: { contains: q, mode: 'insensitive' },
+          ...(q && { name: { contains: q, mode: 'insensitive' } }),
           premises: { some: { premisesId: p.id } },
         },
-        select: { id: true, name: true, department: { select: { name: true } } },
+        select: { id: true, name: true, designation: true, department: { select: { name: true } } },
         orderBy: { name: 'asc' },
-        take: 20,
+        take: q ? 20 : 500,
       })
-      .then((rows) => rows.map((r) => ({ id: r.id, name: r.name, department: r.department?.name ?? null })));
+      .then((rows) =>
+        rows.map((r) => ({ id: r.id, name: r.name, department: r.department?.name ?? null, designation: r.designation })),
+      );
   }
 
   photoPrefix(s: Session) {
@@ -284,7 +291,7 @@ export class SelfCheckInService {
               channel: 'PUSH',
               template: 'APPROVAL_REQUEST',
               recipient: host.id,
-              vars: { visitorName: visitor.name, company: visitor.company ?? '-' },
+              vars: { visitorName: visitor.name, company: visitor.company ?? '-', purpose: input.purpose },
             },
             {
               channel: 'SMS',
@@ -302,6 +309,7 @@ export class SelfCheckInService {
           premisesId: p.id,
           type: 'SELF',
           purpose: input.purpose,
+          purposeNote: input.purposeNote,
           status: needsApproval ? 'PENDING_APPROVAL' : 'APPROVED',
           validFrom: now,
           validTo,

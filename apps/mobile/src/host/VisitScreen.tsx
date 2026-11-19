@@ -71,6 +71,7 @@ export function VisitScreen() {
       {v.photoUrl ? <Image accessibilityLabel="Visitor photo" source={{ uri: v.photoUrl }} style={styles.photo} /> : null}
       {v.company ? <Muted>{v.company}</Muted> : null}
       <Text style={styles.line}>Purpose: {v.purpose}</Text>
+      {v.purposeNote ? <Text style={styles.line}>About the visit: {v.purposeNote}</Text> : null}
       <Text style={styles.line}>
         {WHEN.format(new Date(v.validFrom))} – {WHEN.format(new Date(v.validTo))}
       </Text>

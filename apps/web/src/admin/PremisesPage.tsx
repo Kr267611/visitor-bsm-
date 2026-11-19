@@ -7,6 +7,70 @@ import { PageHeader } from '../ui/Page';
 
 const toNumber = (v: string) => (v.trim() === '' ? null : Number(v));
 
+/** The "Purpose of visit" choices visitors see on the QR check-in form and the guard sees for walk-ins. */
+function PurposesEditor({ premises }: { premises: Premises }) {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  const [list, setList] = useState<string[]>(premises.purposes ?? []);
+  const [draft, setDraft] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  async function save(next: string[]) {
+    setError(null);
+    setSaved(false);
+    try {
+      await api.admin.premises.update(premises.id, { purposes: next });
+      setList(next);
+      setSaved(true);
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'premises'] });
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+  }
+
+  function add(event: FormEvent) {
+    event.preventDefault();
+    const value = draft.trim();
+    if (!value) return;
+    if (list.some((p) => p.toLowerCase() === value.toLowerCase())) return setError('That purpose is already in the list.');
+    void save([...list, value]).then(() => setDraft(''));
+  }
+
+  return (
+    <section className="form-card" aria-label={`${premises.name} purposes`}>
+      <h2>Purpose of visit</h2>
+      <p className="muted small">Visitors pick one of these on the QR check-in form, then write what the visit is about.</p>
+      <ul className="purpose-list">
+        {list.map((p) => (
+          <li key={p} className="chip-row">
+            <span>{p}</span>
+            <button
+              type="button"
+              className="link"
+              aria-label={`Remove ${p}`}
+              disabled={list.length <= 1}
+              onClick={() => void save(list.filter((x) => x !== p))}
+            >
+              Remove
+            </button>
+          </li>
+        ))}
+      </ul>
+      <form className="row" onSubmit={add}>
+        <input aria-label="New purpose" placeholder="e.g. Yarn supply" maxLength={60} value={draft} onChange={(e) => setDraft(e.target.value)} />
+        <button type="submit">Add purpose</button>
+      </form>
+      {error && (
+        <p role="alert" className="error">
+          {error}
+        </p>
+      )}
+      {saved && <p role="status">Purposes saved.</p>}
+    </section>
+  );
+}
+
 /** Basic settings only; the rest (reports, review link) comes in a later phase. */
 function SettingsForm({ premises }: { premises: Premises }) {
   const api = useApi();
@@ -229,6 +293,7 @@ export function PremisesPage() {
         </table>
       </section>
       {chosen && <SettingsForm key={chosen.id} premises={chosen} />}
+      {chosen && <PurposesEditor key={`purposes-${chosen.id}`} premises={chosen} />}
     </>
   );
 }

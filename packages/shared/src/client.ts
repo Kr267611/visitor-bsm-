@@ -33,7 +33,6 @@ export interface Session extends Tokens {
 }
 
 export interface VisitDetail extends VisitSummary {
-  purpose: string;
   hostId: string;
   type: 'PRE' | 'WALKIN';
   decisionNote: string | null;
@@ -64,6 +63,8 @@ export interface WalkInRequest {
   photoKey?: string;
   hostId: string;
   purpose: string;
+  /** Optional: what the visit is about, in the visitor's own words. */
+  purposeNote?: string;
   gateId: string;
   consent: boolean;
   clientEventId: string;
@@ -283,6 +284,16 @@ export interface SelfCheckInRequest {
   photoKey?: string;
   consent: boolean;
   location?: GeoPosition;
+  /** What the visit is about, in the visitor's own words. */
+  purposeNote: string;
+}
+
+/** Someone a visitor can ask to meet: never a phone number. */
+export interface SelfCheckInHost {
+  id: string;
+  name: string;
+  department: string | null;
+  designation: string | null;
 }
 
 /** A Blob in the browser, `{ uri, name, type }` in React Native. */
@@ -523,7 +534,7 @@ export function createApiClient(options: ApiClientOptions) {
         verify: (body: { phone: string; otp: string; location?: GeoPosition }) =>
           request<SelfCheckInSession>('POST', `${base}/verify`, { body, anonymous: true }),
         hosts: (session: string, q: string) =>
-          request<{ id: string; name: string; department: string | null }[]>(
+          request<SelfCheckInHost[]>(
             'GET',
             `${base}/hosts${queryString({ q })}`,
             withSession(session),

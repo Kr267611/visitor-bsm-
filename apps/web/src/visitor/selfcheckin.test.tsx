@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeServer, Handlers, json, renderApp, signIn, USERS } from '../test/harness';
@@ -26,7 +26,12 @@ function server(over: Handlers = {}) {
     [`GET ${BASE}`]: () => json(200, info()),
     [`POST ${BASE}/otp`]: () => json(204),
     [`POST ${BASE}/verify`]: () => json(200, session()),
-    [`GET ${BASE}/hosts`]: () => json(200, [{ id: 'h1', name: 'Anita Singh', department: 'Finance' }]),
+    [`GET ${BASE}/hosts`]: () =>
+      json(200, [
+        { id: 'h1', name: 'Anita Singh', department: 'Finance', designation: 'Manager' },
+        { id: 'h2', name: 'Rakesh Patel', department: 'Weaving', designation: 'Master' },
+        { id: 'h3', name: 'Suresh Yadav', department: 'Weaving', designation: 'Supervisor' },
+      ]),
     [`POST ${BASE}/photo`]: () => json(201, { key: 'self/p/s/x.jpg' }),
     [`POST ${BASE}/check-in`]: () => json(201, { status: 'PENDING_APPROVAL', token: 'tok-9', existing: false }),
     'GET /public/invites/tok-9': () =>
@@ -67,11 +72,17 @@ describe('QR self check-in page', () => {
     await verifyPhone(user);
 
     await user.type(await screen.findByLabelText('Your name'), 'Rahul Verma');
+    await user.type(screen.getByLabelText('Company or firm'), 'ABC Traders');
     await user.selectOptions(screen.getByLabelText('Purpose of visit'), 'Interview');
-    await user.type(screen.getByLabelText('Who are you meeting?'), 'an');
-    await user.click(await screen.findByRole('button', { name: 'Anita Singh (Finance)' }));
+    // Pick a department, then the person: name with designation, never a phone.
+    await user.selectOptions(screen.getByLabelText('Department'), 'Weaving');
+    const people = within(await screen.findByRole('list', { name: 'People you can meet' }));
+    expect(people.getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Rakesh PatelMaster · Weaving', 'Suresh YadavSupervisor · Weaving']);
+    await user.click(people.getByRole('button', { name: /Rakesh Patel/ }));
+    expect(screen.getByText('Master · Weaving')).toBeInTheDocument();
     const submit = screen.getByRole('button', { name: 'Send to host' });
     expect(submit).toBeDisabled();
+    await user.type(screen.getByLabelText('What is the visit about?'), 'Interview for the weaving master post');
     await user.upload(screen.getByLabelText('Your photo'), new File(['raw'], 'me.jpg', { type: 'image/jpeg' }));
     await user.click(screen.getByRole('checkbox', { name: /I agree/ }));
     await user.click(submit);
@@ -80,8 +91,10 @@ describe('QR self check-in page', () => {
     const body = s.calls.find((c) => c.key === `POST ${BASE}/check-in`)!;
     expect(body.body).toEqual({
       name: 'Rahul Verma',
+      company: 'ABC Traders',
       purpose: 'Interview',
-      hostId: 'h1',
+      purposeNote: 'Interview for the weaving master post',
+      hostId: 'h2',
       photoKey: 'self/p/s/x.jpg',
       consent: true,
     });
@@ -96,10 +109,12 @@ describe('QR self check-in page', () => {
     const user = userEvent.setup();
     await verifyPhone(user);
     expect(await screen.findByRole('heading', { name: 'Welcome back, Rahul Verma' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Company')).toHaveValue('ACME');
+    expect(screen.getByLabelText('Company or firm')).toHaveValue('ACME');
     expect(screen.getByLabelText('New photo (optional)')).toBeInTheDocument();
-    await user.type(screen.getByLabelText('Who are you meeting?'), 'an');
+    // Searching by designation works too.
+    await user.type(screen.getByLabelText('Search by name or designation'), 'manager');
     await user.click(await screen.findByRole('button', { name: /Anita Singh/ }));
+    await user.type(screen.getByLabelText('What is the visit about?'), 'Payment follow-up');
     await user.click(screen.getByRole('checkbox', { name: /I agree/ }));
     await user.click(screen.getByRole('button', { name: 'Send to host' }));
     await screen.findByText(/Waiting for your host/);

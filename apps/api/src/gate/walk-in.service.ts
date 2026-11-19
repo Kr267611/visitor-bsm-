@@ -22,6 +22,7 @@ export interface WalkInInput {
   photoKey?: string;
   hostId: string;
   purpose: string;
+  purposeNote?: string;
   gateId: string;
   consent: boolean;
   clientEventId: string;
@@ -116,6 +117,7 @@ export class WalkInService {
           premisesId: gate.premisesId,
           type: 'WALKIN',
           purpose: input.purpose,
+          purposeNote: input.purposeNote || null,
           status: 'PENDING_APPROVAL',
           validFrom: now,
           validTo: new Date(now.getTime() + WALK_IN_WINDOW_MS),
@@ -129,7 +131,7 @@ export class WalkInService {
             channel: 'PUSH',
             template: 'APPROVAL_REQUEST',
             recipient: host.id,
-            vars: { visitorName: visitor.name, company: visitor.company ?? '-' },
+            vars: { visitorName: visitor.name, company: visitor.company ?? '-', purpose: input.purpose },
           },
         ],
       })
