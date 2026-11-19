@@ -4,43 +4,43 @@ import { useColorScheme } from 'react-native';
 
 export type ThemeName = 'light' | 'dark';
 
-/** Brand: Deep Crimson Burgundy #790B13, cream #FFF0DC text on burgundy, neutral grey screens (same as the web app). */
+/** Brand: Midnight Navy #1B1E4A, Warm Stone Grey #AFAEA2 and Crimson Red #D21319 (same as the web app; solid colours, no blur, for speed and sunlight). */
 const light = {
-  bg: '#f3f3f4',
+  bg: '#e9e7e0',
   surface: '#ffffff',
-  ink: '#1d1d1f',
-  muted: '#5f5f66',
-  line: '#e4e4e7',
-  accent: '#790b13',
-  accentSoft: '#f7e3dc',
+  ink: '#16182f',
+  muted: '#4b4a44',
+  line: '#dedcd3',
+  accent: '#d21319',
+  accentSoft: '#fdeeee',
   /** Text on the accent colour. */
-  accentInk: '#fff0dc',
+  accentInk: '#ffffff',
   /** Status colours stay apart from the brand: green = entry allowed / inside, orange-red = refused / error. */
-  good: '#1a6e44',
-  goodSoft: '#def0e5',
+  good: '#13663d',
+  goodSoft: '#ddf1e6',
   wait: '#8a5100',
   waitSoft: '#fbebcf',
-  bad: '#b03a0c',
-  badSoft: '#fde4d6',
+  bad: '#b3400b',
+  badSoft: '#fde6d8',
 };
 export type Palette = typeof light;
 
-/** Night: charcoal grey with a burgundy-rose accent, the same colours as the web app's night mode. */
+/** Night: midnight navy with a crimson-rose accent, the same colours as the web app's night mode. */
 const dark: Palette = {
-  bg: '#1c1c1e',
-  surface: '#2a2a2d',
-  ink: '#f5f5f4',
-  muted: '#b0b0b6',
-  line: '#3a3a3e',
-  accent: '#f2b3b0',
-  accentSoft: '#3d2224',
-  accentInk: '#3b060a',
-  good: '#7ad6a4',
-  goodSoft: '#1c3527',
+  bg: '#0c0e26',
+  surface: '#171a40',
+  ink: '#efeee8',
+  muted: '#c2c1b7',
+  line: '#2c3066',
+  accent: '#ff7a7f',
+  accentSoft: '#3a1a2a',
+  accentInk: '#1b0a0c',
+  good: '#7fe0aa',
+  goodSoft: '#143022',
   wait: '#ecb862',
   waitSoft: '#3a2f17',
-  bad: '#ff9b70',
-  badSoft: '#40241a',
+  bad: '#ffa06b',
+  badSoft: '#3a1f12',
 };
 
 export const palettes: Record<ThemeName, Palette> = { light, dark };

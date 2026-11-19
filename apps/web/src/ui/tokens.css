@@ -1,33 +1,39 @@
-/* Brand: Deep Crimson Burgundy #790B13 with Warm Ivory Cream #FFF0DC text on burgundy; neutral grey pages. */
+/* Brand: Midnight Navy #1B1E4A, Warm Stone Grey #AFAEA2 and Crimson Red #D21319, with frosted glass panels. */
 :root {
-  --brand: #790b13;
-  --cream: #fff0dc;
-  --bg: #f3f3f4;
+  --brand: #1b1e4a;
+  --cream: #efeee8;
+  --bg: #e9e7e0;
   --surface: #ffffff;
-  --surface-2: #f8f8f9;
-  --ink: #1d1d1f;
-  --muted: #5f5f66;
-  --line: #e4e4e7;
-  --line-strong: #d4d4d8;
-  --accent: #790b13;
-  --accent-hover: #5e080f;
-  --accent-ink: #fff0dc;
-  --accent-soft: #f7e3dc;
+  --surface-2: #f6f5f1;
+  --ink: #16182f;
+  --muted: #4b4a44;
+  --line: #dedcd3;
+  --line-strong: #c9c7bc;
+  --accent: #d21319;
+  --accent-hover: #b00f14;
+  --accent-ink: #ffffff;
+  --accent-soft: #fdeeee;
   /* Status colours stay apart from the brand: green = approved / inside, orange-red = rejected / error. */
-  --good: #1a6e44;
-  --good-soft: #def0e5;
+  --good: #13663d;
+  --good-soft: #ddf1e6;
   --wait: #8a5100;
   --wait-soft: #fbebcf;
-  --bad: #b03a0c;
-  --bad-soft: #fde4d6;
-  --neutral-soft: #ececee;
+  --bad: #b3400b;
+  --bad-soft: #fde6d8;
+  --neutral-soft: #eeede8;
+  /* Frosted glass for the side menu, top bar and summary cards; tables and forms stay solid. */
+  --glass: rgba(255, 255, 255, 0.6);
+  --glass-line: rgba(255, 255, 255, 0.75);
+  --blob-1: rgba(27, 30, 74, 0.35);
+  --blob-2: rgba(210, 19, 25, 0.22);
+  --blob-3: rgba(175, 174, 162, 0.55);
   /* Side menu: burgundy with cream text. */
-  --side-bg: #790b13;
-  --side-ink: #fff0dc;
-  --side-muted: #e9c9b8;
-  --side-line: rgba(255, 240, 220, 0.18);
-  --side-hover: rgba(255, 240, 220, 0.1);
-  --shadow: 0 1px 2px rgba(16, 16, 20, 0.05), 0 4px 14px rgba(16, 16, 20, 0.06);
+  --side-bg: rgba(27, 30, 74, 0.93);
+  --side-ink: #efeee8;
+  --side-muted: #c2c1b7;
+  --side-line: rgba(239, 238, 232, 0.16);
+  --side-hover: rgba(239, 238, 232, 0.1);
+  --shadow: 0 1px 2px rgba(22, 24, 47, 0.05), 0 6px 24px rgba(22, 24, 47, 0.08);
   --radius: 10px;
   --display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
   --body: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
@@ -35,51 +41,66 @@
   color-scheme: light;
 }
 
-/* Night colours (charcoal grey, burgundy-rose accent): chosen with the Day / Night switch, or from the device when nothing is chosen. */
+/* Night colours (midnight navy glass, crimson accent): chosen with the Day / Night switch, or from the device when nothing is chosen. */
 :root[data-theme='dark'] {
-  --bg: #1c1c1e;
-  --surface: #2a2a2d;
-  --surface-2: #323236;
-  --ink: #f5f5f4;
-  --muted: #b0b0b6;
-  --line: #3a3a3e;
-  --line-strong: #48484d;
-  --accent: #f2b3b0;
-  --accent-hover: #f8cdca;
-  --accent-ink: #3b060a;
-  --accent-soft: #3d2224;
-  --good: #7ad6a4;
-  --good-soft: #1c3527;
+  --bg: #0c0e26;
+  --surface: #171a40;
+  --surface-2: #1f2350;
+  --ink: #efeee8;
+  --muted: #c2c1b7;
+  --line: #2c3066;
+  --line-strong: #3a3f80;
+  --accent: #ff7a7f;
+  --accent-hover: #ff9a9e;
+  --accent-ink: #1b0a0c;
+  --accent-soft: #3a1a2a;
+  --good: #7fe0aa;
+  --good-soft: #143022;
   --wait: #ecb862;
   --wait-soft: #3a2f17;
-  --bad: #ff9b70;
-  --bad-soft: #40241a;
-  --neutral-soft: #36363a;
-  --side-bg: #121214;
+  --bad: #ffa06b;
+  --bad-soft: #3a1f12;
+  --neutral-soft: #262a5c;
+  --glass: rgba(27, 30, 74, 0.55);
+  --glass-line: rgba(255, 255, 255, 0.12);
+  --blob-1: rgba(42, 47, 138, 0.55);
+  --blob-2: rgba(210, 19, 25, 0.3);
+  --blob-3: rgba(90, 89, 80, 0.35);
+  --side-bg: rgba(12, 14, 38, 0.72);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
   color-scheme: dark;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #1c1c1e;
-    --surface: #2a2a2d;
-    --surface-2: #323236;
-    --ink: #f5f5f4;
-    --muted: #b0b0b6;
-    --line: #3a3a3e;
-    --line-strong: #48484d;
-    --accent: #f2b3b0;
-    --accent-hover: #f8cdca;
-    --accent-ink: #3b060a;
-    --accent-soft: #3d2224;
-    --good: #7ad6a4;
-    --good-soft: #1c3527;
+    --bg: #0c0e26;
+    --surface: #171a40;
+    --surface-2: #1f2350;
+    --ink: #efeee8;
+    --muted: #c2c1b7;
+    --line: #2c3066;
+    --line-strong: #3a3f80;
+    --accent: #ff7a7f;
+    --accent-hover: #ff9a9e;
+    --accent-ink: #1b0a0c;
+    --accent-soft: #3a1a2a;
+    --good: #7fe0aa;
+    --good-soft: #143022;
     --wait: #ecb862;
     --wait-soft: #3a2f17;
-    --bad: #ff9b70;
-    --bad-soft: #40241a;
-    --neutral-soft: #36363a;
-    --side-bg: #121214;
+    --bad: #ffa06b;
+    --bad-soft: #3a1f12;
+    --neutral-soft: #262a5c;
+    --glass: rgba(27, 30, 74, 0.55);
+    --glass-line: rgba(255, 255, 255, 0.12);
+    --blob-1: rgba(42, 47, 138, 0.55);
+    --blob-2: rgba(210, 19, 25, 0.3);
+    --blob-3: rgba(90, 89, 80, 0.35);
+  --glass: rgba(27, 30, 74, 0.55);
+  --glass-line: rgba(255, 255, 255, 0.12);
+  --blob-1: rgba(42, 47, 138, 0.55);
+  --blob-2: rgba(210, 19, 25, 0.3);
+  --blob-3: rgba(90, 89, 80, 0.35);
+    --side-bg: rgba(12, 14, 38, 0.72);
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
     color-scheme: dark;
   }
@@ -89,7 +110,12 @@
 
 body {
   margin: 0;
-  background: var(--bg);
+  background:
+    radial-gradient(42vmax 42vmax at 8% 12%, var(--blob-1), transparent 70%),
+    radial-gradient(38vmax 38vmax at 88% 78%, var(--blob-2), transparent 70%),
+    radial-gradient(34vmax 34vmax at 55% 105%, var(--blob-3), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
   color: var(--ink);
   font-family: var(--body);
   font-size: 16px;
@@ -193,14 +219,14 @@ button.link:hover:not(:disabled) { background: none; }
   justify-content: space-between;
   gap: 32px;
   padding: 48px clamp(24px, 5vw, 64px);
-  background: linear-gradient(160deg, #790b13 0%, #4a060b 100%);
-  color: #fff0dc;
+  background: radial-gradient(60% 50% at 85% 90%, rgba(210, 19, 25, 0.45), transparent 70%), linear-gradient(160deg, #1b1e4a 0%, #0c0e26 100%);
+  color: #efeee8;
 }
-.auth-brand h2 { font-size: clamp(1.8rem, 3vw, 2.6rem); letter-spacing: -0.02em; color: #fff0dc; max-width: 14ch; }
+.auth-brand h2 { font-size: clamp(1.8rem, 3vw, 2.6rem); letter-spacing: -0.02em; color: #ffffff; max-width: 14ch; }
 .auth-brand ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; max-width: 36ch; }
 .auth-brand li { display: flex; gap: 10px; align-items: flex-start; }
-.auth-brand li::before { content: ''; flex: none; width: 8px; height: 8px; margin-top: 8px; border-radius: 50%; background: #f2b3b0; }
-.auth-brand .eyebrow { color: #e9c9b8; }
+.auth-brand li::before { content: ''; flex: none; width: 8px; height: 8px; margin-top: 8px; border-radius: 50%; background: #d21319; }
+.auth-brand .eyebrow { color: #c2c1b7; }
 .auth-side { position: relative; display: grid; place-items: center; padding: 24px 16px; }
 .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 10px; background: var(--neutral-soft); }
 .tabs button { border: 0; background: none; min-height: 38px; color: var(--muted); }
@@ -357,13 +383,13 @@ tbody tr:hover { background: var(--surface-2); }
 /* Premises QR poster */
 .poster-page { min-height: 100vh; display: grid; justify-items: center; align-content: start; gap: 16px; padding: 24px 16px; }
 .poster-tools { width: 100%; max-width: 560px; display: flex; justify-content: space-between; align-items: center; }
-.poster { width: 100%; max-width: 560px; background: #ffffff; color: #2a1214; border: 1px solid var(--line); border-radius: 16px; padding: 36px 28px; display: grid; justify-items: center; gap: 14px; text-align: center; }
+.poster { width: 100%; max-width: 560px; background: #ffffff; color: #16182f; border: 1px solid var(--line); border-radius: 16px; padding: 36px 28px; display: grid; justify-items: center; gap: 14px; text-align: center; }
 .poster h1 { font-size: 2.4rem; }
-.poster .eyebrow { color: #6e5a55; }
+.poster .eyebrow { color: #4b4a44; }
 .poster-place { font-size: 1.3rem; font-weight: 600; }
-.poster-qr { padding: 12px; border: 2px solid #790b13; border-radius: 12px; line-height: 0; }
+.poster-qr { padding: 12px; border: 2px solid #1b1e4a; border-radius: 12px; line-height: 0; }
 .poster-steps { text-align: left; margin: 0; padding-left: 1.4em; display: grid; gap: 4px; font-size: 1.05rem; }
-.poster-url { color: #6e5a55; overflow-wrap: anywhere; }
+.poster-url { color: #4b4a44; overflow-wrap: anywhere; }
 @media print {
   .no-print { display: none !important; }
   body { background: #ffffff; }
@@ -392,7 +418,7 @@ tbody tr:hover { background: var(--surface-2); }
 .row-actions, .row-actions .row { flex-wrap: nowrap; gap: 8px; }
 .nowrap { white-space: nowrap; }
 
-/* Burgundy side menu (and the phone top bar). Local colour tokens so every child follows. */
+/* Navy glass side menu (and the phone top bar). Local colour tokens so every child follows. */
 .sidebar,
 .mobile-bar {
   --ink: var(--side-ink);
@@ -406,11 +432,11 @@ tbody tr:hover { background: var(--surface-2); }
   color: var(--side-ink);
   border-color: var(--side-line);
 }
-.sidebar .menu-link.active { background: var(--side-ink); color: var(--side-bg); }
-.sidebar .menu-link.active .menu-count { background: rgba(121, 11, 19, 0.12); color: var(--side-bg); }
+.sidebar .menu-link.active { background: #d21319; color: #ffffff; }
+.sidebar .menu-link.active .menu-count { background: rgba(255, 255, 255, 0.22); color: #ffffff; }
 .sidebar .brand-mark,
-.sidebar .avatar { background: var(--side-ink); color: var(--side-bg); }
-.sidebar select { background: #fffdf9; color: #2a1214; border-color: transparent; }
+.sidebar .avatar { background: #d21319; color: #ffffff; }
+.sidebar select { background: #ffffff; color: #16182f; border-color: transparent; }
 .mobile-bar button { background: transparent; color: var(--side-ink); border-color: var(--side-line); }
 
 /* Day / Night switch */
@@ -420,3 +446,25 @@ tbody tr:hover { background: var(--surface-2); }
 .theme-toggle-side:hover:not(:disabled) { background: var(--side-hover); border-color: var(--side-line); }
 .theme-toggle-corner { position: absolute; top: 16px; right: 16px; }
 .mobile-bar .row { flex-wrap: nowrap; gap: 8px; }
+
+/* Frosted glass: side menu, phone top bar, summary cards and the sign-in card. Data tables and forms stay solid. */
+.sidebar,
+.mobile-bar,
+.stat,
+.auth-card {
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+}
+.stat,
+.auth-card { background: var(--glass); border-color: var(--glass-line); }
+.stat.active { background: var(--accent-soft); }
+.sidebar { border-right-color: var(--glass-line); }
+/* Without blur support, or when the device asks for less transparency, everything is solid. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .stat, .auth-card { background: var(--surface); }
+  .sidebar, .mobile-bar { background: #1b1e4a; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .stat, .auth-card { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .sidebar, .mobile-bar { background: #1b1e4a; -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
