@@ -138,6 +138,14 @@ export function MembersPage() {
     if (adding && onlyPremisesId && !premisesIds.length) setPremisesIds([onlyPremisesId]);
   }, [adding, onlyPremisesId, premisesIds.length]);
 
+  // Designations come from the chosen department (managed on the Departments page).
+  const designations = departments.data?.find((d) => d.id === form.departmentId)?.designations ?? [];
+  const designationHint = !form.departmentId
+    ? 'Choose a department first'
+    : designations.length
+      ? 'None'
+      : 'No designations in this department';
+
   const set = (patch: Partial<typeof EMPTY>) => setForm({ ...form, ...patch });
   const togglePremises = (id: string) =>
     setPremisesIds(premisesIds.includes(id) ? premisesIds.filter((p) => p !== id) : [...premisesIds, id]);
@@ -212,7 +220,11 @@ export function MembersPage() {
             </div>
             <div>
               <label htmlFor="m-dept">Department</label>
-              <select id="m-dept" value={form.departmentId} onChange={(e) => set({ departmentId: e.target.value })}>
+              <select
+                id="m-dept"
+                value={form.departmentId}
+                onChange={(e) => set({ departmentId: e.target.value, designation: '' })}
+              >
                 <option value="">None</option>
                 {departments.data?.map((d) => (
                   <option key={d.id} value={d.id}>
@@ -223,7 +235,19 @@ export function MembersPage() {
             </div>
             <div>
               <label htmlFor="m-designation">Designation</label>
-              <input id="m-designation" value={form.designation} onChange={(e) => set({ designation: e.target.value })} />
+              <select
+                id="m-designation"
+                value={form.designation}
+                onChange={(e) => set({ designation: e.target.value })}
+                disabled={!designations.length}
+              >
+                <option value="">{designationHint}</option>
+                {designations.map((d) => (
+                  <option key={d.id} value={d.name}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label htmlFor="m-password">Password (at least {PASSWORD_MIN} characters)</label>

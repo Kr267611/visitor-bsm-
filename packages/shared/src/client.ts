@@ -149,10 +149,17 @@ export interface PremisesSettings {
   googleReviewUrl: string | null;
 }
 
+/** A job title offered under one department. */
+export interface Designation {
+  id: string;
+  name: string;
+}
+
 export interface Department {
   id: string;
   name: string;
   memberCount?: number;
+  designations?: Designation[];
 }
 
 export interface AdminUser {
@@ -526,6 +533,12 @@ export function createApiClient(options: ApiClientOptions) {
       departments: {
         ...crud<Department, { name: string }>('/admin/departments'),
         remove: (id: string) => request<void>('DELETE', `/admin/departments/${id}`),
+        addDesignation: (departmentId: string, name: string) =>
+          request<Designation>('POST', `/admin/departments/${departmentId}/designations`, { body: { name } }),
+      },
+      designations: {
+        rename: (id: string, name: string) => request<Designation>('PATCH', `/admin/designations/${id}`, { body: { name } }),
+        remove: (id: string) => request<void>('DELETE', `/admin/designations/${id}`),
       },
       audit: (q: { entity?: string; entityId?: string } = {}) =>
         request<AuditEntry[]>('GET', `/admin/audit${queryString(q)}`),

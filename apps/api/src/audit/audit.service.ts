@@ -6,7 +6,7 @@ import { TenantPrismaClient } from '../tenancy/tenant-prisma';
 type AuditClient = Pick<TenantPrismaClient, 'auditLog'>;
 
 export interface AuditEntry {
-  entity: 'premises' | 'premises_settings' | 'gate' | 'department' | 'user';
+  entity: 'premises' | 'premises_settings' | 'gate' | 'department' | 'designation' | 'user';
   entityId: string;
   action: 'create' | 'update' | 'delete' | 'password_reset';
   before?: object | null;

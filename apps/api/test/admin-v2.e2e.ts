@@ -92,6 +92,58 @@ describe('admin v2', () => {
       expect(after.isActive).toBe(true);
     });
 
+    it('designations: listed under their department; rename and remove follow to members', async () => {
+      const { site, token } = await adminOf();
+      const dept = await http().post('/admin/departments').set(auth(token)).send({ name: 'MIS' }).expect(201);
+      const add = (name: string) =>
+        http().post(`/admin/departments/${dept.body.id}/designations`).set(auth(token)).send({ name });
+      const exec = await add('Executive').expect(201);
+      await add('Manager').expect(201);
+      await add('Executive').expect(422); // unique inside the department
+      await add(' ').expect(422);
+
+      const list = await http().get('/admin/departments').set(auth(token)).expect(200);
+      expect(list.body[0].designations).toEqual([
+        { id: exec.body.id, name: 'Executive' },
+        { id: expect.any(String), name: 'Manager' },
+      ]);
+
+      const member = await seedUser(ctx.prisma, site.id, 'employee');
+      await ctx.prisma.user.update({ where: { id: member.id }, data: { departmentId: dept.body.id, designation: 'Executive' } });
+      await http().patch(`/admin/designations/${exec.body.id}`).set(auth(token)).send({ name: 'Senior Executive' }).expect(200);
+      expect((await ctx.prisma.user.findUniqueOrThrow({ where: { id: member.id } })).designation).toBe('Senior Executive');
+
+      await http().delete(`/admin/designations/${exec.body.id}`).set(auth(token)).expect(204);
+      const after = await ctx.prisma.user.findUniqueOrThrow({ where: { id: member.id } });
+      expect(after.designation).toBeNull();
+      expect(after.departmentId).toBe(dept.body.id);
+
+      // Deleting the department removes its designations too.
+      await http().delete(`/admin/departments/${dept.body.id}`).set(auth(token)).expect(204);
+      expect(await ctx.prisma.designation.count()).toBe(0);
+    });
+
+    it('designations of another business cannot be seen or changed', async () => {
+      const a = await adminOf();
+      const b = await adminOf();
+      const dept = await http().post('/admin/departments').set(auth(a.token)).send({ name: 'QC' }).expect(201);
+      const des = await http()
+        .post(`/admin/departments/${dept.body.id}/designations`)
+        .set(auth(a.token))
+        .send({ name: 'Inspector' })
+        .expect(201);
+      await http()
+        .post(`/admin/departments/${dept.body.id}/designations`)
+        .set(auth(b.token))
+        .send({ name: 'Spy' })
+        .expect(404);
+      await http().patch(`/admin/designations/${des.body.id}`).set(auth(b.token)).send({ name: 'X' }).expect(404);
+      await http().delete(`/admin/designations/${des.body.id}`).set(auth(b.token)).expect(404);
+      const listB = await http().get('/admin/departments').set(auth(b.token)).expect(200);
+      expect(listB.body).toEqual([]);
+      expect(await ctx.prisma.designation.count()).toBe(1);
+    });
+
     it('name unique inside a business only', async () => {
       const a = await adminOf();
       const b = await adminOf();

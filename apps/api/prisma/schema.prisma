@@ -139,11 +139,26 @@ model Department {
   businessId String   @map("business_id") @db.Uuid
   name       String
   createdAt  DateTime @default(now()) @map("created_at")
-  business   Business @relation(fields: [businessId], references: [id])
-  users      User[]
+  business     Business      @relation(fields: [businessId], references: [id])
+  users        User[]
+  designations Designation[]
 
   @@unique([businessId, name])
   @@map("departments")
+}
+
+/// Job titles offered for one department (e.g. MIS: Executive, Manager). Members keep the chosen name.
+model Designation {
+  id           String     @id @default(uuid()) @db.Uuid
+  businessId   String     @map("business_id") @db.Uuid
+  departmentId String     @map("department_id") @db.Uuid
+  name         String
+  createdAt    DateTime   @default(now()) @map("created_at")
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@unique([departmentId, name])
+  @@index([businessId])
+  @@map("designations")
 }
 
 model UserPremises {

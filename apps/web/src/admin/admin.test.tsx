@@ -10,7 +10,7 @@ const premisesList = [
   { id: 'p2', name: 'Plant 2', code: 'XYZ789', webSlug: 'plant-2', isDefault: false, address: null },
 ];
 const gates = [{ id: 'g1', name: 'Main Gate 1', premisesId: 'p1', isActive: true }];
-const departments = [{ id: 'd-fin', name: 'Finance', memberCount: 1 }];
+const departments = [{ id: 'd-fin', name: 'Finance', memberCount: 1, designations: [{ id: 'des-mgr', name: 'Manager' }] }];
 const person = (over: object = {}) => ({
   id: 'u1',
   name: 'Amit Guard',
@@ -85,6 +85,7 @@ describe('admin', () => {
       await user.type(screen.getByLabelText('Mobile'), '9876543210');
       await user.selectOptions(screen.getByLabelText('Role'), 'employee');
       await user.selectOptions(await screen.findByLabelText('Department'), 'd-fin');
+      await user.selectOptions(screen.getByLabelText('Designation'), 'Manager');
       await user.type(screen.getByLabelText('Password (at least 6 characters)'), 'Ravi@2026x');
       const premisesBox = screen.getByRole('group', { name: 'Premises' });
       await user.click(within(premisesBox).getByLabelText('Head Office'));
@@ -100,6 +101,7 @@ describe('admin', () => {
         premisesIds: ['p1', 'p2'],
         isHost: true,
         departmentId: 'd-fin',
+        designation: 'Manager',
         password: 'Ravi@2026x',
       });
       // Once created, the form closes and the list is in front.
@@ -312,6 +314,52 @@ describe('admin', () => {
       expect(s.calls.some((c) => c.key === 'DELETE /admin/departments/d-fin')).toBe(false);
       await user.click(within(row).getByRole('button', { name: 'Yes, delete' }));
       await waitFor(() => expect(s.calls.some((c) => c.key === 'DELETE /admin/departments/d-fin')).toBe(true));
+    });
+
+    it('adds, renames and removes designations under a department', async () => {
+      const s = server({
+        'POST /admin/departments/d-fin/designations': () => json(201, { id: 'des-exe', name: 'Executive' }),
+        'PATCH /admin/designations/des-mgr': () => json(200, { id: 'des-mgr', name: 'Senior Manager' }),
+        'DELETE /admin/designations/des-mgr': () => json(204),
+      });
+      renderApp('/admin/departments', s);
+      const user = userEvent.setup();
+      const row = (await screen.findByText('Finance')).closest('tr') as HTMLElement;
+
+      await user.type(within(row).getByLabelText('New designation in Finance'), 'Executive');
+      await user.click(within(row).getByRole('button', { name: 'Add' }));
+      await waitFor(() =>
+        expect(s.calls.find((c) => c.key === 'POST /admin/departments/d-fin/designations')?.body).toEqual({ name: 'Executive' }),
+      );
+      expect(within(row).getByLabelText('New designation in Finance')).toHaveValue('');
+
+      await user.click(within(row).getByRole('button', { name: 'Edit designation Manager in Finance' }));
+      const input = within(row).getByLabelText('New name for designation Manager');
+      await user.clear(input);
+      await user.type(input, 'Senior Manager');
+      await user.click(within(row).getByRole('button', { name: 'Save' }));
+      await waitFor(() =>
+        expect(s.calls.find((c) => c.key === 'PATCH /admin/designations/des-mgr')?.body).toEqual({ name: 'Senior Manager' }),
+      );
+
+      await user.click(within(row).getByRole('button', { name: 'Edit designation Manager in Finance' }));
+      await user.click(within(row).getByRole('button', { name: 'Remove' }));
+      await waitFor(() => expect(s.calls.some((c) => c.key === 'DELETE /admin/designations/des-mgr')).toBe(true));
+    });
+
+    it('member designation list follows the chosen department', async () => {
+      renderApp('/admin/members', server());
+      const user = userEvent.setup();
+      await user.click(await screen.findByRole('button', { name: '+ New member' }));
+      const designation = await screen.findByLabelText('Designation');
+      expect(designation).toBeDisabled();
+      expect(designation).toHaveDisplayValue('Choose a department first');
+      await user.selectOptions(await screen.findByLabelText('Department'), 'd-fin');
+      expect(designation).toBeEnabled();
+      await user.selectOptions(designation, 'Manager');
+      expect(designation).toHaveValue('Manager');
+      await user.selectOptions(screen.getByLabelText('Department'), '');
+      expect(designation).toHaveValue('');
     });
 
     it('duplicate name shows server message', async () => {

@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { DepartmentsController } from './admin/departments.controller';
+import { DepartmentsController, DesignationsController } from './admin/departments.controller';
 import { PremisesController } from './admin/premises.controller';
 import { ProfileController } from './admin/profile.controller';
 import { UsersController } from './admin/users.controller';
@@ -44,6 +44,7 @@ import { VisitsModule } from './visits/visits.module';
     HealthController,
     PremisesController,
     DepartmentsController,
+    DesignationsController,
     UsersController,
     ProfileController,
     PlatformController,

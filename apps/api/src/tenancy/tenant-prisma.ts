@@ -6,6 +6,7 @@ export const TENANT_MODELS = new Set<string>([
   'Premises',
   'PremisesSetting',
   'Department',
+  'Designation',
   'UserPremises',
   'AuditLog',
   'Gate',
