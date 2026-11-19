@@ -101,7 +101,7 @@ describe('permissions: role ∩ plan', () => {
       const res = await http()
         .post('/admin/users')
         .set(auth(adminToken))
-        .send({ name: 'New', phone: '9811122222', role: 'guard', premisesIds: [site.id] })
+        .send({ name: 'New', phone: '9811122222', role: 'guard', premisesIds: [site.id], password: 'new123' })
         .expect(422);
       expect(res.body.kind).toBe('members');
       await http().patch(`/admin/users/${off.id}`).set(auth(adminToken)).send({ isActive: true }).expect(422);

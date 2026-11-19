@@ -25,7 +25,7 @@ const userCreate = z.object({
   designation: z.string().max(100).optional(),
   joiningDate: z.coerce.date().optional(),
   isHost: z.boolean().optional(),
-  password: password.optional(),
+  password,
 });
 const userUpdate = z
   .object({

@@ -23,7 +23,7 @@ describe('admin', () => {
     const res = await http()
       .post('/admin/users')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: 'Amit', phone: '98765 43210', role: 'guard', premisesIds: [site.id] })
+      .send({ name: 'Amit', phone: '98765 43210', role: 'guard', premisesIds: [site.id], password: 'amit26' })
       .expect(201);
     expect(res.body.phone).toBe('+919876543210');
     expect(res.body.isActive).toBe(true);
@@ -31,11 +31,21 @@ describe('admin', () => {
 
   it('duplicate phone rejected', async () => {
     const { site, token } = await adminSetup();
-    const body = { name: 'Amit', phone: '9876543210', role: 'guard', premisesIds: [site.id] };
+    const body = { name: 'Amit', phone: '9876543210', role: 'guard', premisesIds: [site.id], password: 'amit26' };
     await http().post('/admin/users').set('Authorization', `Bearer ${token}`).send(body).expect(201);
     const res = await http().post('/admin/users').set('Authorization', `Bearer ${token}`).send(body);
     expect(res.status).toBe(422);
     expect(res.body.error).toBe('VALIDATION_FAILED');
+  });
+
+  it('a new member must have a password of at least 6 characters', async () => {
+    const { site, token } = await adminSetup();
+    const body = { name: 'Amit', phone: '9876543210', role: 'guard', premisesIds: [site.id] };
+    const send = (extra: object) =>
+      http().post('/admin/users').set('Authorization', `Bearer ${token}`).send({ ...body, ...extra });
+    await send({}).expect(422);
+    await send({ password: '12345' }).expect(422);
+    await send({ password: '123456' }).expect(201);
   });
 
   it('invalid role rejected', async () => {

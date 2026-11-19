@@ -88,7 +88,7 @@ describe('tenancy: one business never sees another', () => {
       await http()
         .post('/admin/users')
         .set(auth(a.adminToken))
-        .send({ name: 'X', phone: '9811133333', role: 'guard', premisesIds: [b.site.id] })
+        .send({ name: 'X', phone: '9811133333', role: 'guard', premisesIds: [b.site.id], password: 'xx1234' })
         .expect(422);
       await http().post('/admin/gates').set(auth(a.adminToken)).send({ premisesId: b.site.id, name: 'G' }).expect(422);
     });

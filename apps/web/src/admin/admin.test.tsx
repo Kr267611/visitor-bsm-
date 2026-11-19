@@ -85,7 +85,7 @@ describe('admin', () => {
       await user.type(screen.getByLabelText('Mobile'), '9876543210');
       await user.selectOptions(screen.getByLabelText('Role'), 'employee');
       await user.selectOptions(await screen.findByLabelText('Department'), 'd-fin');
-      await user.type(screen.getByLabelText('Password (optional)'), 'Ravi@2026x');
+      await user.type(screen.getByLabelText('Password (at least 6 characters)'), 'Ravi@2026x');
       const premisesBox = screen.getByRole('group', { name: 'Premises' });
       await user.click(within(premisesBox).getByLabelText('Head Office'));
       await user.click(within(premisesBox).getByLabelText('Plant 2'));
@@ -127,9 +127,31 @@ describe('admin', () => {
       await user.click(await screen.findByRole('button', { name: '+ New member' }));
       await user.type(await screen.findByLabelText('Name'), 'Ravi');
       await user.type(screen.getByLabelText('Mobile'), '9876543210');
+      await user.type(screen.getByLabelText('Password (at least 6 characters)'), 'ravi26');
       await user.click(screen.getByRole('button', { name: 'Create member' }));
       expect(await screen.findByRole('alert')).toHaveTextContent('at least one premises');
       expect(s.calls.some((c) => c.key === 'POST /admin/users')).toBe(false);
+    });
+
+    it('with a single premises it is ticked already, and the password is required', async () => {
+      const created = person({ id: 'u2', name: 'Ravi', role: 'employee' });
+      const s = server({
+        'GET /admin/premises': () => json(200, [premisesList[0]]),
+        'POST /admin/users': () => json(201, created),
+      });
+      renderApp('/admin/members', s);
+      const user = userEvent.setup();
+      await user.click(await screen.findByRole('button', { name: '+ New member' }));
+      const premisesBox = await screen.findByRole('group', { name: 'Premises' });
+      expect(await within(premisesBox).findByLabelText('Head Office')).toBeChecked();
+      expect(screen.getByLabelText('Password (at least 6 characters)')).toBeRequired();
+      await user.type(screen.getByLabelText('Name'), 'Ravi');
+      await user.type(screen.getByLabelText('Mobile'), '9876543210');
+      await user.type(screen.getByLabelText('Password (at least 6 characters)'), '482915');
+      await user.click(screen.getByRole('button', { name: 'Create member' }));
+      await waitFor(() => expect(s.calls.some((c) => c.key === 'POST /admin/users')).toBe(true));
+      const call = s.calls.find((c) => c.key === 'POST /admin/users');
+      expect(call?.body).toMatchObject({ premisesIds: ['p1'], password: '482915' });
     });
 
     it('duplicate phone and plan limit show the server message', async () => {
@@ -144,6 +166,7 @@ describe('admin', () => {
       await user.click(await screen.findByRole('button', { name: '+ New member' }));
       await user.type(await screen.findByLabelText('Name'), 'Ravi');
       await user.type(screen.getByLabelText('Mobile'), '9876543210');
+      await user.type(screen.getByLabelText('Password (at least 6 characters)'), 'ravi26');
       await user.click(within(await screen.findByRole('group', { name: 'Premises' })).getByLabelText('Head Office'));
       await user.click(screen.getByRole('button', { name: 'Create member' }));
       expect(await screen.findByRole('alert')).toHaveTextContent('allows 5 active members');

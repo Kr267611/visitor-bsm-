@@ -1,6 +1,6 @@
 import { PASSWORD_MIN, type AdminUser, type MemberInput, type Role } from '@visitor/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { errorMessage, useApi } from '../api';
 import { EmptyState, PageHeader, ROLE_LABEL } from '../ui/Page';
 
@@ -132,6 +132,12 @@ export function MembersPage() {
   const shown = (members.data ?? []).filter(
     (m) => !q || m.name.toLowerCase().includes(q) || m.phone.includes(q) || (m.email ?? '').toLowerCase().includes(q),
   );
+  // With a single premises there is nothing to choose: tick it for the admin.
+  const onlyPremisesId = premises.data?.length === 1 ? premises.data[0].id : null;
+  useEffect(() => {
+    if (adding && onlyPremisesId && !premisesIds.length) setPremisesIds([onlyPremisesId]);
+  }, [adding, onlyPremisesId, premisesIds.length]);
+
   const set = (patch: Partial<typeof EMPTY>) => setForm({ ...form, ...patch });
   const togglePremises = (id: string) =>
     setPremisesIds(premisesIds.includes(id) ? premisesIds.filter((p) => p !== id) : [...premisesIds, id]);
@@ -151,7 +157,7 @@ export function MembersPage() {
       ...(form.email.trim() && { email: form.email.trim() }),
       ...(form.departmentId && { departmentId: form.departmentId }),
       ...(form.designation.trim() && { designation: form.designation.trim() }),
-      ...(form.password && { password: form.password }),
+      password: form.password,
     };
     setBusy(true);
     try {
@@ -220,7 +226,7 @@ export function MembersPage() {
               <input id="m-designation" value={form.designation} onChange={(e) => set({ designation: e.target.value })} />
             </div>
             <div>
-              <label htmlFor="m-password">Password (optional)</label>
+              <label htmlFor="m-password">Password (at least {PASSWORD_MIN} characters)</label>
               <input
                 id="m-password"
                 type="password"
@@ -228,6 +234,7 @@ export function MembersPage() {
                 minLength={PASSWORD_MIN}
                 value={form.password}
                 onChange={(e) => set({ password: e.target.value })}
+                required
               />
             </div>
           </div>

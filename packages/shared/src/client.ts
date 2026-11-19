@@ -179,7 +179,7 @@ export interface MemberInput {
   designation?: string;
   isHost?: boolean;
   isActive?: boolean;
-  password?: string;
+  password: string;
 }
 
 export interface AuditEntry {
