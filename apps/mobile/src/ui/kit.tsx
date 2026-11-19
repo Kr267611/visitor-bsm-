@@ -1,18 +1,24 @@
 import { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
 
+/** Brand: Deep Crimson Burgundy #790B13 on Warm Ivory Cream #FFF0DC (same as the web app). */
 export const colors = {
-  bg: '#f2f5f4',
-  surface: '#ffffff',
-  ink: '#13211d',
-  muted: '#55665f',
-  line: '#d5ddda',
-  accent: '#0b6e5f',
-  accentSoft: '#dceeea',
-  wait: '#915500',
-  waitSoft: '#faefd9',
-  bad: '#b3261e',
-  badSoft: '#fbe6e4',
+  bg: '#faf3e8',
+  surface: '#fffdf9',
+  ink: '#2a1214',
+  muted: '#6e5a55',
+  line: '#eadccb',
+  accent: '#790b13',
+  accentSoft: '#f7e3dc',
+  /** Text on burgundy. */
+  accentInk: '#fff0dc',
+  /** Status colours stay apart from the brand: green = entry allowed / inside, orange-red = refused / error. */
+  good: '#1a6e44',
+  goodSoft: '#def0e5',
+  wait: '#8a5100',
+  waitSoft: '#fbebcf',
+  bad: '#b03a0c',
+  badSoft: '#fde4d6',
 };
 
 export function Button(props: {
@@ -34,7 +40,7 @@ export function Button(props: {
       style={[styles.button, styles[kind], disabled && styles.disabled]}
     >
       {props.busy ? (
-        <ActivityIndicator color={kind === 'primary' ? '#ffffff' : colors.ink} />
+        <ActivityIndicator color={kind === 'primary' ? colors.accentInk : colors.ink} />
       ) : (
         <Text style={[styles.buttonText, kind === 'primary' && styles.primaryText, kind === 'danger' && styles.dangerText]}>
           {props.title}
@@ -92,7 +98,7 @@ const styles = StyleSheet.create({
   danger: { backgroundColor: colors.surface, borderColor: colors.bad },
   disabled: { opacity: 0.5 },
   buttonText: { fontSize: 18, fontWeight: '600', color: colors.ink },
-  primaryText: { color: '#ffffff' },
+  primaryText: { color: colors.accentInk },
   dangerText: { color: colors.bad },
   error: { color: colors.bad, fontSize: 16 },
   muted: { color: colors.muted, fontSize: 14 },

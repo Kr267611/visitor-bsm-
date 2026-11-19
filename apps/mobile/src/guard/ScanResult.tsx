@@ -57,11 +57,11 @@ export function ScanResult({ outcome, onNext, onWalkIn }: Props) {
 
 const styles = StyleSheet.create({
   panel: { flex: 1, borderRadius: 14, padding: 20, gap: 14, justifyContent: 'center' },
-  good: { backgroundColor: colors.accentSoft },
+  good: { backgroundColor: colors.goodSoft },
   wait: { backgroundColor: colors.waitSoft },
   bad: { backgroundColor: colors.badSoft },
   verdict: { fontSize: 26, fontWeight: '700' },
-  goodText: { color: colors.accent },
+  goodText: { color: colors.good },
   waitText: { color: colors.wait },
   badText: { color: colors.bad },
   photo: { width: 220, height: 220, borderRadius: 12, alignSelf: 'center', backgroundColor: colors.line },

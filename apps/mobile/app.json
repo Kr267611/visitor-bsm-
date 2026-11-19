@@ -12,14 +12,29 @@
       "expo-notifications",
       [
         "expo-camera",
-        { "cameraPermission": "The camera is used to scan visitor QR passes." }
+        {
+          "cameraPermission": "The camera is used to scan visitor QR passes."
+        }
       ],
       [
         "expo-image-picker",
-        { "cameraPermission": "The camera is used to take visitor photos." }
+        {
+          "cameraPermission": "The camera is used to take visitor photos."
+        }
       ]
     ],
-    "android": { "package": "in.bsm.visitor" },
-    "ios": { "bundleIdentifier": "in.bsm.visitor" }
+    "android": {
+      "package": "in.bsm.visitor"
+    },
+    "ios": {
+      "bundleIdentifier": "in.bsm.visitor"
+    },
+    "backgroundColor": "#faf3e8",
+    "primaryColor": "#790b13",
+    "userInterfaceStyle": "light",
+    "androidNavigationBar": {
+      "backgroundColor": "#faf3e8",
+      "barStyle": "dark-content"
+    }
   }
 }

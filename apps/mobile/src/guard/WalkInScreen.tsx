@@ -217,6 +217,6 @@ const styles = StyleSheet.create({
   check: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', paddingVertical: 6 },
   box: { width: 28, height: 28, borderWidth: 2, borderColor: colors.accent, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
   boxOn: { backgroundColor: colors.accent },
-  tick: { color: '#ffffff', fontWeight: '700' },
+  tick: { color: colors.accentInk, fontWeight: '700' },
   checkText: { flex: 1, fontSize: 15, color: colors.ink },
 });
