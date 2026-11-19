@@ -18,7 +18,7 @@
 - The scoped client fails closed: it throws without a context.
 - Phone and email are unique within a business (`@@unique([businessId, phone])`).
 - When a sign-in identifier matches several businesses, the list is shown **only after the OTP/password is verified** (selection token), never before.
-- Password: `scrypt` (N=16384, r=8, p=1, 64-byte key, 16-byte salt), format `scrypt$<N>$<r>$<p>$<salt b64>$<hash b64>`, at least 8 characters.
+- Password: `scrypt` (N=16384, r=8, p=1, 64-byte key, 16-byte salt), format `scrypt$<N>$<r>$<p>$<salt b64>$<hash b64>`, at least 6 characters (letters, digits or both).
 - A missing plan feature gives 403 `FEATURE_RESTRICTED` with the message `Access restricted: this module is not included in your plan.`
 - Data-safe migration: old sites → premises, all rows into one default business "BSM" (slug `bsm`).
 - All Phase 1 tests (API 172 e2e + 11 unit, shared 42, web 98, mobile 89) pass with the new naming.

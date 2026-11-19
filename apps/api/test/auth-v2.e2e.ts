@@ -229,6 +229,18 @@ describe('login v2', () => {
       await http().put('/me/password').set(auth).send({ currentPassword: PASSWORD, newPassword: 'New@Pass99' }).expect(204);
     });
 
+    it('accepts 6 characters of digits only or letters only, rejects 5', async () => {
+      const site = await premisesIn();
+      const user = await seedUser(ctx.prisma, site.id, 'guard');
+      const session = await otpLogin(user.phone, 'Phone');
+      const auth = bearer(session.accessToken);
+      await http().put('/me/password').set(auth).send({ newPassword: '12345' }).expect(422);
+      await http().put('/me/password').set(auth).send({ newPassword: '482915' }).expect(204);
+      await http().post('/auth/login').send({ identifier: user.phone, password: '482915', deviceName: 'X' }).expect(200);
+      await http().put('/me/password').set(auth).send({ currentPassword: '482915', newPassword: 'gatepw' }).expect(204);
+      await http().post('/auth/login').send({ identifier: user.phone, password: 'gatepw', deviceName: 'X' }).expect(200);
+    });
+
     it('logs out other devices, keeps this one', async () => {
       const site = await premisesIn();
       const user = await seedUser(ctx.prisma, site.id, 'guard');

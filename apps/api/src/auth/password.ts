@@ -6,8 +6,7 @@ const P = 1;
 const KEY_LEN = 64;
 const MAXMEM = 64 * 1024 * 1024;
 
-export const PASSWORD_MIN = 8;
-export const PASSWORD_MAX = 128;
+export { PASSWORD_MAX, PASSWORD_MIN } from '@visitor/shared';
 
 function scrypt(password: string, salt: Buffer, keyLen: number, options: ScryptOptions): Promise<Buffer> {
   return new Promise((resolve, reject) =>

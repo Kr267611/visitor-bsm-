@@ -1,4 +1,4 @@
-import type { AdminUser, MemberInput, Role } from '@visitor/shared';
+import { PASSWORD_MIN, type AdminUser, type MemberInput, type Role } from '@visitor/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useState } from 'react';
 import { errorMessage, useApi } from '../api';
@@ -89,7 +89,7 @@ function PasswordReset({ member }: { member: AdminUser }) {
             type="password"
             aria-label={`New password for ${member.name}`}
             autoComplete="new-password"
-            minLength={8}
+            minLength={PASSWORD_MIN}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -225,7 +225,7 @@ export function MembersPage() {
                 id="m-password"
                 type="password"
                 autoComplete="new-password"
-                minLength={8}
+                minLength={PASSWORD_MIN}
                 value={form.password}
                 onChange={(e) => set({ password: e.target.value })}
               />

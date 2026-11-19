@@ -1,8 +1,7 @@
+import { PASSWORD_MIN as MIN } from '@visitor/shared';
 import { FormEvent, useState } from 'react';
 import { errorMessage, useApi } from '../api';
 import { PageHeader } from '../ui/Page';
-
-const MIN = 8;
 
 /** Set or change your own password. Users who signed in with OTP set the first one without a current password. */
 export function PasswordPage() {
