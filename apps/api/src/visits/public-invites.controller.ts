@@ -15,6 +15,7 @@ import { InvalidTransitionError } from './errors';
 import { hashInviteToken } from './invite-tokens';
 import { VisitLifecycleService } from './visit-lifecycle.service';
 import { VISIT_INCLUDE, VisitWithPeople } from './visits.service';
+import { RECEPTION_DESK } from '../common/records';
 
 const RETENTION_DAYS = 180;
 
@@ -54,7 +55,7 @@ export class PublicInvitesController {
     return {
       status: v.status,
       visitorName: v.status === 'INVITED' ? (v.invitedName ?? v.visitor.name) : v.visitor.name,
-      hostName: v.host.name,
+      hostName: v.host?.name ?? RECEPTION_DESK,
       siteName: v.premises.name,
       validFrom: v.validFrom.toISOString(),
       validTo: v.validTo.toISOString(),

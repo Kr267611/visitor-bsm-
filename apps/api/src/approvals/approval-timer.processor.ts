@@ -56,23 +56,26 @@ export class ApprovalTimerProcessor implements OnModuleInit {
     name: TimerName,
     visit: Prisma.VisitGetPayload<{ include: { visitor: true; host: true } }>,
   ): Promise<void> {
+    // A QR request with no host waits on the reception desk; there is nobody to remind or escalate to.
+    if (!visit.hostId || !visit.host) return;
+    const host = visit.host;
 
     if (name === 'reminder') {
       await this.lifecycle.recordEvent(visit.id, 'REMINDER_SENT', null, { to: visit.hostId }, [
         {
           channel: 'PUSH',
           template: 'APPROVAL_REMINDER',
-          recipient: visit.hostId,
+          recipient: host.id,
           vars: { visitorName: visit.visitor.name },
         },
       ]);
     } else if (name === 'delegate') {
-      if (!visit.host.delegateId) return;
-      await this.lifecycle.recordEvent(visit.id, 'ESCALATED_TO_DELEGATE', null, { to: visit.host.delegateId }, [
+      if (!host.delegateId) return;
+      await this.lifecycle.recordEvent(visit.id, 'ESCALATED_TO_DELEGATE', null, { to: host.delegateId }, [
         {
           channel: 'PUSH',
           template: 'APPROVAL_REQUEST',
-          recipient: visit.host.delegateId,
+          recipient: host.delegateId,
           vars: { visitorName: visit.visitor.name, company: visit.visitor.company ?? '-', purpose: visit.purpose },
         },
       ]);

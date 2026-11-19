@@ -33,7 +33,8 @@ export interface Session extends Tokens {
 }
 
 export interface VisitDetail extends VisitSummary {
-  hostId: string;
+  /** Null when a QR request went to the reception desk instead of a host. */
+  hostId: string | null;
   type: 'PRE' | 'WALKIN';
   decisionNote: string | null;
   deliveryFailed: boolean;
@@ -279,13 +280,14 @@ export interface SelfCheckInSession {
 export interface SelfCheckInRequest {
   name: string;
   company?: string;
+  /** Written by the visitor. */
   purpose: string;
-  hostId: string;
+  /** Optional: without a host the request goes to the reception desk. */
+  hostId?: string;
   photoKey?: string;
   consent: boolean;
   location?: GeoPosition;
-  /** What the visit is about, in the visitor's own words. */
-  purposeNote: string;
+  purposeNote?: string;
 }
 
 /** Someone a visitor can ask to meet: never a phone number. */

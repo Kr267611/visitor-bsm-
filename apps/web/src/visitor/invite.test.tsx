@@ -31,7 +31,7 @@ const statusCases: [string, RegExp][] = [
   ['CANCELLED', /This visit has been cancelled/],
   ['EXPIRED', /This link has expired/],
   ['REJECTED', /This visit was not approved/],
-  ['PENDING_APPROVAL', /Waiting for your host to respond/],
+  ['PENDING_APPROVAL', /Waiting for approval/],
 ];
 
 function server(over: object = {}) {

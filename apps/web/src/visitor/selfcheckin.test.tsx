@@ -64,7 +64,7 @@ describe('QR self check-in page', () => {
   });
   afterEach(() => vi.unstubAllGlobals());
 
-  it('new visitor: OTP, details, host, photo, consent, then the waiting screen', async () => {
+  it('new visitor: OTP, writes the purpose, photo, consent, then the waiting screen', async () => {
     const s = server();
     renderApp('/p/acme/head-office', s);
     const user = userEvent.setup();
@@ -73,28 +73,21 @@ describe('QR self check-in page', () => {
 
     await user.type(await screen.findByLabelText('Your name'), 'Rahul Verma');
     await user.type(screen.getByLabelText('Company or firm'), 'ABC Traders');
-    await user.selectOptions(screen.getByLabelText('Purpose of visit'), 'Interview');
-    // Pick a department, then the person: name with designation, never a phone.
-    await user.selectOptions(screen.getByLabelText('Department'), 'Weaving');
-    const people = within(await screen.findByRole('list', { name: 'People you can meet' }));
-    expect(people.getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Rakesh PatelMaster · Weaving', 'Suresh YadavSupervisor · Weaving']);
-    await user.click(people.getByRole('button', { name: /Rakesh Patel/ }));
-    expect(screen.getByText('Master · Weaving')).toBeInTheDocument();
-    const submit = screen.getByRole('button', { name: 'Send to host' });
+    // No department or person list: the visitor writes the purpose, and the request goes to the desk.
+    expect(screen.queryByLabelText('Department')).toBeNull();
+    const submit = screen.getByRole('button', { name: 'Send request' });
     expect(submit).toBeDisabled();
-    await user.type(screen.getByLabelText('What is the visit about?'), 'Interview for the weaving master post');
+    await user.type(screen.getByLabelText('Purpose of visit'), 'Interview for the weaving master post');
     await user.upload(screen.getByLabelText('Your photo'), new File(['raw'], 'me.jpg', { type: 'image/jpeg' }));
     await user.click(screen.getByRole('checkbox', { name: /I agree/ }));
     await user.click(submit);
 
-    expect(await screen.findByText(/Waiting for your host to respond/)).toBeInTheDocument();
+    expect(await screen.findByText(/Waiting for approval/)).toBeInTheDocument();
     const body = s.calls.find((c) => c.key === `POST ${BASE}/check-in`)!;
     expect(body.body).toEqual({
       name: 'Rahul Verma',
       company: 'ABC Traders',
-      purpose: 'Interview',
-      purposeNote: 'Interview for the weaving master post',
-      hostId: 'h2',
+      purpose: 'Interview for the weaving master post',
       photoKey: 'self/p/s/x.jpg',
       consent: true,
     });
@@ -111,13 +104,10 @@ describe('QR self check-in page', () => {
     expect(await screen.findByRole('heading', { name: 'Welcome back, Rahul Verma' })).toBeInTheDocument();
     expect(screen.getByLabelText('Company or firm')).toHaveValue('ACME');
     expect(screen.getByLabelText('New photo (optional)')).toBeInTheDocument();
-    // Searching by designation works too.
-    await user.type(screen.getByLabelText('Search by name or designation'), 'manager');
-    await user.click(await screen.findByRole('button', { name: /Anita Singh/ }));
-    await user.type(screen.getByLabelText('What is the visit about?'), 'Payment follow-up');
+    await user.type(screen.getByLabelText('Purpose of visit'), 'Payment follow-up with accounts');
     await user.click(screen.getByRole('checkbox', { name: /I agree/ }));
-    await user.click(screen.getByRole('button', { name: 'Send to host' }));
-    await screen.findByText(/Waiting for your host/);
+    await user.click(screen.getByRole('button', { name: 'Send request' }));
+    await screen.findByText(/Waiting for approval/);
     expect(s.calls.some((c) => c.key === `POST ${BASE}/photo`)).toBe(false);
   });
 
@@ -138,7 +128,7 @@ describe('QR self check-in page', () => {
   it('an open visit goes straight to its status page', async () => {
     renderApp('/p/acme/head-office', server({ [`POST ${BASE}/verify`]: () => json(200, session({ activeVisit: { status: 'PENDING_APPROVAL', token: 'tok-9' } })) }));
     await verifyPhone(userEvent.setup());
-    expect(await screen.findByText(/Waiting for your host to respond/)).toBeInTheDocument();
+    expect(await screen.findByText(/Waiting for approval/)).toBeInTheDocument();
   });
 
   it('geofenced premises sends the browser location; denied location shows how to fix it', async () => {
@@ -207,7 +197,7 @@ describe('QR self check-in page', () => {
         }),
     });
     renderApp('/v/tok-9', s);
-    await screen.findByText(/Waiting for your host/);
+    await screen.findByText(/Waiting for approval/);
     status = 'APPROVED';
     await waitFor(() => expect(screen.getByRole('img', { name: 'Visitor pass QR code' })).toBeInTheDocument(), { timeout: 6000 });
   }, 10_000);

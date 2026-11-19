@@ -10,6 +10,7 @@ import { TENANT_PRISMA, TenantPrismaClient } from '../tenancy/tenant-prisma';
 import { StorageService } from '../storage/storage.service';
 import { inviteLink, newInviteToken } from './invite-tokens';
 import { VisitLifecycleService } from './visit-lifecycle.service';
+import { RECEPTION_DESK } from '../common/records';
 
 const MAX_WINDOW_MS = 24 * 60 * 60 * 1000;
 const SITE_STAFF = ['guard', 'reception', 'security', 'admin'];
@@ -167,7 +168,7 @@ export class VisitsService {
                 channel: 'SMS',
                 template: 'INVITE_LINK',
                 recipient: visit.visitor.phone,
-                vars: { hostName: visit.host.name, siteName: visit.premises.name, link },
+                vars: { hostName: visit.host?.name ?? RECEPTION_DESK, siteName: visit.premises.name, link },
               }
             : {
                 visitId: id,
@@ -190,7 +191,7 @@ export class VisitsService {
 
   isHostOrDelegate(user: AuthUser, visit: VisitWithPeople): boolean {
     if (visit.businessId !== user.businessId) return false;
-    return visit.hostId === user.id || visit.host.delegateId === user.id;
+    return !!visit.hostId && (visit.hostId === user.id || visit.host?.delegateId === user.id);
   }
 
   isSiteStaff(user: AuthUser, visit: Visit, roles: string[]): boolean {
@@ -208,7 +209,7 @@ export class VisitsService {
       visitorName: invited ? (v.invitedName ?? v.visitor.name) : v.visitor.name,
       company: invited ? null : v.visitor.company,
       photoUrl: !invited && v.visitor.photoKey ? this.storage.photoUrl(v.visitor.photoKey) : null,
-      hostName: v.host.name,
+      hostName: v.host?.name ?? RECEPTION_DESK,
       validFrom: v.validFrom.toISOString(),
       validTo: v.validTo.toISOString(),
       checkedInAt: v.checkedInAt?.toISOString() ?? null,

@@ -20,7 +20,7 @@ const TITLES: Record<DeskSection, string> = {
 };
 
 const SUBTITLES: Record<DeskSection, string> = {
-  pending: 'Walk-in visitors whose host has not responded yet. If it takes too long, call the host.',
+  pending: 'Walk-in and QR visitors waiting for approval. Read their purpose, then approve or reject. If a host takes too long, call them.',
   expected: "Today's invited visitors. If someone has no pass, check them in from here.",
   inside: 'Visitors currently on the premises. Check them out when they leave.',
 };
@@ -230,7 +230,7 @@ export function DeskPage({ section }: { section: DeskSection }) {
         {(pending.length > 0 || calls.length === 0) && (
           <section className="panel">
             {pending.length === 0 && calls.length === 0 && (
-              <EmptyState title="No approvals pending." hint="New walk-ins will appear here." />
+              <EmptyState title="No approvals pending." hint="New walk-ins and QR check-ins will appear here." />
             )}
             {pending.map((visit) => (
               <VisitRow key={visit.id} visit={visit}>

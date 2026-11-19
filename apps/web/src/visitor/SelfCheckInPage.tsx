@@ -1,6 +1,6 @@
-import { ApiError, GeoPosition, normalizeIndianPhone, SelfCheckInSession, type SelfCheckInHost } from '@visitor/shared';
+import { ApiError, GeoPosition, normalizeIndianPhone, SelfCheckInSession } from '@visitor/shared';
 import { useQuery } from '@tanstack/react-query';
-import { ChangeEvent, FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { ChangeEvent, FormEvent, ReactNode, useEffect, useRef, useState, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { errorMessage, useApi } from '../api';
 import { compressPhoto, PhotoError } from './compressPhoto';
@@ -40,10 +40,8 @@ function Shell({ title, subtitle, children }: { title: string; subtitle?: string
 
 /**
  * Visitor self check-in from the premises QR poster. The poster only starts the flow:
- * OTP proves the phone, the host approves, and the visitor's status page becomes the gate pass.
+ * OTP proves the phone, the reception desk approves, and the visitor's status page becomes the gate pass.
  */
-/** Department filter value for staff who have no department. */
-const NO_DEPARTMENT = '__none__';
 
 export function SelfCheckInPage() {
   const { business = '', premises = '' } = useParams();
@@ -60,10 +58,6 @@ export function SelfCheckInPage() {
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [purpose, setPurpose] = useState('');
-  const [purposeNote, setPurposeNote] = useState('');
-  const [department, setDepartment] = useState('');
-  const [hostQuery, setHostQuery] = useState('');
-  const [host, setHost] = useState<SelfCheckInHost | null>(null);
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [consent, setConsent] = useState(false);
@@ -71,24 +65,6 @@ export function SelfCheckInPage() {
   const [busy, setBusy] = useState(false);
   const uploadedKey = useRef<string | null>(null);
 
-  // Everyone the visitor can meet here (name, department, designation); filtered on the phone.
-  const hosts = useQuery({
-    queryKey: ['self-checkin-hosts', business, premises],
-    queryFn: () => desk.hosts(session!.sessionToken, ''),
-    enabled: step === 'details' && !!session,
-  });
-  const departments = useMemo(
-    () => [...new Set((hosts.data ?? []).map((h) => h.department).filter((d): d is string => !!d))].sort(),
-    [hosts.data],
-  );
-  const shownHosts = useMemo(() => {
-    const q = hostQuery.trim().toLowerCase();
-    return (hosts.data ?? []).filter(
-      (h) =>
-        (!department || (department === NO_DEPARTMENT ? !h.department : h.department === department)) &&
-        (!q || h.name.toLowerCase().includes(q) || (h.designation ?? '').toLowerCase().includes(q)),
-    );
-  }, [hosts.data, department, hostQuery]);
 
   useEffect(
     () => () => {
@@ -139,7 +115,6 @@ export function SelfCheckInPage() {
         } else {
           setName(result.visitor?.name ?? '');
           setCompany(result.visitor?.company ?? '');
-          setPurpose(info.data?.purposes[0] ?? '');
           setStep('details');
         }
       } catch (e) {
@@ -166,12 +141,11 @@ export function SelfCheckInPage() {
   }
 
   const needsPhoto = !session?.visitor?.hasPhoto;
-  const canSubmit =
-    !!name.trim() && !!purpose.trim() && purposeNote.trim().length >= 3 && !!host && consent && (!needsPhoto || !!photo) && !busy;
+  const canSubmit = !!name.trim() && purpose.trim().length >= 3 && consent && (!needsPhoto || !!photo) && !busy;
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (!session || !host || !canSubmit) return;
+    if (!session || !canSubmit) return;
     void run(async () => {
       // On retry, do not upload the photo again.
       if (photo) uploadedKey.current ??= (await desk.uploadPhoto(session.sessionToken, photo)).key;
@@ -179,8 +153,6 @@ export function SelfCheckInPage() {
         name: name.trim(),
         company: company.trim() || undefined,
         purpose: purpose.trim(),
-        purposeNote: purposeNote.trim(),
-        hostId: host.id,
         photoKey: uploadedKey.current ?? undefined,
         consent,
         location,
@@ -311,64 +283,16 @@ export function SelfCheckInPage() {
         />
 
         <label htmlFor="sc-purpose">Purpose of visit</label>
-        <select id="sc-purpose" value={purpose} onChange={(e) => setPurpose(e.target.value)} required>
-          {place.purposes.map((p) => (
-            <option key={p}>{p}</option>
-          ))}
-        </select>
-
-        <label htmlFor="sc-note">What is the visit about?</label>
         <textarea
-          id="sc-note"
-          rows={2}
-          maxLength={300}
-          value={purposeNote}
-          onChange={(e) => setPurposeNote(e.target.value)}
-          placeholder="e.g. Yarn delivery for order 452, or interview for the weaving master post"
+          id="sc-purpose"
+          rows={3}
+          maxLength={200}
+          value={purpose}
+          onChange={(e) => setPurpose(e.target.value)}
+          placeholder="Write why you have come and who you want to meet, e.g. Yarn delivery for order 452, to meet the weaving master"
           required
         />
-        <p className="muted small">The person you meet sees this before approving.</p>
-
-        <fieldset className="stack host-picker">
-          <legend>Who do you want to meet?</legend>
-          {host ? (
-            <div className="host-chosen">
-              <span>
-                <strong>{host.name}</strong>
-                <span className="cell-sub">{[host.designation, host.department].filter(Boolean).join(' · ') || 'Staff'}</span>
-              </span>
-              <button type="button" className="link" onClick={() => setHost(null)}>
-                Change
-              </button>
-            </div>
-          ) : (
-            <>
-              <label htmlFor="sc-dept">Department</label>
-              <select id="sc-dept" value={department} onChange={(e) => setDepartment(e.target.value)}>
-                <option value="">All departments</option>
-                {departments.map((d) => (
-                  <option key={d}>{d}</option>
-                ))}
-                {hosts.data?.some((h) => !h.department) && <option value={NO_DEPARTMENT}>Other staff</option>}
-              </select>
-              <label htmlFor="sc-host">Search by name or designation</label>
-              <input id="sc-host" placeholder="e.g. Rakesh or Master" value={hostQuery} onChange={(e) => setHostQuery(e.target.value)} />
-              {hosts.isPending && <p className="muted small">Loading staff…</p>}
-              <div className="host-list" role="list" aria-label="People you can meet">
-                {shownHosts.slice(0, 60).map((h) => (
-                  <div role="listitem" key={h.id}>
-                    <button type="button" className="host-option" onClick={() => setHost(h)}>
-                      <strong>{h.name}</strong>
-                      <span className="cell-sub">{[h.designation, h.department].filter(Boolean).join(' · ') || 'Staff'}</span>
-                    </button>
-                  </div>
-                ))}
-              </div>
-              {hosts.data && shownHosts.length === 0 && <p className="muted small">No one found. Try another department or name.</p>}
-              {shownHosts.length > 60 && <p className="muted small">Showing 60 of {shownHosts.length}. Choose a department or type a name.</p>}
-            </>
-          )}
-        </fieldset>
+        <p className="muted small">Your request goes to the reception desk, who will let you in.</p>
 
         <label htmlFor="sc-photo">{needsPhoto ? 'Your photo' : 'New photo (optional)'}</label>
         <input id="sc-photo" type="file" accept="image/*" capture="user" onChange={choosePhoto} />
@@ -385,7 +309,7 @@ export function SelfCheckInPage() {
 
         {alert}
         <button type="submit" className="primary" disabled={!canSubmit}>
-          {busy ? 'Please wait…' : 'Send to host'}
+          {busy ? 'Please wait…' : 'Send request'}
         </button>
       </form>
     </Shell>

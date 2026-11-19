@@ -34,7 +34,7 @@ describe('QR self check-in', () => {
     return res.body as { sessionToken: string; visitor: unknown; activeVisit: { status: string; token: string } | null };
   }
 
-  async function checkIn(base: string, session: string, hostId: string, over: object = {}) {
+  async function checkIn(base: string, session: string, hostId: string | undefined, over: object = {}) {
     const photo = await http()
       .post(`${base}/photo`)
       .set('x-checkin-session', session)
@@ -185,19 +185,38 @@ describe('QR self check-in', () => {
     await http().get(`${base}/hosts`).expect(401);
   });
 
-  it('the visitor must say what the visit is about; the host and desk see it', async () => {
-    const { base, host } = await setup();
+  it('the visitor writes the purpose; an empty or too short one is refused', async () => {
+    const { base } = await setup();
     const { sessionToken } = await verify(base);
-    expect((await checkIn(base, sessionToken, host.id, { purposeNote: '' })).status).toBe(422);
-    expect((await checkIn(base, sessionToken, host.id, { purposeNote: 'ab' })).status).toBe(422);
-    const res = await checkIn(base, sessionToken, host.id, { purpose: 'Delivery / Dispatch', purposeNote: 'Yarn for order 452' });
+    expect((await checkIn(base, sessionToken, undefined, { purpose: '' })).status).toBe(422);
+    expect((await checkIn(base, sessionToken, undefined, { purpose: 'ab' })).status).toBe(422);
+  });
+
+  it('without a host the request goes to the reception desk, which approves it', async () => {
+    const { site, base } = await setup();
+    const reception = await seedUser(ctx.prisma, site.id, 'reception');
+    const { sessionToken } = await verify(base);
+    const res = await checkIn(base, sessionToken, undefined, { purpose: 'Yarn delivery for order 452, to meet the weaving master', purposeNote: undefined });
     expect(res.status).toBe(201);
-    const visit = await ctx.prisma.visit.findFirstOrThrow({ where: { hostId: host.id } });
-    expect(visit).toMatchObject({ purpose: 'Delivery / Dispatch', purposeNote: 'Yarn for order 452' });
-    const detail = await http().get(`/visits/${visit.id}`).set('Authorization', `Bearer ${await tokenFor(ctx, host.id)}`).expect(200);
-    expect(detail.body).toMatchObject({ purpose: 'Delivery / Dispatch', purposeNote: 'Yarn for order 452' });
-    const push = await ctx.prisma.outbox.findFirstOrThrow({ where: { visitId: visit.id, template: 'APPROVAL_REQUEST' } });
-    expect(push.vars).toMatchObject({ purpose: 'Delivery / Dispatch' });
+    expect(res.body.status).toBe('PENDING_APPROVAL');
+
+    const visit = await ctx.prisma.visit.findFirstOrThrow({ where: { premisesId: site.id } });
+    expect(visit).toMatchObject({ hostId: null, purpose: 'Yarn delivery for order 452, to meet the weaving master' });
+    const outbox = await ctx.prisma.outbox.findMany({ where: { visitId: visit.id } });
+    expect(outbox.map((o) => o.template)).toEqual(['SELF_CHECKIN_LINK']);
+    expect(outbox[0].vars).toMatchObject({ hostName: 'the reception desk' });
+
+    const deskToken = await tokenFor(ctx, reception.id);
+    const desk = { Authorization: `Bearer ${deskToken}` };
+    const live = await http().get('/dashboard/live').set(desk).expect(200);
+    expect(live.body.pending).toEqual([
+      expect.objectContaining({ id: visit.id, hostName: 'Reception desk', purpose: 'Yarn delivery for order 452, to meet the weaving master' }),
+    ]);
+    const waiting = await http().get(`/public/invites/${res.body.token}`).expect(200);
+    expect(waiting.body.hostName).toBe('Reception desk');
+
+    await http().post(`/visits/${visit.id}/approve`).set(desk).send({}).expect(200);
+    expect((await ctx.prisma.visit.findUniqueOrThrow({ where: { id: visit.id } })).status).toBe('APPROVED');
   });
 
   it('new premises start with the textile purpose list', async () => {

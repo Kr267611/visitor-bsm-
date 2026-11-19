@@ -31,7 +31,7 @@ export class DashboardService {
       const summary = this.visits.toSummary(row);
       if (row.status === 'CHECKED_IN') data.inside.push(summary);
       else if (row.status !== 'PENDING_APPROVAL') data.expected.push(summary);
-      else if (row.receptionCallRequestedAt) data.needsCall.push({ ...summary, hostPhone: row.host.phone });
+      else if (row.receptionCallRequestedAt) data.needsCall.push({ ...summary, hostPhone: row.host?.phone ?? null });
       else data.pending.push(summary);
     }
     return data;

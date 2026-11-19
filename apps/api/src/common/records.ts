@@ -34,3 +34,6 @@ export const slugify = (name: string, fallback = 'premises') =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 40) || fallback;
+
+/** Shown instead of a person when a QR request goes to the reception desk rather than a host. */
+export const RECEPTION_DESK = 'Reception desk';

@@ -25,7 +25,7 @@ describe('VisitLifecycleService', () => {
       action: 'CHECK_IN',
       actorId: visit.hostId,
       patch: { checkedInAt: new Date() },
-      notify: [{ channel: 'PUSH', template: 'VISITOR_ARRIVED', recipient: visit.hostId, vars: { visitorName: 'R', gateName: 'G' } }],
+      notify: [{ channel: 'PUSH', template: 'VISITOR_ARRIVED', recipient: visit.hostId!, vars: { visitorName: 'R', gateName: 'G' } }],
     });
     expect(updated.status).toBe('CHECKED_IN');
     expect(updated.checkedInAt).toBeInstanceOf(Date);

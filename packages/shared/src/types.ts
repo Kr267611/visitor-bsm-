@@ -23,7 +23,7 @@ export interface LiveDashboard {
   inside: VisitSummary[];
   expected: VisitSummary[];
   pending: VisitSummary[];
-  needsCall: (VisitSummary & { hostPhone: string })[];
+  needsCall: (VisitSummary & { hostPhone: string | null })[];
 }
 
 export type ErrorCode =

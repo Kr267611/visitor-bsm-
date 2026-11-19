@@ -40,8 +40,9 @@ export interface CheckInInput {
   name: string;
   company?: string;
   purpose: string;
-  purposeNote: string;
-  hostId: string;
+  purposeNote?: string;
+  /** Optional: without a host the request goes to the reception desk, which approves it. */
+  hostId?: string;
   photoKey?: string;
   consent: boolean;
   location?: Location;
@@ -242,16 +243,18 @@ export class SelfCheckInService {
     if (!input.consent) {
       throw new ApiException(422, 'CONSENT_REQUIRED', 'Please give consent to continue.');
     }
-    const host = await this.prisma.user.findFirst({
-      where: {
-        id: input.hostId,
-        businessId: p.businessId,
-        isActive: true,
-        isHost: true,
-        premises: { some: { premisesId: p.id } },
-      },
-    });
-    if (!host) throw new ApiException(422, 'VALIDATION_FAILED', 'Please choose a host from this premises.');
+    const host = input.hostId
+      ? await this.prisma.user.findFirst({
+          where: {
+            id: input.hostId,
+            businessId: p.businessId,
+            isActive: true,
+            isHost: true,
+            premises: { some: { premisesId: p.id } },
+          },
+        })
+      : null;
+    if (input.hostId && !host) throw new ApiException(422, 'VALIDATION_FAILED', 'Please choose a host from this premises.');
 
     const known = await this.prisma.visitor.findUnique({
       where: { businessId_phone: { businessId: p.businessId, phone: s.phone } },
@@ -285,31 +288,36 @@ export class SelfCheckInService {
         update: details,
         create: { businessId: p.businessId, phone: s.phone, ...details },
       });
+      // With a host, the host decides; otherwise the request waits on the reception desk (live list).
       const notify: OutboxDraft[] = needsApproval
         ? [
-            {
-              channel: 'PUSH',
-              template: 'APPROVAL_REQUEST',
-              recipient: host.id,
-              vars: { visitorName: visitor.name, company: visitor.company ?? '-', purpose: input.purpose },
-            },
+            ...(host
+              ? [
+                  {
+                    channel: 'PUSH' as const,
+                    template: 'APPROVAL_REQUEST' as const,
+                    recipient: host.id,
+                    vars: { visitorName: visitor.name, company: visitor.company ?? '-', purpose: input.purpose },
+                  },
+                ]
+              : []),
             {
               channel: 'SMS',
               template: 'SELF_CHECKIN_LINK',
               recipient: s.phone,
-              vars: { siteName: p.name, hostName: host.name, link },
+              vars: { siteName: p.name, hostName: host?.name ?? 'the reception desk', link },
             },
           ]
         : [{ channel: 'SMS', template: 'PASS_READY', recipient: s.phone, vars: { link } }];
       return this.lifecycle.create({
         data: {
           visitorId: visitor.id,
-          hostId: host.id,
+          hostId: host?.id ?? null,
           businessId: p.businessId,
           premisesId: p.id,
           type: 'SELF',
           purpose: input.purpose,
-          purposeNote: input.purposeNote,
+          purposeNote: input.purposeNote || null,
           status: needsApproval ? 'PENDING_APPROVAL' : 'APPROVED',
           validFrom: now,
           validTo,
@@ -319,7 +327,8 @@ export class SelfCheckInService {
         notify,
       });
     });
-    if (needsApproval) await this.timers.schedule(visit.id);
+    // Reminder and backup-person timers only make sense when a host must answer.
+    if (needsApproval && host) await this.timers.schedule(visit.id);
     return { status: visit.status, token, existing: false };
   }
 

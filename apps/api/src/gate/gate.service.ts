@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { Gate, Prisma } from '@prisma/client';
 import { AuthUser } from '../auth/roles.decorator';
 import { ApiException } from '../common/api-exception';
-import { usedRequestId } from '../common/records';
+import { RECEPTION_DESK, usedRequestId } from '../common/records';
 import { formatIstDate } from '../common/time';
 import { PassService } from '../passes/pass.service';
 import { TENANT_PRISMA, TenantPrismaClient } from '../tenancy/tenant-prisma';
@@ -83,14 +83,16 @@ export class GateService {
         clientEventId: action.clientEventId,
         meta: action.meta,
         patch: { checkedInAt: new Date(), inGateId: action.gate.id },
-        notify: [
-          {
-            channel: 'PUSH',
-            template: 'VISITOR_ARRIVED',
-            recipient: visit.hostId,
-            vars: { visitorName: visit.visitor.name, gateName: action.gate.name },
-          },
-        ],
+        notify: visit.hostId
+          ? [
+              {
+                channel: 'PUSH',
+                template: 'VISITOR_ARRIVED',
+                recipient: visit.hostId,
+                vars: { visitorName: visit.visitor.name, gateName: action.gate.name },
+              },
+            ]
+          : [],
       });
     } catch (error) {
       return this.afterConflict(error, visit.id, action.clientEventId, action.user.businessId);
@@ -187,7 +189,7 @@ export class GateService {
         company: visit.visitor.company,
         photoUrl: visit.visitor.photoKey ? this.storage.photoUrl(visit.visitor.photoKey) : null,
       },
-      host: visit.host.name,
+      host: visit.host?.name ?? RECEPTION_DESK,
       validTo: visit.validTo.toISOString(),
     };
   }

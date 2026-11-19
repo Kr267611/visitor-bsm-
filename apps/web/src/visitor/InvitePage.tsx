@@ -10,7 +10,7 @@ const MESSAGES: Partial<Record<VisitStatus, string>> = {
   CANCELLED: 'This visit has been cancelled. Please contact your host.',
   EXPIRED: 'This link has expired. Please ask your host for a new one.',
   REJECTED: 'This visit was not approved. Please contact your host.',
-  PENDING_APPROVAL: 'Waiting for your host to respond. This page updates by itself.',
+  PENDING_APPROVAL: 'Waiting for approval. This page updates by itself.',
 };
 
 const WAITING_POLL_MS = 4_000;

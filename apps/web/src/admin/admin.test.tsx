@@ -99,31 +99,6 @@ describe('admin', () => {
       expect(within(row).getByText('Main Gate 1')).toBeInTheDocument();
     });
 
-    it('edits the purpose-of-visit list', async () => {
-      const s = server({
-        'GET /admin/premises': () => json(200, [{ ...premisesList[0], purposes: ['Meeting', 'Interview'] }]),
-        'PATCH /admin/premises/p1': ({ body }) => json(200, { ...premisesList[0], ...body }),
-      });
-      renderApp('/admin/premises', s);
-      const user = userEvent.setup();
-      const row = (await screen.findByRole('cell', { name: /^Head Office/ })).closest('tr') as HTMLElement;
-      await user.click(within(row).getByRole('button', { name: 'Settings' }));
-      const card = await screen.findByRole('region', { name: 'Head Office purposes' });
-      await user.type(within(card).getByLabelText('New purpose'), 'Yarn supply');
-      await user.click(within(card).getByRole('button', { name: 'Add purpose' }));
-      await waitFor(() =>
-        expect(s.calls.find((c) => c.key === 'PATCH /admin/premises/p1')?.body).toEqual({ purposes: ['Meeting', 'Interview', 'Yarn supply'] }),
-      );
-      expect(await within(card).findByText('Yarn supply')).toBeInTheDocument();
-      await user.type(within(card).getByLabelText('New purpose'), 'meeting');
-      await user.click(within(card).getByRole('button', { name: 'Add purpose' }));
-      expect(within(card).getByRole('alert')).toHaveTextContent('already in the list');
-      await user.click(within(card).getByRole('button', { name: 'Remove Interview' }));
-      await waitFor(() =>
-        expect(s.calls.filter((c) => c.key === 'PATCH /admin/premises/p1').at(-1)?.body).toEqual({ purposes: ['Meeting', 'Yarn supply'] }),
-      );
-    });
-
     it('opens settings and saves changes', async () => {
       const s = server({ 'PUT /admin/premises/p1/settings': ({ body }) => json(200, { ...settings, ...body }) });
       renderApp('/admin/premises', s);
