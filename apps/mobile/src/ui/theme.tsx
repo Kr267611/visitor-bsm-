@@ -25,22 +25,22 @@ const light = {
 };
 export type Palette = typeof light;
 
-/** Night: dark burgundy, the same colours as the web app's night mode. */
+/** Night: black with a burgundy-rose accent, the same colours as the web app's night mode. */
 const dark: Palette = {
-  bg: '#170c0d',
-  surface: '#211315',
-  ink: '#fbefe3',
-  muted: '#c4aca4',
-  line: '#3a2528',
+  bg: '#0a0a0a',
+  surface: '#141414',
+  ink: '#f5f2ee',
+  muted: '#a9a39e',
+  line: '#2a2a2a',
   accent: '#f2b3b0',
-  accentSoft: '#3e1a1e',
+  accentSoft: '#2b1416',
   accentInk: '#3b060a',
   good: '#74d39f',
-  goodSoft: '#13301f',
+  goodSoft: '#10271a',
   wait: '#e9b35a',
-  waitSoft: '#3a2b10',
+  waitSoft: '#2e230e',
   bad: '#ff9466',
-  badSoft: '#3e1f14',
+  badSoft: '#33190f',
 };
 
 export const palettes: Record<ThemeName, Palette> = { light, dark };
