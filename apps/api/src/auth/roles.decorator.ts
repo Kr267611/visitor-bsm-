@@ -1,5 +1,5 @@
 import { createParamDecorator, ExecutionContext, SetMetadata } from '@nestjs/common';
-import type { Role } from '@visitor/shared';
+import type { Module, Role } from '@visitor/shared';
 
 export const ROLES_KEY = 'roles';
 export const PUBLIC_KEY = 'public';
@@ -22,6 +22,8 @@ export interface AuthUser {
   deviceId: string;
   /** Modules in the business plan (empty for a super admin). */
   features: string[];
+  /** Screens this member may open: role, narrowed by the admin's ticks. */
+  modules: Module[];
 }
 
 export const CurrentUser = createParamDecorator(

@@ -1,5 +1,6 @@
 import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { z } from 'zod';
+import { RequireModule } from '../auth/permissions';
 import { AuthUser, CurrentUser, Roles } from '../auth/roles.decorator';
 import { ApiException } from '../common/api-exception';
 import { parseBody } from '../common/parse';
@@ -35,6 +36,7 @@ export class DevicesController {
   }
 
   @Roles('admin', 'security')
+  @RequireModule('devices')
   @Get('admin/devices')
   list(@CurrentUser() user: AuthUser) {
     return this.prisma.device.findMany({
@@ -52,6 +54,7 @@ export class DevicesController {
   }
 
   @Roles('admin', 'security')
+  @RequireModule('devices')
   @Post('admin/devices/:id/revoke')
   @HttpCode(204)
   async revoke(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {

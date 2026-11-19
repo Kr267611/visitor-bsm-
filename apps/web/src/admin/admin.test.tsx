@@ -69,157 +69,6 @@ function server(over: Handlers = {}) {
 describe('admin', () => {
   beforeEach(() => signIn(USERS.admin));
 
-  describe('members', () => {
-    it('creates a member with premises, department and password', async () => {
-      const created = person({ id: 'u2', name: 'Ravi Kumar', role: 'employee', departmentId: 'd-fin', premisesIds: ['p1', 'p2'] });
-      const s = server({
-        'POST /admin/users': () => {
-          s.handlers['GET /admin/users'] = () => json(200, [person(), created]);
-          return json(201, created);
-        },
-      });
-      renderApp('/admin/members', s);
-      const user = userEvent.setup();
-      await user.click(await screen.findByRole('button', { name: '+ New member' }));
-      await user.type(await screen.findByLabelText('Name'), 'Ravi Kumar');
-      await user.type(screen.getByLabelText('Mobile'), '9876543210');
-      await user.selectOptions(screen.getByLabelText('Role'), 'employee');
-      await user.selectOptions(await screen.findByLabelText('Department'), 'd-fin');
-      await user.selectOptions(screen.getByLabelText('Designation'), 'Manager');
-      await user.type(screen.getByLabelText('Password (at least 6 characters)'), 'Ravi@2026x');
-      const premisesBox = screen.getByRole('group', { name: 'Premises' });
-      await user.click(within(premisesBox).getByLabelText('Head Office'));
-      await user.click(within(premisesBox).getByLabelText('Plant 2'));
-      await user.click(screen.getByRole('button', { name: 'Create member' }));
-      const row = (await screen.findByText('Ravi Kumar')).closest('tr') as HTMLElement;
-      expect(within(row).getByText('Finance')).toBeInTheDocument();
-      expect(within(row).getByText('Head Office, Plant 2')).toBeInTheDocument();
-      expect(s.calls.find((c) => c.key === 'POST /admin/users')!.body).toEqual({
-        name: 'Ravi Kumar',
-        phone: '9876543210',
-        role: 'employee',
-        premisesIds: ['p1', 'p2'],
-        isHost: true,
-        departmentId: 'd-fin',
-        designation: 'Manager',
-        password: 'Ravi@2026x',
-      });
-      // Once created, the form closes and the list is in front.
-      expect(screen.queryByLabelText('Name')).toBeNull();
-    });
-
-    it('search filters the list by name or phone', async () => {
-      renderApp('/admin/members', server({ 'GET /admin/users': () => json(200, [person(), person({ id: 'u2', name: 'Kavita Rao', phone: '+919855500001' })]) }));
-      const user = userEvent.setup();
-      await screen.findByText('Kavita Rao');
-      await user.type(screen.getByLabelText('Search members'), 'kavita');
-      expect(screen.queryByText('Amit Guard')).toBeNull();
-      expect(screen.getByText('1 / 2 members')).toBeInTheDocument();
-      await user.clear(screen.getByLabelText('Search members'));
-      await user.type(screen.getByLabelText('Search members'), '98555');
-      expect(screen.getByText('Kavita Rao')).toBeInTheDocument();
-      await user.type(screen.getByLabelText('Search members'), '9');
-      expect(await screen.findByText('No member matches that name or number.')).toBeInTheDocument();
-    });
-
-    it('needs at least one premises before calling the server', async () => {
-      const s = server();
-      renderApp('/admin/members', s);
-      const user = userEvent.setup();
-      await user.click(await screen.findByRole('button', { name: '+ New member' }));
-      await user.type(await screen.findByLabelText('Name'), 'Ravi');
-      await user.type(screen.getByLabelText('Mobile'), '9876543210');
-      await user.type(screen.getByLabelText('Password (at least 6 characters)'), 'ravi26');
-      await user.click(screen.getByRole('button', { name: 'Create member' }));
-      expect(await screen.findByRole('alert')).toHaveTextContent('at least one premises');
-      expect(s.calls.some((c) => c.key === 'POST /admin/users')).toBe(false);
-    });
-
-    it('with a single premises it is ticked already, and the password is required', async () => {
-      const created = person({ id: 'u2', name: 'Ravi', role: 'employee' });
-      const s = server({
-        'GET /admin/premises': () => json(200, [premisesList[0]]),
-        'POST /admin/users': () => json(201, created),
-      });
-      renderApp('/admin/members', s);
-      const user = userEvent.setup();
-      await user.click(await screen.findByRole('button', { name: '+ New member' }));
-      const premisesBox = await screen.findByRole('group', { name: 'Premises' });
-      expect(await within(premisesBox).findByLabelText('Head Office')).toBeChecked();
-      expect(screen.getByLabelText('Password (at least 6 characters)')).toBeRequired();
-      await user.type(screen.getByLabelText('Name'), 'Ravi');
-      await user.type(screen.getByLabelText('Mobile'), '9876543210');
-      await user.type(screen.getByLabelText('Password (at least 6 characters)'), '482915');
-      await user.click(screen.getByRole('button', { name: 'Create member' }));
-      await waitFor(() => expect(s.calls.some((c) => c.key === 'POST /admin/users')).toBe(true));
-      const call = s.calls.find((c) => c.key === 'POST /admin/users');
-      expect(call?.body).toMatchObject({ premisesIds: ['p1'], password: '482915' });
-    });
-
-    it('duplicate phone and plan limit show the server message', async () => {
-      renderApp(
-        '/admin/members',
-        server({
-          'POST /admin/users': () =>
-            json(422, { error: 'PLAN_LIMIT', message: 'Your plan allows 5 active members, and that limit has been reached.' }),
-        }),
-      );
-      const user = userEvent.setup();
-      await user.click(await screen.findByRole('button', { name: '+ New member' }));
-      await user.type(await screen.findByLabelText('Name'), 'Ravi');
-      await user.type(screen.getByLabelText('Mobile'), '9876543210');
-      await user.type(screen.getByLabelText('Password (at least 6 characters)'), 'ravi26');
-      await user.click(within(await screen.findByRole('group', { name: 'Premises' })).getByLabelText('Head Office'));
-      await user.click(screen.getByRole('button', { name: 'Create member' }));
-      expect(await screen.findByRole('alert')).toHaveTextContent('allows 5 active members');
-      expect(screen.getByLabelText('Name')).toHaveValue('Ravi');
-    });
-
-    it('deactivate confirms in page, then marks inactive', async () => {
-      const s = server({
-        'PATCH /admin/users/u1': () => {
-          s.handlers['GET /admin/users'] = () => json(200, [person({ isActive: false })]);
-          return json(200, person({ isActive: false }));
-        },
-      });
-      renderApp('/admin/members', s);
-      const user = userEvent.setup();
-      const row = (await screen.findByText('Amit Guard')).closest('tr') as HTMLElement;
-      await user.click(within(row).getByRole('button', { name: 'Deactivate' }));
-      expect(s.calls.some((c) => c.key === 'PATCH /admin/users/u1')).toBe(false);
-      await user.click(within(row).getByRole('button', { name: 'Yes, deactivate' }));
-      expect(await screen.findByText('Inactive')).toBeInTheDocument();
-      expect(s.calls.find((c) => c.key === 'PATCH /admin/users/u1')!.body).toEqual({ isActive: false });
-    });
-
-    it('inactive member can be turned back on', async () => {
-      const s = server({
-        'GET /admin/users': () => json(200, [person({ isActive: false })]),
-        'PATCH /admin/users/u1': () => json(200, person()),
-      });
-      renderApp('/admin/members', s);
-      await userEvent.setup().click(await screen.findByRole('button', { name: 'Activate' }));
-      await waitFor(() => expect(s.calls.find((c) => c.key === 'PATCH /admin/users/u1')?.body).toEqual({ isActive: true }));
-    });
-
-    it('admin resets a member password', async () => {
-      const s = server({ 'PUT /admin/users/u1/password': () => json(204) });
-      renderApp('/admin/members', s);
-      const user = userEvent.setup();
-      const row = (await screen.findByText('Amit Guard')).closest('tr') as HTMLElement;
-      await user.click(within(row).getByRole('button', { name: 'Password reset' }));
-      await user.type(within(row).getByLabelText('New password for Amit Guard'), 'Fresh@2026x');
-      await user.click(within(row).getByRole('button', { name: 'Set' }));
-      expect(await within(row).findByRole('status')).toHaveTextContent('signed out');
-      expect(s.calls.find((c) => c.key === 'PUT /admin/users/u1/password')!.body).toEqual({ password: 'Fresh@2026x' });
-    });
-
-    it('old /admin/users link opens members', async () => {
-      renderApp('/admin/users', server());
-      expect(await screen.findByRole('heading', { level: 1, name: 'Members' })).toBeInTheDocument();
-    });
-  });
-
   describe('premises', () => {
     it('adds premises and gate', async () => {
       const s = server({
@@ -347,21 +196,6 @@ describe('admin', () => {
       await waitFor(() => expect(s.calls.some((c) => c.key === 'DELETE /admin/designations/des-mgr')).toBe(true));
     });
 
-    it('member designation list follows the chosen department', async () => {
-      renderApp('/admin/members', server());
-      const user = userEvent.setup();
-      await user.click(await screen.findByRole('button', { name: '+ New member' }));
-      const designation = await screen.findByLabelText('Designation');
-      expect(designation).toBeDisabled();
-      expect(designation).toHaveDisplayValue('Choose a department first');
-      await user.selectOptions(await screen.findByLabelText('Department'), 'd-fin');
-      expect(designation).toBeEnabled();
-      await user.selectOptions(designation, 'Manager');
-      expect(designation).toHaveValue('Manager');
-      await user.selectOptions(screen.getByLabelText('Department'), '');
-      expect(designation).toHaveValue('');
-    });
-
     it('duplicate name shows server message', async () => {
       renderApp(
         '/admin/departments',
@@ -390,16 +224,16 @@ describe('admin', () => {
     expect(await screen.findByRole('heading', { name: 'Devices' })).toBeInTheDocument();
   });
 
-  it('security cannot open members', async () => {
+  it('security cannot open users', async () => {
     signIn(USERS.security);
-    renderApp('/admin/members', server());
-    expect(await screen.findByText('You do not have access to this page.')).toBeInTheDocument();
+    renderApp('/admin/users', server());
+    expect(await screen.findByText(/You do not have access to this page/)).toBeInTheDocument();
   });
 
-  it('non-admin cannot open /admin', async () => {
+  it('an employee opening /admin lands on their own page', async () => {
     signIn(USERS.employee);
-    renderApp('/admin', server());
-    expect(await screen.findByText('You do not have access to this page.')).toBeInTheDocument();
+    renderApp('/admin', server({ 'GET /visits': () => json(200, []) }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'My visitors' })).toBeInTheDocument();
   });
 
   it('vercel config keeps SPA routes and protects invite links', () => {

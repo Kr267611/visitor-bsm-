@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import { VISIT_STATUSES } from '@visitor/shared';
 import { z } from 'zod';
-import { RequireFeature } from '../auth/permissions';
+import { RequireFeature, RequireModule } from '../auth/permissions';
 import { AuthUser, CurrentUser, Roles } from '../auth/roles.decorator';
 import { parseBody } from '../common/parse';
 import { VisitsService } from './visits.service';
@@ -26,6 +26,7 @@ export class VisitsController {
 
   @Roles('employee', 'reception', 'admin')
   @RequireFeature('invites')
+  @RequireModule('visitors')
   @Post()
   async create(@CurrentUser() user: AuthUser, @Body() body: unknown) {
     const visit = await this.visits.invite(user, parseBody(inviteSchema, body));

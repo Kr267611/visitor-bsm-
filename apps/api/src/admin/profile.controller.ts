@@ -41,6 +41,8 @@ export class ProfileController {
       premises: premisesList,
       activePremisesId: user.premisesId,
       features: user.features,
+      // What this person may open (role + admin ticks), not the raw ticks.
+      modules: user.modules,
     };
   }
 

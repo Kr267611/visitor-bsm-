@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, HttpCode, Inject, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
 import { z } from 'zod';
+import { RequireModule } from '../auth/permissions';
 import { Roles } from '../auth/roles.decorator';
 import { audit } from '../audit/audit.service';
 import { parseBody } from '../common/parse';
@@ -11,6 +12,7 @@ const departmentBody = z.object({ name: z.string().trim().min(1).max(100) });
 const designationBody = departmentBody;
 
 @Roles('admin')
+@RequireModule('departments')
 @Controller('admin/departments')
 export class DepartmentsController {
   constructor(@Inject(TENANT_PRISMA) private readonly db: TenantPrismaClient) {}
@@ -87,6 +89,7 @@ export class DepartmentsController {
 
 /** Rename or remove one designation. Members who hold it follow the change. */
 @Roles('admin')
+@RequireModule('departments')
 @Controller('admin/designations')
 export class DesignationsController {
   constructor(@Inject(TENANT_PRISMA) private readonly db: TenantPrismaClient) {}

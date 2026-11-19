@@ -121,6 +121,8 @@ export class AuthService {
 
   private async session(user: User, deviceName: string) {
     const device = await this.prisma.device.create({ data: { userId: user.id, name: deviceName } });
+    // A real sign-in (password or OTP), not a token refresh: shown as "Last login" to admins.
+    await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
     return {
       ...(await this.issueTokens(user, device.id)),
       user: { id: user.id, name: user.name, role: user.role, businessId: user.businessId },

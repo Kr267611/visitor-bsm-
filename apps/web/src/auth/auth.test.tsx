@@ -101,7 +101,7 @@ describe('login', () => {
   it('RequireRole shows no-access for wrong role', async () => {
     signIn(USERS.employee);
     renderApp('/admin/users', fakeServer());
-    expect(await screen.findByText('You do not have access to this page.')).toBeInTheDocument();
+    expect(await screen.findByText(/You do not have access to this page/)).toBeInTheDocument();
   });
 
   it('logged out user goes to login', async () => {

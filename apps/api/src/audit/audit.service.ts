@@ -8,7 +8,7 @@ type AuditClient = Pick<TenantPrismaClient, 'auditLog'>;
 export interface AuditEntry {
   entity: 'premises' | 'premises_settings' | 'gate' | 'department' | 'designation' | 'user';
   entityId: string;
-  action: 'create' | 'update' | 'delete' | 'password_reset';
+  action: 'create' | 'update' | 'delete' | 'password_reset' | 'import';
   before?: object | null;
   after?: object | null;
 }

@@ -1,3 +1,4 @@
+import type { Module } from './modules';
 import type { VisitStatus } from './status';
 import type { ErrorCode, LiveDashboard, Role, VisitSummary } from './types';
 
@@ -174,6 +175,10 @@ export interface AdminUser {
   isHost: boolean;
   isActive: boolean;
   premisesIds: string[];
+  /** Ticked modules (empty = everything the role allows). On a Profile: what this person may open. */
+  modules: Module[];
+  /** Last sign-in with password or OTP; null if never. */
+  lastLoginAt: string | null;
 }
 
 export interface MemberInput {
@@ -181,12 +186,38 @@ export interface MemberInput {
   phone: string;
   role: Role;
   premisesIds: string[];
-  email?: string;
+  email?: string | null;
   departmentId?: string | null;
-  designation?: string;
+  designation?: string | null;
   isHost?: boolean;
   isActive?: boolean;
+  modules?: Module[];
   password: string;
+}
+
+/** One spreadsheet row for the users bulk upload. Every cell is text. */
+export interface UserImportRow {
+  name?: string;
+  mobile?: string;
+  email?: string;
+  role?: string;
+  department?: string;
+  designation?: string;
+  password?: string;
+  premises?: string;
+  host?: string;
+}
+
+export interface UserImportResult {
+  created: number;
+  departmentsCreated: number;
+  designationsCreated: number;
+}
+
+/** A row the server refused; line 1 is the header row. */
+export interface UserImportProblem {
+  line: number;
+  errors: string[];
 }
 
 export interface AuditEntry {
@@ -522,6 +553,8 @@ export function createApiClient(options: ApiClientOptions) {
         search: (q: string) => request<AdminUser[]>('GET', `/admin/users${queryString({ q })}`),
         resetPassword: (id: string, password: string) =>
           request<void>('PUT', `/admin/users/${id}/password`, { body: { password } }),
+        /** All or nothing; on 422 the ApiError body has `rows`: UserImportProblem[]. */
+        importRows: (rows: UserImportRow[]) => request<UserImportResult>('POST', '/admin/users/import', { body: { rows } }),
       },
       premises: {
         ...crud<Premises, PremisesInput>('/admin/premises'),

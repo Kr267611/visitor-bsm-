@@ -4,11 +4,11 @@ import { ReactNode, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useApi } from '../api';
 import { useAuth } from '../auth/AuthProvider';
+import { useModules } from '../auth/RequireModule';
 import { LiveSiteProvider, useLiveOptional } from '../desk/LiveSiteContext';
 import { initials, ROLE_LABEL } from './Page';
 
 const DESK_ROLES: Role[] = ['reception', 'security', 'guard', 'admin'];
-const HOST_ROLES: Role[] = ['employee', 'reception', 'security', 'admin'];
 
 interface MenuLinkProps {
   to: string;
@@ -76,6 +76,8 @@ function Shell() {
   const live = useLiveOptional();
   const profile = useProfile();
   const has = useFeature();
+  const { modules } = useModules();
+  const can = (m: (typeof modules)[number]) => modules.includes(m);
   const [open, setOpen] = useState(false);
   const role = user?.role as Role;
   const close = () => setOpen(false);
@@ -105,26 +107,27 @@ function Shell() {
         </div>
         {profile.data && <PremisesSwitcher profile={profile.data} />}
         <nav aria-label="Main">
-          {DESK_ROLES.includes(role) && has('dashboard') && (
+          {can('desk') && has('dashboard') && (
             <MenuGroup title="Gate desk">
               <MenuLink to="/desk/pending" label="Awaiting approval" count={approvals} urgent={!!data?.needsCall.length} onPick={close} />
               <MenuLink to="/desk/expected" label="Expected" count={data?.expected.length} onPick={close} />
               <MenuLink to="/desk/inside" label="Inside" count={data?.inside.length} onPick={close} />
             </MenuGroup>
           )}
-          {HOST_ROLES.includes(role) && (
+          {can('visitors') && (
             <MenuGroup title="My visitors">
               <MenuLink to="/my" end label="Visitor list" onPick={close} />
               {role !== 'security' && has('invites') && <MenuLink to="/my/invite" label="New invite" onPick={close} />}
               <MenuLink to="/my/backup" label="Backup person" onPick={close} />
             </MenuGroup>
           )}
-          {(role === 'admin' || role === 'security') && (
+          {(can('users') || can('premises') || can('departments') || can('devices')) && (
             <MenuGroup title="Admin">
-              {role === 'admin' && <MenuLink to="/admin/members" label="Members" onPick={close} />}
-              {role === 'admin' && <MenuLink to="/admin/premises" label="Premises & gates" onPick={close} />}
-              {role === 'admin' && <MenuLink to="/admin/departments" label="Departments" onPick={close} />}
-              <MenuLink to="/admin/devices" label="Devices" onPick={close} />
+              {can('users') && <MenuLink to="/admin/users" label="Users" onPick={close} />}
+              {can('premises') && <MenuLink to="/admin/premises" label="Premises & gates" onPick={close} />}
+              {can('departments') && <MenuLink to="/admin/departments" label="Departments" onPick={close} />}
+              {can('departments') && <MenuLink to="/admin/designations" label="Designations" onPick={close} />}
+              {can('devices') && <MenuLink to="/admin/devices" label="Devices" onPick={close} />}
             </MenuGroup>
           )}
         </nav>

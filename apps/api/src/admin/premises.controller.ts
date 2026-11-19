@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Inject, Param, ParseUUIDPipe, Patch, Post, Put } from '@nestjs/common';
 import { z } from 'zod';
+import { RequireModule } from '../auth/permissions';
 import { Roles } from '../auth/roles.decorator';
 import { audit } from '../audit/audit.service';
 import { ApiException } from '../common/api-exception';
@@ -51,6 +52,7 @@ const gateUpdate = z.object({ name: z.string().trim().min(1).max(100), isActive:
 
 /** Premises, their settings and gates. Scoped client: every query stays inside the business. */
 @Roles('admin')
+@RequireModule('premises')
 @Controller('admin')
 export class PremisesController {
   constructor(

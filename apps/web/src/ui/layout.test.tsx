@@ -66,11 +66,12 @@ describe('side menu', () => {
 
   it('admin sees all three groups', async () => {
     signIn(USERS.admin);
-    renderApp('/admin/members', server());
-    await screen.findByRole('heading', { level: 1, name: 'Members' });
+    renderApp('/admin/users', server());
+    await screen.findByRole('heading', { level: 1, name: 'Users' });
     expect(groups()).toEqual(['Gate desk', 'My visitors', 'Admin']);
     expect(within(menu()).getByRole('link', { name: 'Premises & gates' })).toBeInTheDocument();
     expect(within(menu()).getByRole('link', { name: 'Departments' })).toBeInTheDocument();
+    expect(within(menu()).getByRole('link', { name: 'Designations' })).toBeInTheDocument();
     expect(within(menu()).getByRole('link', { name: 'Devices' })).toBeInTheDocument();
   });
 

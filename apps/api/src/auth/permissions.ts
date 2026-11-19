@@ -1,3 +1,4 @@
+import type { Module } from '@visitor/shared';
 import { CanActivate, ExecutionContext, Injectable, SetMetadata } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ApiException } from '../common/api-exception';
@@ -44,6 +45,32 @@ export class FeatureGuard implements CanActivate {
     const user: AuthUser | undefined = context.switchToHttp().getRequest().user;
     if (!user?.features.includes(feature)) {
       throw new ApiException(403, 'FEATURE_RESTRICTED', FEATURE_RESTRICTED_MESSAGE, { feature });
+    }
+    return true;
+  }
+}
+
+export const MODULE_KEY = 'module';
+
+/** The route belongs to this screen; the member needs it in their module access (role AND admin's ticks). */
+export const RequireModule = (module: Module) => SetMetadata(MODULE_KEY, module);
+
+export const MODULE_FORBIDDEN_MESSAGE = 'You do not have access to this module. Ask your admin.';
+
+/** Module access per member, checked after role (RolesGuard) and plan (FeatureGuard). */
+@Injectable()
+export class ModuleGuard implements CanActivate {
+  constructor(private readonly reflector: Reflector) {}
+
+  canActivate(context: ExecutionContext): boolean {
+    const module = this.reflector.getAllAndOverride<Module | undefined>(MODULE_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (!module) return true;
+    const user: AuthUser | undefined = context.switchToHttp().getRequest().user;
+    if (!user?.modules.includes(module)) {
+      throw new ApiException(403, 'MODULE_FORBIDDEN', MODULE_FORBIDDEN_MESSAGE, { module });
     }
     return true;
   }

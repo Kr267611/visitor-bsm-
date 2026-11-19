@@ -3,7 +3,6 @@ import { FormEvent, ReactNode, useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { errorMessage, useApi } from '../api';
 import { useAuth } from './AuthProvider';
-import { homeFor } from './RequireRole';
 
 const DEVICE = 'Web browser';
 
@@ -50,7 +49,8 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  if (user) return <Navigate to={safeNext(params.get('next')) ?? homeFor(user.role)} replace />;
+  // '/' picks the first page this person's modules allow.
+  if (user) return <Navigate to={safeNext(params.get('next')) ?? '/'} replace />;
 
   /** Any sign-in path: a session signs the user in; several businesses show the picker. */
   async function attempt(work: () => Promise<Session>, onFail?: () => void) {

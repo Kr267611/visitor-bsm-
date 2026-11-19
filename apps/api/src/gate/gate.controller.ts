@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import { z } from 'zod';
-import { RequireFeature } from '../auth/permissions';
+import { RequireFeature, RequireModule } from '../auth/permissions';
 import { AuthUser, CurrentUser, Roles } from '../auth/roles.decorator';
 import { parseBody } from '../common/parse';
 import { GateService } from './gate.service';
@@ -29,6 +29,7 @@ const walkInSchema = z.object({
 });
 
 @Roles('guard', 'reception')
+@RequireModule('desk')
 @Controller()
 export class GateController {
   constructor(

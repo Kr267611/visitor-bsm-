@@ -18,7 +18,7 @@ export function RequireRole({ roles, children }: { roles: Role[]; children: Reac
 
 export const homeFor = (role: Role): string => {
   if (role === 'employee') return '/my';
-  if (role === 'admin') return '/admin/members';
+  if (role === 'admin') return '/admin/users';
   if (role === 'super_admin') return '/platform';
   return '/desk';
 };

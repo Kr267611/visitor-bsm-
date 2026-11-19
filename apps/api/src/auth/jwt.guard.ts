@@ -1,6 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
+import { effectiveModules } from '@visitor/shared';
 import { ApiException } from '../common/api-exception';
 import { PrismaService } from '../prisma/prisma.service';
 import { fillContext } from '../tenancy/request-context';
@@ -58,6 +59,7 @@ export class SessionResolver {
       premisesIds: premises.map((p) => p.id),
       deviceId: device.id,
       features: user.business?.plan.features ?? [],
+      modules: effectiveModules(user.role, user.modules),
     };
   }
 }

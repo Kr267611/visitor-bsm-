@@ -53,7 +53,7 @@ function DesignationChip({
 }
 
 /** Designations of one department, with a small form to add another. */
-function Designations({ dept, onError }: { dept: Department; onError(message: string | null): void }) {
+export function Designations({ dept, onError }: { dept: Department; onError(message: string | null): void }) {
   const api = useApi();
   const queryClient = useQueryClient();
   const [name, setName] = useState('');
