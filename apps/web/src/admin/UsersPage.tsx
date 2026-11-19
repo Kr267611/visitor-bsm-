@@ -707,7 +707,7 @@ export function UsersPage() {
                 </td>
                 <td className="mono">{u.phone}</td>
                 <td>
-                  <span className={`badge ${u.role === 'admin' ? 'badge-good' : 'badge-neutral'}`}>{ROLE_LABEL[u.role] ?? u.role}</span>
+                  <span className={`badge ${u.role === 'admin' ? 'badge-brand' : 'badge-neutral'}`}>{ROLE_LABEL[u.role] ?? u.role}</span>
                 </td>
                 <td>{deptName(u.departmentId) || '—'}</td>
                 <td>{u.designation || '—'}</td>

@@ -206,7 +206,7 @@ export function PremisesPage() {
             {premises.data?.map((p) => (
               <tr key={p.id}>
                 <td>
-                  {p.name} {p.isDefault && <span className="badge badge-good">Default</span>}
+                  {p.name} {p.isDefault && <span className="badge badge-brand">Default</span>}
                 </td>
                 <td className="mono">{p.code}</td>
                 <td>
