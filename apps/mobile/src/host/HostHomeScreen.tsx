@@ -3,9 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet } from 'react-native';
 import { errorMessage, useApi } from '../api';
-import { Button, colors, ErrorText, Muted, Title } from '../ui/kit';
+import { Button, ErrorText, Muted, themed, ThemeToggle, Title } from '../ui/kit';
 
 export function HostHomeScreen() {
+  const styles = useStyles();
   const api = useApi();
   const router = useRouter();
   const visits = useQuery({ queryKey: ['visits', 'mine'], queryFn: () => api.visits.list({ scope: 'mine' }) });
@@ -25,10 +26,13 @@ export function HostHomeScreen() {
         />
       ))}
       <Button title="Settings" kind="plain" onPress={() => router.push('/(host)/settings')} />
+      <ThemeToggle />
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  page: { padding: 16, gap: 12, backgroundColor: colors.bg },
-});
+const useStyles = themed((colors) =>
+  StyleSheet.create({
+    page: { padding: 16, gap: 12, backgroundColor: colors.bg },
+  }),
+);

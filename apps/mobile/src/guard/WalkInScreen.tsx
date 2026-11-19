@@ -4,7 +4,7 @@ import * as Crypto from 'expo-crypto';
 import { useEffect, useRef, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { errorMessage, useApi } from '../api';
-import { Button, colors, ErrorText, Field, Muted, Screen, Title } from '../ui/kit';
+import { Button, ErrorText, Field, Muted, Screen, themed, Title } from '../ui/kit';
 import { capturePhoto } from './capturePhoto';
 import { useGate } from './useGate';
 import { WaitingForHost } from './WaitingForHost';
@@ -12,6 +12,7 @@ import { WaitingForHost } from './WaitingForHost';
 const RESEND_DELAY_MS = 30_000;
 
 export function WalkInScreen({ resendDelayMs = RESEND_DELAY_MS }: { resendDelayMs?: number }) {
+  const styles = useStyles();
   const api = useApi();
   const { gate } = useGate();
   const [step, setStep] = useState<'phone' | 'form' | 'wait'>('phone');
@@ -211,12 +212,14 @@ export function WalkInScreen({ resendDelayMs = RESEND_DELAY_MS }: { resendDelayM
   );
 }
 
-const styles = StyleSheet.create({
-  form: { padding: 16, gap: 14, backgroundColor: colors.bg },
-  photo: { width: 140, height: 140, borderRadius: 10, backgroundColor: colors.line },
-  check: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', paddingVertical: 6 },
-  box: { width: 28, height: 28, borderWidth: 2, borderColor: colors.accent, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
-  boxOn: { backgroundColor: colors.accent },
-  tick: { color: colors.accentInk, fontWeight: '700' },
-  checkText: { flex: 1, fontSize: 15, color: colors.ink },
-});
+const useStyles = themed((colors) =>
+  StyleSheet.create({
+    form: { padding: 16, gap: 14, backgroundColor: colors.bg },
+    photo: { width: 140, height: 140, borderRadius: 10, backgroundColor: colors.line },
+    check: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', paddingVertical: 6 },
+    box: { width: 28, height: 28, borderWidth: 2, borderColor: colors.accent, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
+    boxOn: { backgroundColor: colors.accent },
+    tick: { color: colors.accentInk, fontWeight: '700' },
+    checkText: { flex: 1, fontSize: 15, color: colors.ink },
+  }),
+);

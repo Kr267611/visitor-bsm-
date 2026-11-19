@@ -3,9 +3,10 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, Text } from 'react-native';
 import { errorMessage, useApi } from '../api';
 import { useAuth } from '../auth/AuthProvider';
-import { Button, colors, ErrorText, Field, Muted, Title } from '../ui/kit';
+import { Button, ErrorText, Field, Muted, themed, ThemeToggle, Title } from '../ui/kit';
 
 export function SettingsScreen() {
+  const styles = useStyles();
   const api = useApi();
   const { user, logout } = useAuth();
   const queryClient = useQueryClient();
@@ -31,7 +32,7 @@ export function SettingsScreen() {
       <Muted>If you do not respond in time, the approval request goes to your backup person.</Muted>
       {me.data?.delegateName ? (
         <>
-          <Text style={styles.line}>Abhi backup: {me.data.delegateName}</Text>
+          <Text style={styles.line}>Current backup: {me.data.delegateName}</Text>
           <Button title="Remove backup" kind="plain" onPress={() => void setDelegate(null)} />
         </>
       ) : null}
@@ -42,12 +43,15 @@ export function SettingsScreen() {
           <Button key={host.id} kind="plain" title={host.name} onPress={() => void setDelegate(host.id)} />
         ))}
       {error ? <ErrorText>{error}</ErrorText> : null}
+      <ThemeToggle />
       <Button title="Log out" kind="plain" onPress={() => void logout()} />
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  page: { padding: 16, gap: 12, backgroundColor: colors.bg },
-  line: { fontSize: 16, color: colors.ink },
-});
+const useStyles = themed((colors) =>
+  StyleSheet.create({
+    page: { padding: 16, gap: 12, backgroundColor: colors.bg },
+    line: { fontSize: 16, color: colors.ink },
+  }),
+);

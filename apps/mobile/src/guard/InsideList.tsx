@@ -5,13 +5,14 @@ import { useRef, useState } from 'react';
 import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { errorMessage, useApi } from '../api';
 import { useLiveUpdates } from '../live/useLive';
-import { Button, colors, ErrorText, Field, Muted, Title } from '../ui/kit';
+import { Button, ErrorText, Field, Muted, themed, Title } from '../ui/kit';
 import { useGate } from './useGate';
 
 const KEY = ['dashboard', 'live'];
 const POLL_MS = 30_000;
 
 function Row(props: { visit: VisitSummary; gateId: string | null; mode: 'in' | 'out' }) {
+  const styles = useStyles();
   const { visit, gateId, mode } = props;
   const api = useApi();
   const queryClient = useQueryClient();
@@ -68,6 +69,7 @@ function Row(props: { visit: VisitSummary; gateId: string | null; mode: 'in' | '
 }
 
 export function InsideList() {
+  const styles = useStyles();
   const api = useApi();
   const queryClient = useQueryClient();
   const { gate } = useGate();
@@ -103,12 +105,14 @@ export function InsideList() {
   );
 }
 
-const styles = StyleSheet.create({
-  page: { padding: 16, gap: 12, backgroundColor: colors.bg },
-  heading: { fontSize: 18, fontWeight: '700', color: colors.ink, marginTop: 8 },
-  row: { backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.line, padding: 12, gap: 10 },
-  person: { flexDirection: 'row', gap: 12, alignItems: 'center' },
-  photo: { width: 56, height: 56, borderRadius: 8, backgroundColor: colors.line },
-  text: { flex: 1 },
-  name: { fontSize: 18, fontWeight: '600', color: colors.ink },
-});
+const useStyles = themed((colors) =>
+  StyleSheet.create({
+    page: { padding: 16, gap: 12, backgroundColor: colors.bg },
+    heading: { fontSize: 18, fontWeight: '700', color: colors.ink, marginTop: 8 },
+    row: { backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.line, padding: 12, gap: 10 },
+    person: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+    photo: { width: 56, height: 56, borderRadius: 8, backgroundColor: colors.line },
+    text: { flex: 1 },
+    name: { fontSize: 18, fontWeight: '600', color: colors.ink },
+  }),
+);

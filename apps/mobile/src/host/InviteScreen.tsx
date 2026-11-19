@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { errorMessage, useApi } from '../api';
-import { Button, colors, ErrorText, Field, Title } from '../ui/kit';
+import { Button, ErrorText, Field, themed, Title } from '../ui/kit';
 
 const todayIst = () =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -13,6 +13,7 @@ const DATE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 export function InviteScreen() {
+  const styles = useStyles();
   const api = useApi();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -71,6 +72,8 @@ export function InviteScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  page: { padding: 16, gap: 12, backgroundColor: colors.bg },
-});
+const useStyles = themed((colors) =>
+  StyleSheet.create({
+    page: { padding: 16, gap: 12, backgroundColor: colors.bg },
+  }),
+);

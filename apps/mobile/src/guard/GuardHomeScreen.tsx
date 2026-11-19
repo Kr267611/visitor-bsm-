@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AppState, Linking, StyleSheet, View } from 'react-native';
 import { errorMessage, useApi } from '../api';
 import { useAuth } from '../auth/AuthProvider';
-import { Button, colors, ErrorText, Muted, Screen, Title } from '../ui/kit';
+import { Button, ErrorText, Muted, Screen, themed, ThemeToggle, Title } from '../ui/kit';
 import { createScanGate } from './createScanGate';
 import { ScanResult } from './ScanResult';
 import { ScanOutcome, scanWithRetry } from './scanWithRetry';
@@ -14,6 +14,7 @@ import { useGate } from './useGate';
 type Mode = 'IN' | 'OUT';
 
 export function GuardHomeScreen() {
+  const styles = useStyles();
   const api = useApi();
   const router = useRouter();
   const { logout } = useAuth();
@@ -147,6 +148,9 @@ export function GuardHomeScreen() {
           </View>
         ) : null}
         <View style={styles.mode}>
+          <ThemeToggle />
+        </View>
+        <View style={styles.mode}>
           <Button title="Log out" kind="plain" onPress={() => void logout()} />
         </View>
       </View>
@@ -154,9 +158,11 @@ export function GuardHomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  modes: { flexDirection: 'row', gap: 10 },
-  mode: { flex: 1 },
-  camera: { flex: 1, borderRadius: 14, overflow: 'hidden', backgroundColor: colors.ink },
-  noCamera: { flex: 1, gap: 12, justifyContent: 'center' },
-});
+const useStyles = themed((colors) =>
+  StyleSheet.create({
+    modes: { flexDirection: 'row', gap: 10 },
+    mode: { flex: 1 },
+    camera: { flex: 1, borderRadius: 14, overflow: 'hidden', backgroundColor: colors.ink },
+    noCamera: { flex: 1, gap: 12, justifyContent: 'center' },
+  }),
+);

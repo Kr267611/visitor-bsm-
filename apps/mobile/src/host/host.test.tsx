@@ -192,7 +192,7 @@ describe('host screens', () => {
       await renderScreen(<SettingsScreen />, s);
       await fireEvent.changeText(await screen.findByLabelText('Search for a backup person'), 'ravi');
       await fireEvent.press(await screen.findByRole('button', { name: 'Ravi Kumar' }));
-      expect(await screen.findByText(/Abhi backup: Ravi Kumar/)).toBeTruthy();
+      expect(await screen.findByText(/Current backup: Ravi Kumar/)).toBeTruthy();
       expect(s.calls.find((c) => c.key === 'PATCH /me')!.body).toEqual({ delegateId: 'u2' });
     });
 

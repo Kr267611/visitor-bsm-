@@ -1,5 +1,5 @@
 import { Image, StyleSheet, Text, View } from 'react-native';
-import { Button, colors, Muted } from '../ui/kit';
+import { Button, Muted, themed } from '../ui/kit';
 import type { ScanOutcome } from './scanWithRetry';
 
 const TIME = new Intl.DateTimeFormat('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
@@ -11,6 +11,7 @@ interface Props {
 }
 
 export function ScanResult({ outcome, onNext, onWalkIn }: Props) {
+  const styles = useStyles();
   if (outcome.kind === 'ok') {
     const { data } = outcome;
     return (
@@ -55,16 +56,18 @@ export function ScanResult({ outcome, onNext, onWalkIn }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  panel: { flex: 1, borderRadius: 14, padding: 20, gap: 14, justifyContent: 'center' },
-  good: { backgroundColor: colors.goodSoft },
-  wait: { backgroundColor: colors.waitSoft },
-  bad: { backgroundColor: colors.badSoft },
-  verdict: { fontSize: 26, fontWeight: '700' },
-  goodText: { color: colors.good },
-  waitText: { color: colors.wait },
-  badText: { color: colors.bad },
-  photo: { width: 220, height: 220, borderRadius: 12, alignSelf: 'center', backgroundColor: colors.line },
-  name: { fontSize: 24, fontWeight: '700', color: colors.ink, textAlign: 'center' },
-  host: { fontSize: 18, color: colors.ink, textAlign: 'center' },
-});
+const useStyles = themed((colors) =>
+  StyleSheet.create({
+    panel: { flex: 1, borderRadius: 14, padding: 20, gap: 14, justifyContent: 'center' },
+    good: { backgroundColor: colors.goodSoft },
+    wait: { backgroundColor: colors.waitSoft },
+    bad: { backgroundColor: colors.badSoft },
+    verdict: { fontSize: 26, fontWeight: '700' },
+    goodText: { color: colors.good },
+    waitText: { color: colors.wait },
+    badText: { color: colors.bad },
+    photo: { width: 220, height: 220, borderRadius: 12, alignSelf: 'center', backgroundColor: colors.line },
+    name: { fontSize: 24, fontWeight: '700', color: colors.ink, textAlign: 'center' },
+    host: { fontSize: 18, color: colors.ink, textAlign: 'center' },
+  }),
+);

@@ -3,7 +3,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Image, ScrollView, StyleSheet, Text } from 'react-native';
 import { errorMessage, useApi } from '../api';
-import { Button, colors, ErrorText, Field, Muted, Title } from '../ui/kit';
+import { Button, ErrorText, Field, Muted, themed, Title } from '../ui/kit';
 
 const WHEN = new Intl.DateTimeFormat('en-IN', {
   day: 'numeric',
@@ -15,6 +15,7 @@ const WHEN = new Intl.DateTimeFormat('en-IN', {
 });
 
 export function VisitScreen() {
+  const styles = useStyles();
   const { id = '' } = useLocalSearchParams<{ id: string }>();
   const api = useApi();
   const queryClient = useQueryClient();
@@ -117,9 +118,11 @@ export function VisitScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  page: { padding: 16, gap: 12, backgroundColor: colors.bg },
-  status: { fontSize: 14, fontWeight: '700', color: colors.accent },
-  line: { fontSize: 16, color: colors.ink },
-  photo: { width: 180, height: 180, borderRadius: 10, backgroundColor: colors.line },
-});
+const useStyles = themed((colors) =>
+  StyleSheet.create({
+    page: { padding: 16, gap: 12, backgroundColor: colors.bg },
+    status: { fontSize: 14, fontWeight: '700', color: colors.accent },
+    line: { fontSize: 16, color: colors.ink },
+    photo: { width: 180, height: 180, borderRadius: 10, backgroundColor: colors.line },
+  }),
+);

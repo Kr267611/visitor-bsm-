@@ -31,10 +31,6 @@
     },
     "backgroundColor": "#faf3e8",
     "primaryColor": "#790b13",
-    "userInterfaceStyle": "light",
-    "androidNavigationBar": {
-      "backgroundColor": "#faf3e8",
-      "barStyle": "dark-content"
-    }
+    "userInterfaceStyle": "automatic"
   }
 }
