@@ -3,7 +3,7 @@ import * as Device from 'expo-device';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { errorMessage, useApi } from '../api';
-import { Button, ErrorText, Field, Muted, Screen, ThemeToggle, Title } from '../ui/kit';
+import { Button, ErrorText, Field, Muted, Screen, Title } from '../ui/kit';
 import { useAuth } from './AuthProvider';
 import { homeRouteFor } from './homeRoute';
 
@@ -78,7 +78,6 @@ export function LoginScreen() {
         </>
       )}
       {error ? <ErrorText>{error}</ErrorText> : null}
-      <ThemeToggle />
     </Screen>
   );
 }

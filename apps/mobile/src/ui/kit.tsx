@@ -2,8 +2,8 @@ import { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
 import { themed, useTheme } from './theme';
 
-export { palettes, ThemeProvider, themed, useTheme } from './theme';
-export type { Palette, ThemeName } from './theme';
+export { palette, ThemeProvider, themed, useTheme } from './theme';
+export type { Palette } from './theme';
 
 export function Button(props: {
   title: string;
@@ -77,19 +77,6 @@ export function Title({ children }: { children: ReactNode }) {
 export function Screen({ children }: { children: ReactNode }) {
   const styles = useStyles();
   return <View style={styles.screen}>{children}</View>;
-}
-
-/** Day / Night switch; the choice is kept on this phone. */
-export function ThemeToggle() {
-  const { name, toggle } = useTheme();
-  return (
-    <Button
-      kind="plain"
-      title={name === 'dark' ? '☀ Day mode' : '☾ Night mode'}
-      label={name === 'dark' ? 'Switch to day mode' : 'Switch to night mode'}
-      onPress={toggle}
-    />
-  );
 }
 
 const useStyles = themed((colors) =>

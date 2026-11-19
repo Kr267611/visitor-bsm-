@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet } from 'react-native';
 import { errorMessage, useApi } from '../api';
-import { Button, ErrorText, Muted, themed, ThemeToggle, Title } from '../ui/kit';
+import { Button, ErrorText, Muted, themed, Title } from '../ui/kit';
 
 export function HostHomeScreen() {
   const styles = useStyles();
@@ -26,7 +26,6 @@ export function HostHomeScreen() {
         />
       ))}
       <Button title="Settings" kind="plain" onPress={() => router.push('/(host)/settings')} />
-      <ThemeToggle />
     </ScrollView>
   );
 }

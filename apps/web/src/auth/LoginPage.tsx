@@ -2,7 +2,6 @@ import { BusinessChoice, businessChoice, normalizeIndianPhone, Session } from '@
 import { FormEvent, ReactNode, useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { errorMessage, useApi } from '../api';
-import { ThemeToggle } from '../ui/theme';
 import { useAuth } from './AuthProvider';
 
 const DEVICE = 'Web browser';
@@ -30,7 +29,6 @@ function AuthFrame({ children }: { children: ReactNode }) {
         </ul>
       </section>
       <div className="auth-side">
-        <ThemeToggle className="theme-toggle-corner" />
         <div className="auth-card">{children}</div>
       </div>
     </main>

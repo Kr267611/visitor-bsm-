@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AppState, Linking, StyleSheet, View } from 'react-native';
 import { errorMessage, useApi } from '../api';
 import { useAuth } from '../auth/AuthProvider';
-import { Button, ErrorText, Muted, Screen, themed, ThemeToggle, Title } from '../ui/kit';
+import { Button, ErrorText, Muted, Screen, themed, Title } from '../ui/kit';
 import { createScanGate } from './createScanGate';
 import { ScanResult } from './ScanResult';
 import { ScanOutcome, scanWithRetry } from './scanWithRetry';
@@ -147,9 +147,6 @@ export function GuardHomeScreen() {
             <Button title="Change gate" kind="plain" onPress={() => setChoosingGate(true)} />
           </View>
         ) : null}
-        <View style={styles.mode}>
-          <ThemeToggle />
-        </View>
         <View style={styles.mode}>
           <Button title="Log out" kind="plain" onPress={() => void logout()} />
         </View>

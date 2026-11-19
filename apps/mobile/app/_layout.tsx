@@ -4,17 +4,15 @@ import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { ApiProvider, createMobileClient } from '../src/api';
 import { AuthProvider } from '../src/auth/AuthProvider';
-import { ThemeProvider, useTheme } from '../src/ui/kit';
+import { palette, ThemeProvider } from '../src/ui/kit';
 
 const mobile = createMobileClient(process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000');
 
-/** Status bar and screen background follow Day / Night. */
 function ThemedStack() {
-  const { name, colors } = useTheme();
   return (
     <>
-      <StatusBar style={name === 'dark' ? 'light' : 'dark'} />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
+      <StatusBar style="dark" />
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: palette.bg } }} />
     </>
   );
 }

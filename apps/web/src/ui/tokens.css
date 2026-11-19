@@ -1,39 +1,30 @@
-/* Brand: Midnight Navy #1B1E4A, Warm Stone Grey #AFAEA2 and Crimson Red #D21319, with frosted glass panels. */
+/* Brand: Powder Blue #8DB9F0, Soft Lavender White #E9E8F8 and Warm Sunset Peach #F5B69E, with deep indigo for actions. One theme. */
 :root {
-  --brand: #1b1e4a;
-  --cream: #efeee8;
-  --bg: #e9e7e0;
+  --brand: #3d3592;
+  --powder: #8db9f0;
+  --lavender: #e9e8f8;
+  --peach: #f5b69e;
+  --peach-ink: #5a2414;
+  --bg: #e9e8f8;
   --surface: #ffffff;
-  --surface-2: #f6f5f1;
-  --ink: #16182f;
-  --muted: #4b4a44;
-  --line: #dedcd3;
-  --line-strong: #c9c7bc;
-  --accent: #d21319;
-  --accent-hover: #b00f14;
+  --surface-2: #f5f4fc;
+  --ink: #1b1a3a;
+  --muted: #4c4a70;
+  --line: #dcdbf0;
+  --line-strong: #c9c7e6;
+  --accent: #3d3592;
+  --accent-hover: #2f2873;
   --accent-ink: #ffffff;
-  --accent-soft: #fdeeee;
-  /* Status colours stay apart from the brand: green = approved / inside, orange-red = rejected / error. */
+  --accent-soft: #e3eefc;
+  /* Status colours stay apart from the brand: green = approved / inside, red = rejected / error, amber = waiting. */
   --good: #13663d;
   --good-soft: #ddf1e6;
   --wait: #8a5100;
   --wait-soft: #fbebcf;
-  --bad: #b3400b;
-  --bad-soft: #fde6d8;
-  --neutral-soft: #eeede8;
-  /* Frosted glass for the side menu, top bar and summary cards; tables and forms stay solid. */
-  --glass: rgba(255, 255, 255, 0.6);
-  --glass-line: rgba(255, 255, 255, 0.75);
-  --blob-1: rgba(27, 30, 74, 0.35);
-  --blob-2: rgba(210, 19, 25, 0.22);
-  --blob-3: rgba(175, 174, 162, 0.55);
-  /* Side menu: burgundy with cream text. */
-  --side-bg: rgba(27, 30, 74, 0.93);
-  --side-ink: #efeee8;
-  --side-muted: #c2c1b7;
-  --side-line: rgba(239, 238, 232, 0.16);
-  --side-hover: rgba(239, 238, 232, 0.1);
-  --shadow: 0 1px 2px rgba(22, 24, 47, 0.05), 0 6px 24px rgba(22, 24, 47, 0.08);
+  --bad: #b42318;
+  --bad-soft: #fde4e1;
+  --neutral-soft: #eeedf8;
+  --shadow: 0 1px 2px rgba(27, 26, 58, 0.05), 0 4px 14px rgba(27, 26, 58, 0.06);
   --radius: 10px;
   --display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
   --body: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
@@ -41,81 +32,11 @@
   color-scheme: light;
 }
 
-/* Night colours (midnight navy glass, crimson accent): chosen with the Day / Night switch, or from the device when nothing is chosen. */
-:root[data-theme='dark'] {
-  --bg: #0c0e26;
-  --surface: #171a40;
-  --surface-2: #1f2350;
-  --ink: #efeee8;
-  --muted: #c2c1b7;
-  --line: #2c3066;
-  --line-strong: #3a3f80;
-  --accent: #ff7a7f;
-  --accent-hover: #ff9a9e;
-  --accent-ink: #1b0a0c;
-  --accent-soft: #3a1a2a;
-  --good: #7fe0aa;
-  --good-soft: #143022;
-  --wait: #ecb862;
-  --wait-soft: #3a2f17;
-  --bad: #ffa06b;
-  --bad-soft: #3a1f12;
-  --neutral-soft: #262a5c;
-  --glass: rgba(27, 30, 74, 0.55);
-  --glass-line: rgba(255, 255, 255, 0.12);
-  --blob-1: rgba(42, 47, 138, 0.55);
-  --blob-2: rgba(210, 19, 25, 0.3);
-  --blob-3: rgba(90, 89, 80, 0.35);
-  --side-bg: rgba(12, 14, 38, 0.72);
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-  color-scheme: dark;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --bg: #0c0e26;
-    --surface: #171a40;
-    --surface-2: #1f2350;
-    --ink: #efeee8;
-    --muted: #c2c1b7;
-    --line: #2c3066;
-    --line-strong: #3a3f80;
-    --accent: #ff7a7f;
-    --accent-hover: #ff9a9e;
-    --accent-ink: #1b0a0c;
-    --accent-soft: #3a1a2a;
-    --good: #7fe0aa;
-    --good-soft: #143022;
-    --wait: #ecb862;
-    --wait-soft: #3a2f17;
-    --bad: #ffa06b;
-    --bad-soft: #3a1f12;
-    --neutral-soft: #262a5c;
-    --glass: rgba(27, 30, 74, 0.55);
-    --glass-line: rgba(255, 255, 255, 0.12);
-    --blob-1: rgba(42, 47, 138, 0.55);
-    --blob-2: rgba(210, 19, 25, 0.3);
-    --blob-3: rgba(90, 89, 80, 0.35);
-  --glass: rgba(27, 30, 74, 0.55);
-  --glass-line: rgba(255, 255, 255, 0.12);
-  --blob-1: rgba(42, 47, 138, 0.55);
-  --blob-2: rgba(210, 19, 25, 0.3);
-  --blob-3: rgba(90, 89, 80, 0.35);
-    --side-bg: rgba(12, 14, 38, 0.72);
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-    color-scheme: dark;
-  }
-}
-
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  background:
-    radial-gradient(42vmax 42vmax at 8% 12%, var(--blob-1), transparent 70%),
-    radial-gradient(38vmax 38vmax at 88% 78%, var(--blob-2), transparent 70%),
-    radial-gradient(34vmax 34vmax at 55% 105%, var(--blob-3), transparent 70%),
-    var(--bg);
-  background-attachment: fixed;
+  background: var(--bg);
   color: var(--ink);
   font-family: var(--body);
   font-size: 16px;
@@ -219,15 +140,15 @@ button.link:hover:not(:disabled) { background: none; }
   justify-content: space-between;
   gap: 32px;
   padding: 48px clamp(24px, 5vw, 64px);
-  background: radial-gradient(60% 50% at 85% 90%, rgba(210, 19, 25, 0.45), transparent 70%), linear-gradient(160deg, #1b1e4a 0%, #0c0e26 100%);
-  color: #efeee8;
+  background: linear-gradient(160deg, #3d3592 0%, #2e2a6e 100%);
+  color: #e9e8f8;
 }
 .auth-brand h2 { font-size: clamp(1.8rem, 3vw, 2.6rem); letter-spacing: -0.02em; color: #ffffff; max-width: 14ch; }
 .auth-brand ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; max-width: 36ch; }
 .auth-brand li { display: flex; gap: 10px; align-items: flex-start; }
-.auth-brand li::before { content: ''; flex: none; width: 8px; height: 8px; margin-top: 8px; border-radius: 50%; background: #d21319; }
-.auth-brand .eyebrow { color: #c2c1b7; }
-.auth-side { position: relative; display: grid; place-items: center; padding: 24px 16px; }
+.auth-brand li::before { content: ''; flex: none; width: 8px; height: 8px; margin-top: 8px; border-radius: 50%; background: #f5b69e; }
+.auth-brand .eyebrow { color: #b9b6e6; }
+.auth-side { display: grid; place-items: center; padding: 24px 16px; }
 .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 10px; background: var(--neutral-soft); }
 .tabs button { border: 0; background: none; min-height: 38px; color: var(--muted); }
 .tabs button:hover:not(:disabled) { background: none; color: var(--ink); }
@@ -383,13 +304,13 @@ tbody tr:hover { background: var(--surface-2); }
 /* Premises QR poster */
 .poster-page { min-height: 100vh; display: grid; justify-items: center; align-content: start; gap: 16px; padding: 24px 16px; }
 .poster-tools { width: 100%; max-width: 560px; display: flex; justify-content: space-between; align-items: center; }
-.poster { width: 100%; max-width: 560px; background: #ffffff; color: #16182f; border: 1px solid var(--line); border-radius: 16px; padding: 36px 28px; display: grid; justify-items: center; gap: 14px; text-align: center; }
+.poster { width: 100%; max-width: 560px; background: #ffffff; color: #1b1a3a; border: 1px solid var(--line); border-radius: 16px; padding: 36px 28px; display: grid; justify-items: center; gap: 14px; text-align: center; }
 .poster h1 { font-size: 2.4rem; }
-.poster .eyebrow { color: #4b4a44; }
+.poster .eyebrow { color: #4c4a70; }
 .poster-place { font-size: 1.3rem; font-weight: 600; }
-.poster-qr { padding: 12px; border: 2px solid #1b1e4a; border-radius: 12px; line-height: 0; }
+.poster-qr { padding: 12px; border: 2px solid #3d3592; border-radius: 12px; line-height: 0; }
 .poster-steps { text-align: left; margin: 0; padding-left: 1.4em; display: grid; gap: 4px; font-size: 1.05rem; }
-.poster-url { color: #4b4a44; overflow-wrap: anywhere; }
+.poster-url { color: #4c4a70; overflow-wrap: anywhere; }
 @media print {
   .no-print { display: none !important; }
   body { background: #ffffff; }
@@ -418,53 +339,6 @@ tbody tr:hover { background: var(--surface-2); }
 .row-actions, .row-actions .row { flex-wrap: nowrap; gap: 8px; }
 .nowrap { white-space: nowrap; }
 
-/* Navy glass side menu (and the phone top bar). Local colour tokens so every child follows. */
-.sidebar,
-.mobile-bar {
-  --ink: var(--side-ink);
-  --muted: var(--side-muted);
-  --line: var(--side-line);
-  --surface-2: var(--side-hover);
-  --accent: var(--side-ink);
-  --accent-soft: var(--side-hover);
-  --neutral-soft: rgba(255, 240, 220, 0.16);
-  background: var(--side-bg);
-  color: var(--side-ink);
-  border-color: var(--side-line);
-}
-.sidebar .menu-link.active { background: #d21319; color: #ffffff; }
-.sidebar .menu-link.active .menu-count { background: rgba(255, 255, 255, 0.22); color: #ffffff; }
-.sidebar .brand-mark,
-.sidebar .avatar { background: #d21319; color: #ffffff; }
-.sidebar select { background: #ffffff; color: #16182f; border-color: transparent; }
-.mobile-bar button { background: transparent; color: var(--side-ink); border-color: var(--side-line); }
-
-/* Day / Night switch */
-.theme-toggle { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 4px 12px; border-radius: 999px; font-size: 0.85rem; }
-.theme-toggle span { font-size: 1rem; line-height: 1; }
-.theme-toggle-side { margin-left: auto; min-height: 28px; padding: 2px 10px; background: transparent; color: var(--side-ink); border-color: var(--side-line); }
-.theme-toggle-side:hover:not(:disabled) { background: var(--side-hover); border-color: var(--side-line); }
-.theme-toggle-corner { position: absolute; top: 16px; right: 16px; }
-.mobile-bar .row { flex-wrap: nowrap; gap: 8px; }
-
-/* Frosted glass: side menu, phone top bar, summary cards and the sign-in card. Data tables and forms stay solid. */
-.sidebar,
-.mobile-bar,
-.stat,
-.auth-card {
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
-  backdrop-filter: blur(18px) saturate(140%);
-}
-.stat,
-.auth-card { background: var(--glass); border-color: var(--glass-line); }
-.stat.active { background: var(--accent-soft); }
-.sidebar { border-right-color: var(--glass-line); }
-/* Without blur support, or when the device asks for less transparency, everything is solid. */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .stat, .auth-card { background: var(--surface); }
-  .sidebar, .mobile-bar { background: #1b1e4a; }
-}
-@media (prefers-reduced-transparency: reduce) {
-  .stat, .auth-card { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
-  .sidebar, .mobile-bar { background: #1b1e4a; -webkit-backdrop-filter: none; backdrop-filter: none; }
-}
+/* Peach marks what needs attention: urgent counts and the open gate-desk card. */
+.menu-count-urgent { background: var(--peach); color: var(--peach-ink); }
+.stat.active { border-color: var(--powder); background: var(--accent-soft); }

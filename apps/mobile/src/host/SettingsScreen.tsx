@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, Text } from 'react-native';
 import { errorMessage, useApi } from '../api';
 import { useAuth } from '../auth/AuthProvider';
-import { Button, ErrorText, Field, Muted, themed, ThemeToggle, Title } from '../ui/kit';
+import { Button, ErrorText, Field, Muted, themed, Title } from '../ui/kit';
 
 export function SettingsScreen() {
   const styles = useStyles();
@@ -43,7 +43,6 @@ export function SettingsScreen() {
           <Button key={host.id} kind="plain" title={host.name} onPress={() => void setDelegate(host.id)} />
         ))}
       {error ? <ErrorText>{error}</ErrorText> : null}
-      <ThemeToggle />
       <Button title="Log out" kind="plain" onPress={() => void logout()} />
     </ScrollView>
   );
