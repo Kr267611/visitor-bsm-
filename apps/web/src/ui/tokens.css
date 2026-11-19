@@ -21,6 +21,12 @@
   --bad: #b03a0c;
   --bad-soft: #fde4d6;
   --neutral-soft: #f1e7da;
+  /* Side menu: burgundy with cream text. */
+  --side-bg: #790b13;
+  --side-ink: #fff0dc;
+  --side-muted: #e9c9b8;
+  --side-line: rgba(255, 240, 220, 0.18);
+  --side-hover: rgba(255, 240, 220, 0.1);
   --shadow: 0 1px 2px rgba(42, 18, 20, 0.05), 0 4px 14px rgba(42, 18, 20, 0.06);
   --radius: 10px;
   --display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
@@ -49,6 +55,7 @@
     --bad: #ff9466;
     --bad-soft: #3e1f14;
     --neutral-soft: #2f1f21;
+    --side-bg: #3b0a0f;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
     color-scheme: dark;
   }
@@ -360,3 +367,24 @@ tbody tr:hover { background: var(--surface-2); }
 .saved { color: var(--good); font-weight: 500; }
 .row-actions, .row-actions .row { flex-wrap: nowrap; gap: 8px; }
 .nowrap { white-space: nowrap; }
+
+/* Burgundy side menu (and the phone top bar). Local colour tokens so every child follows. */
+.sidebar,
+.mobile-bar {
+  --ink: var(--side-ink);
+  --muted: var(--side-muted);
+  --line: var(--side-line);
+  --surface-2: var(--side-hover);
+  --accent: var(--side-ink);
+  --accent-soft: var(--side-hover);
+  --neutral-soft: rgba(255, 240, 220, 0.16);
+  background: var(--side-bg);
+  color: var(--side-ink);
+  border-color: var(--side-line);
+}
+.sidebar .menu-link.active { background: var(--side-ink); color: var(--side-bg); }
+.sidebar .menu-link.active .menu-count { background: rgba(121, 11, 19, 0.12); color: var(--side-bg); }
+.sidebar .brand-mark,
+.sidebar .avatar { background: var(--side-ink); color: var(--side-bg); }
+.sidebar select { background: #fffdf9; color: #2a1214; border-color: transparent; }
+.mobile-bar button { background: transparent; color: var(--side-ink); border-color: var(--side-line); }
