@@ -29,7 +29,7 @@
     "ios": {
       "bundleIdentifier": "in.bsm.visitor"
     },
-    "backgroundColor": "#faf3e8",
+    "backgroundColor": "#f3f3f4",
     "primaryColor": "#790b13",
     "userInterfaceStyle": "automatic"
   }

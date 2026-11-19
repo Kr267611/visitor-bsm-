@@ -4,13 +4,13 @@ import { useColorScheme } from 'react-native';
 
 export type ThemeName = 'light' | 'dark';
 
-/** Brand: Deep Crimson Burgundy #790B13 on Warm Ivory Cream #FFF0DC (same as the web app). */
+/** Brand: Deep Crimson Burgundy #790B13, cream #FFF0DC text on burgundy, neutral grey screens (same as the web app). */
 const light = {
-  bg: '#faf3e8',
-  surface: '#fffdf9',
-  ink: '#2a1214',
-  muted: '#6e5a55',
-  line: '#eadccb',
+  bg: '#f3f3f4',
+  surface: '#ffffff',
+  ink: '#1d1d1f',
+  muted: '#5f5f66',
+  line: '#e4e4e7',
   accent: '#790b13',
   accentSoft: '#f7e3dc',
   /** Text on the accent colour. */
@@ -25,22 +25,22 @@ const light = {
 };
 export type Palette = typeof light;
 
-/** Night: black with a burgundy-rose accent, the same colours as the web app's night mode. */
+/** Night: charcoal grey with a burgundy-rose accent, the same colours as the web app's night mode. */
 const dark: Palette = {
-  bg: '#0a0a0a',
-  surface: '#141414',
-  ink: '#f5f2ee',
-  muted: '#a9a39e',
-  line: '#2a2a2a',
+  bg: '#1c1c1e',
+  surface: '#2a2a2d',
+  ink: '#f5f5f4',
+  muted: '#b0b0b6',
+  line: '#3a3a3e',
   accent: '#f2b3b0',
-  accentSoft: '#2b1416',
+  accentSoft: '#3d2224',
   accentInk: '#3b060a',
-  good: '#74d39f',
-  goodSoft: '#10271a',
-  wait: '#e9b35a',
-  waitSoft: '#2e230e',
-  bad: '#ff9466',
-  badSoft: '#33190f',
+  good: '#7ad6a4',
+  goodSoft: '#1c3527',
+  wait: '#ecb862',
+  waitSoft: '#3a2f17',
+  bad: '#ff9b70',
+  badSoft: '#40241a',
 };
 
 export const palettes: Record<ThemeName, Palette> = { light, dark };
