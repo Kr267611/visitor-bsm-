@@ -1,6 +1,6 @@
 import type { AdminUser, Department } from '@visitor/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
 import { errorMessage, useApi } from '../api';
 import { EmptyState, PageHeader, ROLE_LABEL } from '../ui/Page';
 import { Designations } from './DepartmentsPage';
@@ -82,6 +82,85 @@ function PersonRow({ user, departments }: { user: AdminUser; departments: Depart
   );
 }
 
+/** Add a designation to any department straight from the top of the page. */
+function AddDesignation({ departments, preferred }: { departments: Department[]; preferred: string }) {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  const [picked, setPicked] = useState('');
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [added, setAdded] = useState<string | null>(null);
+
+  // Follow the department filter until the admin picks one here.
+  const deptId = picked || (departments.some((d) => d.id === preferred) ? preferred : '');
+  const dept = departments.find((d) => d.id === deptId);
+  const existing = dept?.designations ?? [];
+
+  async function add(event: FormEvent) {
+    event.preventDefault();
+    const title = name.trim();
+    if (!dept || !title) return;
+    setError(null);
+    setAdded(null);
+    setBusy(true);
+    try {
+      await api.admin.departments.addDesignation(dept.id, title);
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'departments'] });
+      setName('');
+      setAdded(`Added ${title} to ${dept.name}.`);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form className="form-card" onSubmit={add} aria-label="New designation">
+      <h2>New designation</h2>
+      {departments.length === 0 ? (
+        <p className="muted">Add a department first on the Departments page.</p>
+      ) : (
+        <>
+          <div className="add-row">
+            <select aria-label="Add to department" value={deptId} onChange={(e) => setPicked(e.target.value)} required>
+              <option value="">Choose a department</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+            <input
+              aria-label="Designation name"
+              placeholder="e.g. Executive, Supervisor, Master"
+              maxLength={60}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+            <button type="submit" className="primary" disabled={busy || !dept || !name.trim()}>
+              {busy ? 'Adding…' : 'Add designation'}
+            </button>
+          </div>
+          {dept && (
+            <p className="muted small">
+              {existing.length ? `Already in ${dept.name}: ${existing.map((d) => d.name).join(', ')}` : `${dept.name} has no designations yet.`}
+            </p>
+          )}
+        </>
+      )}
+      {error && (
+        <p role="alert" className="error">
+          {error}
+        </p>
+      )}
+      {added && <p role="status" className="saved">{added}</p>}
+    </form>
+  );
+}
+
 /** Give everyone their designation: pick a department, manage its titles, set each person's title. */
 export function DesignationsPage() {
   const api = useApi();
@@ -106,8 +185,9 @@ export function DesignationsPage() {
     <>
       <PageHeader
         title="Designations"
-        subtitle="Set the designation of every person. Pick a department to add or rename its designations."
+        subtitle="Add designations to a department, then set the designation of every person."
       />
+      {departments.data && <AddDesignation departments={departments.data} preferred={department} />}
       <section className="panel filter-panel" aria-label="Choose people">
         <div className="filters">
           <input type="search" aria-label="Search people" placeholder="Search name or mobile…" value={q} onChange={(e) => setQ(e.target.value)} />

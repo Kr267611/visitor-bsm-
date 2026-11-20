@@ -265,6 +265,32 @@ describe('designations panel', () => {
     );
   });
 
+  it('adds a designation to a department from the top of the page', async () => {
+    const s = server({ 'POST /admin/departments/d-qc/designations': () => json(201, { id: 'des-ins', name: 'Inspector' }) });
+    renderApp('/admin/designations', s);
+    const user = userEvent.setup();
+    const form = await screen.findByRole('form', { name: 'New designation' });
+    const add = await within(form).findByRole('button', { name: 'Add designation' });
+    expect(add).toBeDisabled();
+    await user.selectOptions(within(form).getByLabelText('Add to department'), 'd-qc');
+    expect(within(form).getByText('QC has no designations yet.')).toBeInTheDocument();
+    await user.type(within(form).getByLabelText('Designation name'), ' Inspector ');
+    await user.click(add);
+    expect(await within(form).findByRole('status')).toHaveTextContent('Added Inspector to QC.');
+    expect(s.calls.find((c) => c.key === 'POST /admin/departments/d-qc/designations')?.body).toEqual({ name: 'Inspector' });
+    expect(within(form).getByLabelText('Designation name')).toHaveValue('');
+  });
+
+  it('the add form follows the department filter and lists what is already there', async () => {
+    renderApp('/admin/designations', server());
+    const user = userEvent.setup();
+    await screen.findByLabelText('Designation of Abhishek Sah');
+    await user.selectOptions(screen.getByLabelText('Department'), 'd-mis');
+    const form = screen.getByRole('form', { name: 'New designation' });
+    expect(within(form).getByLabelText('Add to department')).toHaveValue('d-mis');
+    expect(within(form).getByText('Already in MIS: Executive, Manager')).toBeInTheDocument();
+  });
+
   it('choosing a department shows only its people and lets you manage its designations', async () => {
     renderApp('/admin/designations', server());
     const user = userEvent.setup();
