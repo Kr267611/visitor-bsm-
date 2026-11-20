@@ -26,12 +26,6 @@ function server(over: Handlers = {}) {
     [`GET ${BASE}`]: () => json(200, info()),
     [`POST ${BASE}/otp`]: () => json(204),
     [`POST ${BASE}/verify`]: () => json(200, session()),
-    [`GET ${BASE}/hosts`]: () =>
-      json(200, [
-        { id: 'h1', name: 'Anita Singh', department: 'Finance', designation: 'Manager' },
-        { id: 'h2', name: 'Rakesh Patel', department: 'Weaving', designation: 'Master' },
-        { id: 'h3', name: 'Suresh Yadav', department: 'Weaving', designation: 'Supervisor' },
-      ]),
     [`POST ${BASE}/photo`]: () => json(201, { key: 'self/p/s/x.jpg' }),
     [`POST ${BASE}/check-in`]: () => json(201, { status: 'PENDING_APPROVAL', token: 'tok-9', existing: false }),
     'GET /public/invites/tok-9': () =>
@@ -50,11 +44,21 @@ function server(over: Handlers = {}) {
 
 type User = ReturnType<typeof userEvent.setup>;
 
-async function verifyPhone(user: User) {
-  await user.type(await screen.findByLabelText('Mobile number'), '9876543210');
+/** Fills the whole form; the OTP comes after it. */
+async function fillForm(user: User, purpose = 'Interview for the weaving master post') {
+  await user.type(await screen.findByLabelText('Your name'), 'Rahul Verma');
+  await user.type(screen.getByLabelText('Mobile number'), '9876543210');
+  await user.type(screen.getByLabelText('Company or firm'), 'ABC Traders');
+  await user.type(screen.getByLabelText('Purpose of visit'), purpose);
+  await user.upload(screen.getByLabelText('Your photo'), new File(['raw'], 'me.jpg', { type: 'image/jpeg' }));
+  await user.click(screen.getByRole('checkbox', { name: /I agree/ }));
+}
+
+async function fillAndVerify(user: User) {
+  await fillForm(user);
   await user.click(screen.getByRole('button', { name: 'Send OTP' }));
   await user.type(await screen.findByLabelText('OTP'), '123456');
-  await user.click(screen.getByRole('button', { name: 'Verify' }));
+  await user.click(screen.getByRole('button', { name: 'Verify and send request' }));
 }
 
 describe('QR self check-in page', () => {
@@ -64,23 +68,24 @@ describe('QR self check-in page', () => {
   });
   afterEach(() => vi.unstubAllGlobals());
 
-  it('new visitor: OTP, writes the purpose, photo, consent, then the waiting screen', async () => {
+  it('form first, then OTP, then the request goes to the desk', async () => {
     const s = server();
     renderApp('/p/acme/head-office', s);
     const user = userEvent.setup();
     expect(await screen.findByText('Acme Pvt Ltd · Head Office')).toBeInTheDocument();
-    await verifyPhone(user);
 
-    await user.type(await screen.findByLabelText('Your name'), 'Rahul Verma');
-    await user.type(screen.getByLabelText('Company or firm'), 'ABC Traders');
-    // No department or person list: the visitor writes the purpose, and the request goes to the desk.
+    // The form is the first screen; nothing is sent until it is complete.
+    expect(screen.queryByLabelText('OTP')).toBeNull();
     expect(screen.queryByLabelText('Department')).toBeNull();
-    const submit = screen.getByRole('button', { name: 'Send request' });
-    expect(submit).toBeDisabled();
-    await user.type(screen.getByLabelText('Purpose of visit'), 'Interview for the weaving master post');
-    await user.upload(screen.getByLabelText('Your photo'), new File(['raw'], 'me.jpg', { type: 'image/jpeg' }));
-    await user.click(screen.getByRole('checkbox', { name: /I agree/ }));
-    await user.click(submit);
+    const sendOtp = screen.getByRole('button', { name: 'Send OTP' });
+    expect(sendOtp).toBeDisabled();
+    await fillForm(user);
+    expect(s.calls.some((c) => c.key === `POST ${BASE}/otp`)).toBe(false);
+    await user.click(sendOtp);
+
+    expect(s.calls.find((c) => c.key === `POST ${BASE}/otp`)!.body).toEqual({ phone: '+919876543210' });
+    await user.type(await screen.findByLabelText('OTP'), '123456');
+    await user.click(screen.getByRole('button', { name: 'Verify and send request' }));
 
     expect(await screen.findByText(/Waiting for approval/)).toBeInTheDocument();
     const body = s.calls.find((c) => c.key === `POST ${BASE}/check-in`)!;
@@ -94,21 +99,37 @@ describe('QR self check-in page', () => {
     expect((body.init.headers as Record<string, string>)['x-checkin-session']).toBe('sess-1');
   });
 
-  it('returning visitor is greeted, prefilled and does not need a new photo', async () => {
+  it('a wrong number is caught before any OTP is sent', async () => {
+    const s = server();
+    renderApp('/p/acme/head-office', s);
+    const user = userEvent.setup();
+    await fillForm(user);
+    await user.clear(screen.getByLabelText('Mobile number'));
+    await user.type(screen.getByLabelText('Mobile number'), '12345');
+    await user.click(screen.getByRole('button', { name: 'Send OTP' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('valid 10-digit');
+    expect(s.calls.some((c) => c.key === `POST ${BASE}/otp`)).toBe(false);
+  });
+
+  it('a failed request after OTP can be fixed and sent again without a new OTP', async () => {
+    let fail = true;
     const s = server({
-      [`POST ${BASE}/verify`]: () => json(200, session({ visitor: { name: 'Rahul Verma', company: 'ACME', hasPhoto: true } })),
+      [`POST ${BASE}/check-in`]: () =>
+        fail
+          ? json(422, { error: 'VALIDATION_FAILED', message: 'Please write the purpose of your visit.' })
+          : json(201, { status: 'PENDING_APPROVAL', token: 'tok-9', existing: false }),
     });
     renderApp('/p/acme/head-office', s);
     const user = userEvent.setup();
-    await verifyPhone(user);
-    expect(await screen.findByRole('heading', { name: 'Welcome back, Rahul Verma' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Company or firm')).toHaveValue('ACME');
-    expect(screen.getByLabelText('New photo (optional)')).toBeInTheDocument();
-    await user.type(screen.getByLabelText('Purpose of visit'), 'Payment follow-up with accounts');
-    await user.click(screen.getByRole('checkbox', { name: /I agree/ }));
+    await fillAndVerify(user);
+    expect(await screen.findByRole('alert')).toHaveTextContent('purpose');
+    await user.click(screen.getByRole('button', { name: 'Edit my details' }));
+    expect(screen.getByLabelText('Your name')).toHaveValue('Rahul Verma');
+    fail = false;
     await user.click(screen.getByRole('button', { name: 'Send request' }));
-    await screen.findByText(/Waiting for approval/);
-    expect(s.calls.some((c) => c.key === `POST ${BASE}/photo`)).toBe(false);
+    expect(await screen.findByText(/Waiting for approval/)).toBeInTheDocument();
+    expect(s.calls.filter((c) => c.key === `POST ${BASE}/verify`)).toHaveLength(1);
+    expect(s.calls.filter((c) => c.key === `POST ${BASE}/photo`)).toHaveLength(1);
   });
 
   it('a visitor already inside can check out', async () => {
@@ -118,7 +139,7 @@ describe('QR self check-in page', () => {
     });
     renderApp('/p/acme/head-office', s);
     const user = userEvent.setup();
-    await verifyPhone(user);
+    await fillAndVerify(user);
     expect(await screen.findByRole('heading', { name: 'You are checked in' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Show my pass' })).toHaveAttribute('href', '/v/tok-9');
     await user.click(screen.getByRole('button', { name: 'Check out' }));
@@ -127,7 +148,7 @@ describe('QR self check-in page', () => {
 
   it('an open visit goes straight to its status page', async () => {
     renderApp('/p/acme/head-office', server({ [`POST ${BASE}/verify`]: () => json(200, session({ activeVisit: { status: 'PENDING_APPROVAL', token: 'tok-9' } })) }));
-    await verifyPhone(userEvent.setup());
+    await fillAndVerify(userEvent.setup());
     expect(await screen.findByText(/Waiting for approval/)).toBeInTheDocument();
   });
 
@@ -146,13 +167,13 @@ describe('QR self check-in page', () => {
     renderApp('/p/acme/head-office', s);
     const user = userEvent.setup();
     allow = false;
-    await verifyPhone(user);
+    await fillAndVerify(user);
     expect(await screen.findByRole('alert')).toHaveTextContent('allow location access');
     expect(s.calls.some((c) => c.key === `POST ${BASE}/verify`)).toBe(false);
     allow = true;
     await user.type(screen.getByLabelText('OTP'), '123456');
-    await user.click(screen.getByRole('button', { name: 'Verify' }));
-    await screen.findByLabelText('Your name');
+    await user.click(screen.getByRole('button', { name: 'Verify and send request' }));
+    await screen.findByText(/Waiting for approval/);
     expect(s.calls.find((c) => c.key === `POST ${BASE}/verify`)!.body.location).toEqual({ lat: 21.17, lng: 72.83, accuracy: 20 });
   });
 
@@ -161,7 +182,7 @@ describe('QR self check-in page', () => {
       '/p/acme/head-office',
       server({ [`POST ${BASE}/verify`]: () => json(403, { error: 'OUTSIDE_PREMISES', message: 'You need to be at the premises to check in.' }) }),
     );
-    await verifyPhone(userEvent.setup());
+    await fillAndVerify(userEvent.setup());
     expect(await screen.findByRole('alert')).toHaveTextContent('You need to be at the premises');
     expect(screen.getByLabelText('OTP')).toHaveValue('');
   });

@@ -1,11 +1,11 @@
 import { ApiError, GeoPosition, normalizeIndianPhone, SelfCheckInSession } from '@visitor/shared';
 import { useQuery } from '@tanstack/react-query';
-import { ChangeEvent, FormEvent, ReactNode, useEffect, useRef, useState, useMemo } from 'react';
+import { ChangeEvent, FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { errorMessage, useApi } from '../api';
 import { compressPhoto, PhotoError } from './compressPhoto';
 
-type Step = 'phone' | 'otp' | 'details' | 'checked-in' | 'done';
+type Step = 'form' | 'otp' | 'checked-in' | 'done';
 
 /** Browser location for premises with a geofence. Rejects with a visitor-friendly message. */
 function currentPosition(): Promise<GeoPosition> {
@@ -39,10 +39,10 @@ function Shell({ title, subtitle, children }: { title: string; subtitle?: string
 }
 
 /**
- * Visitor self check-in from the premises QR poster. The poster only starts the flow:
- * OTP proves the phone, the reception desk approves, and the visitor's status page becomes the gate pass.
+ * Visitor self check-in from the premises QR poster. The visitor fills the whole form first,
+ * then an OTP proves the phone and the request goes to the reception desk. Once approved,
+ * the visitor's status page becomes the gate pass.
  */
-
 export function SelfCheckInPage() {
   const { business = '', premises = '' } = useParams();
   const api = useApi();
@@ -50,21 +50,20 @@ export function SelfCheckInPage() {
   const desk = useMemo(() => api.selfCheckIn(business, premises), [api, business, premises]);
   const info = useQuery({ queryKey: ['self-checkin', business, premises], queryFn: desk.info, retry: false });
 
-  const [step, setStep] = useState<Step>('phone');
-  const [phone, setPhone] = useState('');
-  const [otp, setOtp] = useState('');
-  const [session, setSession] = useState<SelfCheckInSession | null>(null);
-  const [location, setLocation] = useState<GeoPosition | undefined>();
+  const [step, setStep] = useState<Step>('form');
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [company, setCompany] = useState('');
   const [purpose, setPurpose] = useState('');
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [consent, setConsent] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [session, setSession] = useState<SelfCheckInSession | null>(null);
+  const [location, setLocation] = useState<GeoPosition | undefined>();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const uploadedKey = useRef<string | null>(null);
-
 
   useEffect(
     () => () => {
@@ -85,45 +84,6 @@ export function SelfCheckInPage() {
     }
   }
 
-  function sendOtp(event: FormEvent) {
-    event.preventDefault();
-    const normalized = normalizeIndianPhone(phone);
-    if (!normalized) {
-      setError('Enter a valid 10-digit mobile number.');
-      return;
-    }
-    void run(async () => {
-      await desk.requestOtp(normalized);
-      setStep('otp');
-    });
-  }
-
-  function verify(event: FormEvent) {
-    event.preventDefault();
-    void run(async () => {
-      const where = info.data?.needsLocation ? await currentPosition() : undefined;
-      setLocation(where);
-      try {
-        const result = await desk.verify({ phone, otp, location: where });
-        setSession(result);
-        const active = result.activeVisit;
-        if (active?.status === 'CHECKED_IN') {
-          setStep('checked-in');
-        } else if (active) {
-          // An open visit already exists here: its page shows the pass, the form or the status.
-          navigate(`/v/${active.token}`, { replace: true });
-        } else {
-          setName(result.visitor?.name ?? '');
-          setCompany(result.visitor?.company ?? '');
-          setStep('details');
-        }
-      } catch (e) {
-        setOtp('');
-        throw e;
-      }
-    });
-  }
-
   async function choosePhoto(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -140,24 +100,78 @@ export function SelfCheckInPage() {
     }
   }
 
-  const needsPhoto = !session?.visitor?.hasPhoto;
-  const canSubmit = !!name.trim() && purpose.trim().length >= 3 && consent && (!needsPhoto || !!photo) && !busy;
+  const formReady = !!name.trim() && !!phone.trim() && purpose.trim().length >= 3 && !!photo && consent;
 
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    if (!session || !canSubmit) return;
-    void run(async () => {
+  /** Sends the request to the desk with a verified session. */
+  async function sendRequest(current: SelfCheckInSession, where: GeoPosition | undefined) {
+    try {
       // On retry, do not upload the photo again.
-      if (photo) uploadedKey.current ??= (await desk.uploadPhoto(session.sessionToken, photo)).key;
-      const result = await desk.checkIn(session.sessionToken, {
+      if (photo) uploadedKey.current ??= (await desk.uploadPhoto(current.sessionToken, photo)).key;
+      const result = await desk.checkIn(current.sessionToken, {
         name: name.trim(),
         company: company.trim() || undefined,
         purpose: purpose.trim(),
         photoKey: uploadedKey.current ?? undefined,
         consent,
-        location,
+        location: where,
       });
       navigate(`/v/${result.token}`, { replace: true });
+    } catch (e) {
+      // An expired session needs a new OTP; anything else can be retried as is.
+      if (e instanceof ApiError && e.status === 401) {
+        setSession(null);
+        setOtp('');
+      }
+      throw e;
+    }
+  }
+
+  function submitForm(event: FormEvent) {
+    event.preventDefault();
+    if (!formReady || busy) return;
+    const normalized = normalizeIndianPhone(phone);
+    if (!normalized) {
+      setError('Enter a valid 10-digit mobile number.');
+      return;
+    }
+    void run(async () => {
+      if (session) {
+        // Number already verified (the visitor went back to fix a detail).
+        await sendRequest(session, location);
+        return;
+      }
+      await desk.requestOtp(normalized);
+      setOtp('');
+      setStep('otp');
+    });
+  }
+
+  function verify(event: FormEvent) {
+    event.preventDefault();
+    void run(async () => {
+      if (session) {
+        await sendRequest(session, location);
+        return;
+      }
+      const where = info.data?.needsLocation ? await currentPosition() : undefined;
+      setLocation(where);
+      let result: SelfCheckInSession;
+      try {
+        result = await desk.verify({ phone, otp, location: where });
+      } catch (e) {
+        setOtp('');
+        throw e;
+      }
+      setSession(result);
+      const active = result.activeVisit;
+      if (active?.status === 'CHECKED_IN') {
+        setStep('checked-in');
+      } else if (active) {
+        // An open visit already exists here: its page shows the pass or the status.
+        navigate(`/v/${active.token}`, { replace: true });
+      } else {
+        await sendRequest(result, where);
+      }
     });
   }
 
@@ -178,7 +192,11 @@ export function SelfCheckInPage() {
   if (info.isPending) return <Shell title="Loading…" />;
   if (info.isError) {
     const missing = info.error instanceof ApiError && info.error.status === 404;
-    return <Shell title={missing ? 'This check-in link is not valid' : 'Something went wrong'}>{!missing && <p className="muted">{errorMessage(info.error)}</p>}</Shell>;
+    return (
+      <Shell title={missing ? 'This check-in link is not valid' : 'Something went wrong'}>
+        {!missing && <p className="muted">{errorMessage(info.error)}</p>}
+      </Shell>
+    );
   }
   const place = info.data;
   const subtitle = `${place.businessName} · ${place.premisesName}`;
@@ -221,57 +239,69 @@ export function SelfCheckInPage() {
     );
   }
 
-  if (step === 'phone') {
-    return (
-      <Shell title="Visitor check-in" subtitle={subtitle}>
-        <p className="muted">Check in with your mobile number. No app needed.</p>
-        <form className="stack" onSubmit={sendOtp}>
-          <label htmlFor="sc-phone">Mobile number</label>
-          <input id="sc-phone" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required />
-          <button type="submit" className="primary" disabled={busy}>
-            Send OTP
-          </button>
-        </form>
-        {alert}
-      </Shell>
-    );
-  }
-
   if (step === 'otp') {
     return (
       <Shell title="Enter the OTP" subtitle={subtitle}>
         <p className="muted">
-          We sent a 6-digit code to {phone}.
-          {place.needsLocation && ' We will also check that you are at the premises.'}
+          {session
+            ? 'Your number is verified. Send your request again.'
+            : `We sent a 6-digit code to ${phone}. Your request goes to the reception desk once you verify.`}
+          {!session && place.needsLocation && ' We will also check that you are at the premises.'}
         </p>
         <form className="stack" onSubmit={verify}>
-          <label htmlFor="sc-otp">OTP</label>
-          <input
-            id="sc-otp"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={6}
-            value={otp}
-            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-            required
-          />
-          <button type="submit" className="primary" disabled={busy || otp.length !== 6}>
-            {busy ? 'Please wait…' : 'Verify'}
+          {!session && (
+            <>
+              <label htmlFor="sc-otp">OTP</label>
+              <input
+                id="sc-otp"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                required
+              />
+            </>
+          )}
+          {alert}
+          <button type="submit" className="primary" disabled={busy || (!session && otp.length !== 6)}>
+            {busy ? 'Please wait…' : session ? 'Send request' : 'Verify and send request'}
           </button>
-          <button type="button" className="link" onClick={() => setStep('phone')}>
-            Change number
+          <button
+            type="button"
+            className="link"
+            onClick={() => {
+              setError(null);
+              setStep('form');
+            }}
+          >
+            {session ? 'Edit my details' : 'Edit details or change number'}
           </button>
         </form>
-        {alert}
       </Shell>
     );
   }
 
   return (
-    <Shell title={session?.visitor ? `Welcome back, ${session.visitor.name}` : 'Your details'} subtitle={subtitle}>
-      <form className="stack" onSubmit={submit}>
+    <Shell title="Visitor check-in" subtitle={subtitle}>
+      <p className="muted">Fill in your details. We will then send an OTP to your mobile. No app needed.</p>
+      <form className="stack" onSubmit={submitForm}>
         <label htmlFor="sc-name">Your name</label>
         <input id="sc-name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" required />
+
+        <label htmlFor="sc-phone">Mobile number</label>
+        <input
+          id="sc-phone"
+          inputMode="tel"
+          autoComplete="tel"
+          value={phone}
+          onChange={(e) => {
+            setPhone(e.target.value);
+            // A new number has to be verified again.
+            if (session) setSession(null);
+          }}
+          required
+        />
 
         <label htmlFor="sc-company">Company or firm</label>
         <input
@@ -294,7 +324,7 @@ export function SelfCheckInPage() {
         />
         <p className="muted small">Your request goes to the reception desk, who will let you in.</p>
 
-        <label htmlFor="sc-photo">{needsPhoto ? 'Your photo' : 'New photo (optional)'}</label>
+        <label htmlFor="sc-photo">Your photo</label>
         <input id="sc-photo" type="file" accept="image/*" capture="user" onChange={choosePhoto} />
         {preview && <img src={preview} alt="Selected photo" className="photo-preview" />}
         <p className="muted small">The guard uses this to recognise you at the gate.</p>
@@ -308,8 +338,8 @@ export function SelfCheckInPage() {
         </label>
 
         {alert}
-        <button type="submit" className="primary" disabled={!canSubmit}>
-          {busy ? 'Please wait…' : 'Send request'}
+        <button type="submit" className="primary" disabled={!formReady || busy}>
+          {busy ? 'Please wait…' : session ? 'Send request' : 'Send OTP'}
         </button>
       </form>
     </Shell>
