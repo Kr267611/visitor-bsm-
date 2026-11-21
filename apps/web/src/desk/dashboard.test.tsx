@@ -95,6 +95,17 @@ describe('dashboard', () => {
     expect(within(menu).getAllByRole('link')[0]).toHaveTextContent('Dashboard');
   });
 
+  it('the phone menu bar links the main pages and opens the full menu', async () => {
+    renderApp('/dashboard', server());
+    await screen.findByRole('heading', { level: 1, name: 'Dashboard' });
+    const bar = screen.getByRole('navigation', { name: 'Quick menu' });
+    expect(within(bar).getAllByRole('link').map((l) => l.getAttribute('aria-label'))).toEqual(['Home', 'Gate desk', 'My visitors']);
+    expect(within(bar).getByRole('link', { name: 'Home' })).toHaveClass('active');
+    const more = within(bar).getByRole('button', { name: 'More' });
+    await userEvent.setup().click(more);
+    expect(more).toHaveAttribute('aria-expanded', 'true');
+  });
+
   it('a guard has no dashboard', async () => {
     signIn(USERS.guard);
     renderApp('/dashboard', server());

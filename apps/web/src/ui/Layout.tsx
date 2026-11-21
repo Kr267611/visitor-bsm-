@@ -28,6 +28,30 @@ function MenuLink({ to, label, count, urgent, end, onPick }: MenuLinkProps) {
   );
 }
 
+const BOTTOM_ICONS: Record<string, ReactNode> = {
+  home: <path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z" />,
+  gate: <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M12 7v5l3 2" />,
+  people: <path d="M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M3 20v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1M16 4.5a3.5 3.5 0 0 1 0 6.5M21 20v-1a5 5 0 0 0-3-4.6" />,
+  more: <path d="M5 12h.01M12 12h.01M19 12h.01" strokeWidth="3" />,
+};
+
+function BottomIcon({ name }: { name: keyof typeof BOTTOM_ICONS }) {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {BOTTOM_ICONS[name]}
+    </svg>
+  );
+}
+
+function BottomLink({ to, label, icon, count, onPick }: { to: string; label: string; icon: keyof typeof BOTTOM_ICONS; count?: number; onPick(): void }) {
+  return (
+    <NavLink to={to} aria-label={label} title={label} onClick={onPick} className="bottom-item">
+      <BottomIcon name={icon} />
+      {!!count && <span className="bottom-count">{count}</span>}
+    </NavLink>
+  );
+}
+
 function MenuGroup({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="menu-group">
@@ -154,6 +178,31 @@ function Shell() {
       <main className="content">
         <Outlet />
       </main>
+
+      {/* Phones: the main pages one tap away, in a round bar at the bottom. */}
+      <nav aria-label="Quick menu" className="bottom-bar">
+        {can('desk') && has('dashboard') && role !== 'guard' && (
+          <BottomLink to="/dashboard" label="Home" icon="home" onPick={close} />
+        )}
+        {can('desk') && has('dashboard') && (
+          <BottomLink to="/desk" label="Gate desk" icon="gate" count={approvals} onPick={close} />
+        )}
+        {can('visitors') && <BottomLink to="/my" label="My visitors" icon="people" onPick={close} />}
+        <button
+          type="button"
+          className="bottom-item"
+          aria-label="More"
+          aria-expanded={open}
+          aria-controls="side-menu"
+          onClick={() => {
+            setOpen(!open);
+            // The full menu opens at the top of the page.
+            document.scrollingElement?.scrollTo?.({ top: 0 });
+          }}
+        >
+          <BottomIcon name="more" />
+        </button>
+      </nav>
     </div>
   );
 }
