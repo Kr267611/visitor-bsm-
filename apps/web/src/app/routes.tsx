@@ -11,6 +11,7 @@ import { LoginPage } from '../auth/LoginPage';
 import { PasswordPage } from '../auth/PasswordPage';
 import { homeForModules, RequireModule, useModules } from '../auth/RequireModule';
 import { RequireRole } from '../auth/RequireRole';
+import { DashboardPage } from '../desk/DashboardPage';
 import { DeskPage } from '../desk/DeskPage';
 import { ApprovalPage } from '../host/ApprovalPage';
 import { DelegateSetting } from '../host/DelegateSetting';
@@ -87,6 +88,16 @@ export function AppRoutes() {
           </RequireRole>
         }
       >
+        <Route path="/dashboard" element={<Allow module="desk" />}>
+          <Route
+            index
+            element={
+              <RequireRole roles={['admin', 'reception', 'security']}>
+                <DashboardPage />
+              </RequireRole>
+            }
+          />
+        </Route>
         <Route path="/desk" element={<Allow module="desk" />}>
           <Route index element={<Navigate to="pending" replace />} />
           <Route path="pending" element={<DeskPage key="pending" section="pending" />} />

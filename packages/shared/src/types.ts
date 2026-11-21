@@ -26,6 +26,39 @@ export interface LiveDashboard {
   needsCall: (VisitSummary & { hostPhone: string | null })[];
 }
 
+/** Counts for one dashboard card. Days and months are India time. */
+export interface StatCount {
+  today: number;
+  month: number;
+  total: number;
+}
+
+export type StatsPeriod = 'today' | 'month' | 'year';
+
+/** Numbers for the premises dashboard. */
+export interface DashboardStats {
+  /** Visitors who came in (checked in at the gate). */
+  visits: StatCount;
+  /** Invites sent by hosts before the visit. */
+  invites: StatCount;
+  /** Walk-in and QR check-in requests. */
+  walkIns: StatCount;
+  /** Requests that were rejected. */
+  rejected: StatCount;
+  /** Different people who have visited. */
+  totalVisitors: number;
+  insideNow: number;
+  waitingNow: number;
+  /** Visits per host in the chosen period, most first. Null host is the reception desk. */
+  hostWise: { name: string; count: number }[];
+  period: StatsPeriod;
+  /** Visits per month of `year`, January first. */
+  monthWise: number[];
+  year: number;
+  /** Today's visits: arrivals and requests. */
+  todayVisits: VisitSummary[];
+}
+
 export type ErrorCode =
   | 'RATE_LIMITED'
   | 'SMS_UNAVAILABLE'

@@ -109,6 +109,7 @@ function Shell() {
         <nav aria-label="Main">
           {can('desk') && has('dashboard') && (
             <MenuGroup title="Gate desk">
+              {role !== 'guard' && <MenuLink to="/dashboard" label="Dashboard" onPick={close} />}
               <MenuLink to="/desk/pending" label="Awaiting approval" count={approvals} urgent={!!data?.needsCall.length} onPick={close} />
               <MenuLink to="/desk/expected" label="Expected" count={data?.expected.length} onPick={close} />
               <MenuLink to="/desk/inside" label="Inside" count={data?.inside.length} onPick={close} />

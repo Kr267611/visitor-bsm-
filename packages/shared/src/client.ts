@@ -1,6 +1,6 @@
 import type { Module } from './modules';
 import type { VisitStatus } from './status';
-import type { ErrorCode, LiveDashboard, Role, VisitSummary } from './types';
+import type { DashboardStats, ErrorCode, LiveDashboard, Role, StatsPeriod, VisitSummary } from './types';
 
 export interface Tokens {
   accessToken: string;
@@ -559,7 +559,10 @@ export function createApiClient(options: ApiClientOptions) {
       register: (token: string, body: RegisterRequest) =>
         request<PublicInvite>('POST', `/public/invites/${token}/register`, { body, anonymous: true }),
     },
-    dashboard: { live: () => request<LiveDashboard>('GET', '/dashboard/live') },
+    dashboard: {
+      live: () => request<LiveDashboard>('GET', '/dashboard/live'),
+      stats: (period: StatsPeriod = 'month') => request<DashboardStats>('GET', `/dashboard/stats?period=${period}`),
+    },
     admin: {
       users: {
         ...crud<AdminUser, MemberInput>('/admin/users'),

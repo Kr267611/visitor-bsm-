@@ -24,9 +24,10 @@ const PAGE: Record<Module, string> = {
   devices: '/admin/devices',
 };
 
-/** First page this person can open. Admins start on Users when they have it. */
+/** First page this person can open. Admins start on the dashboard, or on Users without the desk. */
 export function homeForModules(role: Role, modules: Module[]): string {
   if (role === 'super_admin') return '/platform';
+  if (role === 'admin' && modules.includes('desk')) return '/dashboard';
   if (role === 'admin' && modules.includes('users')) return PAGE.users;
   const first = (['desk', 'visitors', 'users', 'premises', 'departments', 'devices'] as const).find((m) => modules.includes(m));
   return first ? PAGE[first] : '/account/password';
