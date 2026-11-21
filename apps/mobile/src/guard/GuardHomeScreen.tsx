@@ -139,8 +139,6 @@ export function GuardHomeScreen() {
         </View>
       )}
 
-      <Button title="Walk-in entry" kind="plain" onPress={() => router.push('/(guard)/walk-in')} />
-      <Button title="Visitors inside" kind="plain" onPress={() => router.push('/(guard)/inside')} />
       <View style={styles.modes}>
         {gates.length > 1 ? (
           <View style={styles.mode}>
@@ -159,7 +157,7 @@ const useStyles = themed((colors) =>
   StyleSheet.create({
     modes: { flexDirection: 'row', gap: 10 },
     mode: { flex: 1 },
-    camera: { flex: 1, borderRadius: 14, overflow: 'hidden', backgroundColor: colors.ink },
+    camera: { flex: 1, borderRadius: 24, overflow: 'hidden', backgroundColor: colors.ink },
     noCamera: { flex: 1, gap: 12, justifyContent: 'center' },
   }),
 );

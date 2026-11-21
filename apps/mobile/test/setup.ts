@@ -22,7 +22,7 @@ jest.mock('expo-crypto', () => {
 });
 
 jest.mock('expo-router', () => {
-  const router = { replace: jest.fn(), push: jest.fn(), back: jest.fn() };
+  const router = { replace: jest.fn(), push: jest.fn(), back: jest.fn(), navigate: jest.fn() };
   return {
     useRouter: () => router,
     useLocalSearchParams: jest.fn(() => ({})),

@@ -58,7 +58,7 @@ export function ScanResult({ outcome, onNext, onWalkIn }: Props) {
 
 const useStyles = themed((colors) =>
   StyleSheet.create({
-    panel: { flex: 1, borderRadius: 14, padding: 20, gap: 14, justifyContent: 'center' },
+    panel: { flex: 1, borderRadius: 24, padding: 20, gap: 14, justifyContent: 'center' },
     good: { backgroundColor: colors.goodSoft },
     wait: { backgroundColor: colors.waitSoft },
     bad: { backgroundColor: colors.badSoft },
@@ -66,7 +66,7 @@ const useStyles = themed((colors) =>
     goodText: { color: colors.good },
     waitText: { color: colors.wait },
     badText: { color: colors.bad },
-    photo: { width: 220, height: 220, borderRadius: 12, alignSelf: 'center', backgroundColor: colors.line },
+    photo: { width: 220, height: 220, borderRadius: 24, alignSelf: 'center', backgroundColor: colors.line },
     name: { fontSize: 24, fontWeight: '700', color: colors.ink, textAlign: 'center' },
     host: { fontSize: 18, color: colors.ink, textAlign: 'center' },
   }),

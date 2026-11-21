@@ -215,9 +215,9 @@ export function WalkInScreen({ resendDelayMs = RESEND_DELAY_MS }: { resendDelayM
 const useStyles = themed((colors) =>
   StyleSheet.create({
     form: { padding: 16, gap: 14, backgroundColor: colors.bg },
-    photo: { width: 140, height: 140, borderRadius: 10, backgroundColor: colors.line },
+    photo: { width: 140, height: 140, borderRadius: 20, backgroundColor: colors.line },
     check: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', paddingVertical: 6 },
-    box: { width: 28, height: 28, borderWidth: 2, borderColor: colors.accent, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
+    box: { width: 28, height: 28, borderWidth: 2, borderColor: colors.accent, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
     boxOn: { backgroundColor: colors.accent },
     tick: { color: colors.accentInk, fontWeight: '700' },
     checkText: { flex: 1, fontSize: 15, color: colors.ink },

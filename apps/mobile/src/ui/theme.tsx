@@ -1,19 +1,26 @@
 import { ReactNode } from 'react';
 
 /**
- * Brand: Powder Blue #8DB9F0, Soft Lavender White #E9E8F8 and Warm Sunset Peach #F5B69E,
- * with deep indigo for actions (same as the web app). One theme.
+ * Sky Glass, same as the web app: soft sky-blue background, white cards with large rounded corners,
+ * calm blue for actions and peach for what needs attention. One theme.
  */
 const colors = {
-  bg: '#e9e8f8',
+  bg: '#e3ebf5',
+  /** Top of the screen, for a gentle sky tint behind headers. */
+  sky: '#c9def4',
   surface: '#ffffff',
-  ink: '#1b1a3a',
-  muted: '#4c4a70',
-  line: '#dcdbf0',
-  accent: '#3d3592',
-  accentSoft: '#e3eefc',
+  /** Frosted card over the background. */
+  card: 'rgba(255, 255, 255, 0.82)',
+  cardLine: 'rgba(255, 255, 255, 0.95)',
+  ink: '#18202f',
+  muted: '#5b6577',
+  line: '#dbe4f0',
+  accent: '#3b66b8',
+  accentSoft: '#e2ebf8',
   /** Text on the accent colour. */
   accentInk: '#ffffff',
+  peach: '#f5b69e',
+  peachInk: '#5a2414',
   /** Status colours stay apart from the brand: green = entry allowed / inside, red = refused / error. */
   good: '#13663d',
   goodSoft: '#ddf1e6',

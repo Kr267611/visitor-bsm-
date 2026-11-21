@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Image, ScrollView, StyleSheet, Text } from 'react-native';
 import { errorMessage, useApi } from '../api';
@@ -18,6 +18,7 @@ export function VisitScreen() {
   const styles = useStyles();
   const { id = '' } = useLocalSearchParams<{ id: string }>();
   const api = useApi();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const key = ['visit', id];
   const visit = useQuery({ queryKey: key, queryFn: () => api.visits.get(id) });
@@ -66,6 +67,7 @@ export function VisitScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
+      <Button title="‹ My visitors" label="Back to my visitors" kind="plain" onPress={() => router.navigate('/(host)')} />
       <Title>{v.visitorName}</Title>
       <Text style={styles.status}>{v.status}</Text>
       {v.photoUrl ? <Image accessibilityLabel="Visitor photo" source={{ uri: v.photoUrl }} style={styles.photo} /> : null}
@@ -124,6 +126,6 @@ const useStyles = themed((colors) =>
     page: { padding: 16, gap: 12, backgroundColor: colors.bg },
     status: { fontSize: 14, fontWeight: '700', color: colors.accent },
     line: { fontSize: 16, color: colors.ink },
-    photo: { width: 180, height: 180, borderRadius: 10, backgroundColor: colors.line },
+    photo: { width: 180, height: 180, borderRadius: 24, backgroundColor: colors.line },
   }),
 );

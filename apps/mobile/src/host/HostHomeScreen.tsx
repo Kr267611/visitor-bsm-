@@ -25,7 +25,6 @@ export function HostHomeScreen() {
           onPress={() => router.push(`/(host)/visits/${visit.id}`)}
         />
       ))}
-      <Button title="Settings" kind="plain" onPress={() => router.push('/(host)/settings')} />
     </ScrollView>
   );
 }
