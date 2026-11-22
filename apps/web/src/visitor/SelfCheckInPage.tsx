@@ -55,6 +55,7 @@ export function SelfCheckInPage() {
   const [phone, setPhone] = useState('');
   const [company, setCompany] = useState('');
   const [purpose, setPurpose] = useState('');
+  const [about, setAbout] = useState('');
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [consent, setConsent] = useState(false);
@@ -100,7 +101,7 @@ export function SelfCheckInPage() {
     }
   }
 
-  const formReady = !!name.trim() && !!phone.trim() && purpose.trim().length >= 3 && !!photo && consent;
+  const formReady = !!name.trim() && !!phone.trim() && !!purpose && about.trim().length >= 3 && !!photo && consent;
 
   /** Sends the request to the desk with a verified session. */
   async function sendRequest(current: SelfCheckInSession, where: GeoPosition | undefined) {
@@ -110,7 +111,8 @@ export function SelfCheckInPage() {
       const result = await desk.checkIn(current.sessionToken, {
         name: name.trim(),
         company: company.trim() || undefined,
-        purpose: purpose.trim(),
+        purpose,
+        purposeNote: about.trim(),
         photoKey: uploadedKey.current ?? undefined,
         consent,
         location: where,
@@ -313,13 +315,23 @@ export function SelfCheckInPage() {
         />
 
         <label htmlFor="sc-purpose">Purpose of visit</label>
+        <select id="sc-purpose" value={purpose} onChange={(e) => setPurpose(e.target.value)} required>
+          <option value="">Choose the purpose</option>
+          {place.purposes.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+
+        <label htmlFor="sc-about">About your visit</label>
         <textarea
-          id="sc-purpose"
+          id="sc-about"
           rows={3}
-          maxLength={200}
-          value={purpose}
-          onChange={(e) => setPurpose(e.target.value)}
-          placeholder="Write why you have come and who you want to meet, e.g. Yarn delivery for order 452, to meet the weaving master"
+          maxLength={300}
+          value={about}
+          onChange={(e) => setAbout(e.target.value)}
+          placeholder="Write the details and who you want to meet, e.g. Yarn delivery for order 452, to meet the weaving master"
           required
         />
         <p className="muted small">Your request goes to the reception desk, who will let you in.</p>

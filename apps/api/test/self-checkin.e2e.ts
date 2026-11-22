@@ -185,23 +185,29 @@ describe('QR self check-in', () => {
     await http().get(`${base}/hosts`).expect(401);
   });
 
-  it('the visitor writes the purpose; an empty or too short one is refused', async () => {
+  it('the visitor picks a category from the list and writes about the visit', async () => {
     const { base } = await setup();
     const { sessionToken } = await verify(base);
+    // No category, or one that is not on the premises list.
     expect((await checkIn(base, sessionToken, undefined, { purpose: '' })).status).toBe(422);
-    expect((await checkIn(base, sessionToken, undefined, { purpose: 'ab' })).status).toBe(422);
+    const odd = await checkIn(base, sessionToken, undefined, { purpose: 'Party' });
+    expect(odd.status).toBe(422);
+    expect(odd.body.message).toBe('Please choose the purpose of your visit from the list.');
+    // The visitor's own words are required too.
+    expect((await checkIn(base, sessionToken, undefined, { purposeNote: undefined })).status).toBe(422);
+    expect((await checkIn(base, sessionToken, undefined, { purposeNote: 'ab' })).status).toBe(422);
   });
 
   it('without a host the request goes to the reception desk, which approves it', async () => {
     const { site, base } = await setup();
     const reception = await seedUser(ctx.prisma, site.id, 'reception');
     const { sessionToken } = await verify(base);
-    const res = await checkIn(base, sessionToken, undefined, { purpose: 'Yarn delivery for order 452, to meet the weaving master', purposeNote: undefined });
+    const res = await checkIn(base, sessionToken, undefined, { purpose: 'Delivery / Dispatch', purposeNote: 'Yarn delivery for order 452, to meet the weaving master' });
     expect(res.status).toBe(201);
     expect(res.body.status).toBe('PENDING_APPROVAL');
 
     const visit = await ctx.prisma.visit.findFirstOrThrow({ where: { premisesId: site.id } });
-    expect(visit).toMatchObject({ hostId: null, purpose: 'Yarn delivery for order 452, to meet the weaving master' });
+    expect(visit).toMatchObject({ hostId: null, purpose: 'Delivery / Dispatch', purposeNote: 'Yarn delivery for order 452, to meet the weaving master' });
     const outbox = await ctx.prisma.outbox.findMany({ where: { visitId: visit.id } });
     expect(outbox.map((o) => o.template)).toEqual(['SELF_CHECKIN_LINK']);
     expect(outbox[0].vars).toMatchObject({ hostName: 'the reception desk' });
@@ -210,7 +216,12 @@ describe('QR self check-in', () => {
     const desk = { Authorization: `Bearer ${deskToken}` };
     const live = await http().get('/dashboard/live').set(desk).expect(200);
     expect(live.body.pending).toEqual([
-      expect.objectContaining({ id: visit.id, hostName: 'Reception desk', purpose: 'Yarn delivery for order 452, to meet the weaving master' }),
+      expect.objectContaining({
+        id: visit.id,
+        hostName: 'Reception desk',
+        purpose: 'Delivery / Dispatch',
+        purposeNote: 'Yarn delivery for order 452, to meet the weaving master',
+      }),
     ]);
     const waiting = await http().get(`/public/invites/${res.body.token}`).expect(200);
     expect(waiting.body.hostName).toBe('Reception desk');

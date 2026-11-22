@@ -45,11 +45,12 @@ function server(over: Handlers = {}) {
 type User = ReturnType<typeof userEvent.setup>;
 
 /** Fills the whole form; the OTP comes after it. */
-async function fillForm(user: User, purpose = 'Interview for the weaving master post') {
+async function fillForm(user: User, about = 'Interview for the weaving master post') {
   await user.type(await screen.findByLabelText('Your name'), 'Rahul Verma');
   await user.type(screen.getByLabelText('Mobile number'), '9876543210');
   await user.type(screen.getByLabelText('Company or firm'), 'ABC Traders');
-  await user.type(screen.getByLabelText('Purpose of visit'), purpose);
+  await user.selectOptions(screen.getByLabelText('Purpose of visit'), 'Interview');
+  await user.type(screen.getByLabelText('About your visit'), about);
   await user.upload(screen.getByLabelText('Your photo'), new File(['raw'], 'me.jpg', { type: 'image/jpeg' }));
   await user.click(screen.getByRole('checkbox', { name: /I agree/ }));
 }
@@ -92,11 +93,27 @@ describe('QR self check-in page', () => {
     expect(body.body).toEqual({
       name: 'Rahul Verma',
       company: 'ABC Traders',
-      purpose: 'Interview for the weaving master post',
+      purpose: 'Interview',
+      purposeNote: 'Interview for the weaving master post',
       photoKey: 'self/p/s/x.jpg',
       consent: true,
     });
     expect((body.init.headers as Record<string, string>)['x-checkin-session']).toBe('sess-1');
+  });
+
+  it('the purpose is a category from the premises list plus the visitor’s own words', async () => {
+    renderApp('/p/acme/head-office', server());
+    const user = userEvent.setup();
+    const category = await screen.findByLabelText('Purpose of visit');
+    expect(within(category).getAllByRole('option').map((o) => o.textContent)).toEqual(['Choose the purpose', 'Meeting', 'Interview']);
+    await fillForm(user);
+    await user.clear(screen.getByLabelText('About your visit'));
+    expect(screen.getByRole('button', { name: 'Send OTP' })).toBeDisabled();
+    await user.type(screen.getByLabelText('About your visit'), 'Meet the weaving master');
+    await user.selectOptions(category, '');
+    expect(screen.getByRole('button', { name: 'Send OTP' })).toBeDisabled();
+    await user.selectOptions(category, 'Meeting');
+    expect(screen.getByRole('button', { name: 'Send OTP' })).toBeEnabled();
   });
 
   it('a wrong number is caught before any OTP is sent', async () => {

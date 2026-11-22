@@ -280,14 +280,15 @@ export interface SelfCheckInSession {
 export interface SelfCheckInRequest {
   name: string;
   company?: string;
-  /** Written by the visitor. */
+  /** Category picked from the premises list. */
   purpose: string;
   /** Optional: without a host the request goes to the reception desk. */
   hostId?: string;
   photoKey?: string;
   consent: boolean;
   location?: GeoPosition;
-  purposeNote?: string;
+  /** What the visit is about, in the visitor's own words. */
+  purposeNote: string;
 }
 
 /** Someone a visitor can ask to meet: never a phone number. */

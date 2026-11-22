@@ -476,3 +476,8 @@ textarea { resize: vertical; font: inherit; }
   .bottom-count { position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: var(--peach); color: var(--peach-ink); font-size: 0.72rem; font-weight: 700; display: grid; place-items: center; }
   .content { padding-bottom: 112px; }
 }
+
+/* Purpose categories (premises settings) */
+.purpose-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.chip-row { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 14px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 0.9rem; font-weight: 500; }
+.chip-row .link { font-size: 0.8rem; padding: 2px 8px; }

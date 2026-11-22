@@ -40,7 +40,7 @@ export interface CheckInInput {
   name: string;
   company?: string;
   purpose: string;
-  purposeNote?: string;
+  purposeNote: string;
   /** Optional: without a host the request goes to the reception desk, which approves it. */
   hostId?: string;
   photoKey?: string;
@@ -267,6 +267,9 @@ export class SelfCheckInService {
       photoKey = input.photoKey;
     }
     if (!photoKey) throw new ApiException(422, 'VALIDATION_FAILED', 'A photo is required for a new visitor.');
+    if (!p.purposes.includes(input.purpose)) {
+      throw new ApiException(422, 'VALIDATION_FAILED', 'Please choose the purpose of your visit from the list.');
+    }
 
     const needsApproval = p.setting?.checkinOnApproval ?? true;
     const now = new Date();
@@ -317,7 +320,7 @@ export class SelfCheckInService {
           premisesId: p.id,
           type: 'SELF',
           purpose: input.purpose,
-          purposeNote: input.purposeNote || null,
+          purposeNote: input.purposeNote,
           status: needsApproval ? 'PENDING_APPROVAL' : 'APPROVED',
           validFrom: now,
           validTo,

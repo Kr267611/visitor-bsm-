@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { fakeServer, Handlers, json, renderApp, signIn, USERS } from '../test/harness';
 
 const premisesList = [
-  { id: 'p1', name: 'Head Office', code: 'ABC234', webSlug: 'head-office', isDefault: true, address: null },
+  { id: 'p1', name: 'Head Office', code: 'ABC234', webSlug: 'head-office', isDefault: true, address: null, purposes: ['Meeting', 'Interview'] },
   { id: 'p2', name: 'Plant 2', code: 'XYZ789', webSlug: 'plant-2', isDefault: false, address: null },
 ];
 const gates = [{ id: 'g1', name: 'Main Gate 1', premisesId: 'p1', isActive: true }];
@@ -118,6 +118,32 @@ describe('admin', () => {
         overstayMin: 30,
         checkinOnApproval: false,
       });
+    });
+
+    it('admin edits the purpose categories visitors pick from', async () => {
+      const s = server({ 'PATCH /admin/premises/p1': ({ body }) => json(200, { ...premisesList[0], ...body }) });
+      renderApp('/admin/premises', s);
+      const user = userEvent.setup();
+      const row = (await screen.findByRole('cell', { name: /^Head Office/ })).closest('tr') as HTMLElement;
+      await user.click(within(row).getByRole('button', { name: 'Settings' }));
+      const box = await screen.findByRole('region', { name: 'Head Office purposes' });
+      expect(within(box).getByText('Meeting')).toBeInTheDocument();
+
+      await user.type(within(box).getByLabelText('New purpose'), 'Yarn supply');
+      await user.click(within(box).getByRole('button', { name: 'Add purpose' }));
+      await waitFor(() =>
+        expect(s.calls.find((c) => c.key === 'PATCH /admin/premises/p1')?.body).toEqual({ purposes: ['Meeting', 'Interview', 'Yarn supply'] }),
+      );
+      expect(await within(box).findByText('Yarn supply')).toBeInTheDocument();
+
+      await user.click(within(box).getByRole('button', { name: 'Remove Interview' }));
+      await waitFor(() =>
+        expect(s.calls.filter((c) => c.key === 'PATCH /admin/premises/p1').at(-1)?.body).toEqual({ purposes: ['Meeting', 'Yarn supply'] }),
+      );
+
+      await user.type(within(box).getByLabelText('New purpose'), 'meeting');
+      await user.click(within(box).getByRole('button', { name: 'Add purpose' }));
+      expect(within(box).getByRole('alert')).toHaveTextContent('already in the list');
     });
 
     it('settings error from server is shown', async () => {

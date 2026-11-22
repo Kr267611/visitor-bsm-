@@ -19,9 +19,10 @@ const verifyBody = z.object({ phone: z.string(), otp: z.string().regex(/^\d{6}$/
 const checkInBody = z.object({
   name: z.string().trim().min(1).max(100),
   company: z.string().trim().max(100).optional(),
-  /** Purpose of the visit, written by the visitor. */
-  purpose: z.string().trim().min(3, 'Please write the purpose of your visit.').max(200),
-  purposeNote: z.string().trim().max(300).optional(),
+  /** Category of the visit, picked from the premises list. */
+  purpose: z.string().trim().min(1, 'Please choose the purpose of your visit.').max(60),
+  /** What the visit is about, in the visitor's own words. */
+  purposeNote: z.string().trim().min(3, 'Please write a little about your visit.').max(300),
   /** Optional: without it the request goes to the reception desk. */
   hostId: z.string().uuid().optional(),
   photoKey: z.string().min(1).max(300).optional(),
