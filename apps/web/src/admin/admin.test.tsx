@@ -117,6 +117,7 @@ describe('admin', () => {
         defaultVisitMin: 240,
         overstayMin: 30,
         checkinOnApproval: false,
+        verifyPhone: false,
       });
     });
 

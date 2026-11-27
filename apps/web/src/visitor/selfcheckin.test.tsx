@@ -14,6 +14,8 @@ const info = (over: object = {}) => ({
   premisesName: 'Head Office',
   purposes: ['Meeting', 'Interview'],
   needsLocation: false,
+  // Most tests here cover the OTP mode; the no-OTP mode has its own block below.
+  verifyPhone: true,
   status: 'open',
   visitStart: null,
   visitEnd: null,
@@ -239,6 +241,54 @@ describe('QR self check-in page', () => {
     status = 'APPROVED';
     await waitFor(() => expect(screen.getByRole('img', { name: 'Visitor pass QR code' })).toBeInTheDocument(), { timeout: 6000 });
   }, 10_000);
+});
+
+describe('QR self check-in without OTP', () => {
+  beforeEach(() => {
+    URL.createObjectURL = vi.fn(() => 'blob:preview');
+    URL.revokeObjectURL = vi.fn();
+    localStorage.clear();
+  });
+
+  const noOtp = (over: Handlers = {}) =>
+    server({
+      [`GET ${BASE}`]: () => json(200, info({ verifyPhone: false })),
+      [`POST ${BASE}/start`]: () => json(200, { sessionToken: 'sess-u' }),
+      ...over,
+    });
+
+  it('Send request goes straight to the gate: no OTP step', async () => {
+    const s = noOtp();
+    renderApp('/p/acme/head-office', s);
+    const user = userEvent.setup();
+    expect(await screen.findByText(/security guard at the gate will approve/)).toBeInTheDocument();
+    await fillForm(user);
+    await user.click(screen.getByRole('button', { name: 'Send request' }));
+
+    expect(await screen.findByText(/Waiting for approval/)).toBeInTheDocument();
+    expect(s.calls.some((c) => c.key === `POST ${BASE}/otp`)).toBe(false);
+    expect(s.calls.find((c) => c.key === `POST ${BASE}/start`)!.body).toEqual({ phone: '+919876543210' });
+    const checkIn = s.calls.find((c) => c.key === `POST ${BASE}/check-in`)!;
+    expect((checkIn.init.headers as Record<string, string>)['x-checkin-session']).toBe('sess-u');
+    expect(checkIn.body).toMatchObject({ purpose: 'Interview', purposeNote: 'Interview for the weaving master post', photoKey: 'self/p/s/x.jpg' });
+  });
+
+  it('a number with an open request sees the message; the same phone can open its earlier request', async () => {
+    const s = noOtp({
+      [`POST ${BASE}/check-in`]: () =>
+        json(409, { error: 'REQUEST_OPEN', message: 'A request from this mobile number is already open here. Please speak to the security guard at the gate.' }),
+    });
+    const { unmount } = renderApp('/p/acme/head-office', s);
+    const user = userEvent.setup();
+    await fillForm(user);
+    await user.click(await screen.findByRole('button', { name: 'Send request' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('already open here');
+    unmount();
+
+    localStorage.setItem('visitor.request.acme/head-office', 'tok-9');
+    renderApp('/p/acme/head-office', noOtp());
+    expect(await screen.findByRole('link', { name: /You already sent a request from this phone/ })).toHaveAttribute('href', '/v/tok-9');
+  });
 });
 
 describe('premises QR poster', () => {

@@ -143,6 +143,8 @@ export interface PremisesSettings {
   visitStart: string | null;
   visitEnd: string | null;
   checkinOnApproval: boolean;
+  /** QR check-in asks for an SMS OTP first. */
+  verifyPhone: boolean;
   onlyCheckin: boolean;
   autoCheckoutHrs: number | null;
   overstayMin: number | null;
@@ -262,6 +264,8 @@ export interface SelfCheckInInfo {
   premisesName: string;
   purposes: string[];
   needsLocation: boolean;
+  /** True: the visitor proves the phone with an SMS OTP first. False: the request goes straight to the gate. */
+  verifyPhone: boolean;
   status: 'open' | 'closed' | 'unavailable';
   visitStart: string | null;
   visitEnd: string | null;
@@ -540,6 +544,9 @@ export function createApiClient(options: ApiClientOptions) {
         requestOtp: (phone: string) => request<void>('POST', `${base}/otp`, { body: { phone }, anonymous: true }),
         verify: (body: { phone: string; otp: string; location?: GeoPosition }) =>
           request<SelfCheckInSession>('POST', `${base}/verify`, { body, anonymous: true }),
+        /** Without OTP: a session for the typed number. It reveals nothing saved for that number. */
+        start: (body: { phone: string; location?: GeoPosition }) =>
+          request<{ sessionToken: string }>('POST', `${base}/start`, { body, anonymous: true }),
         hosts: (session: string, q: string) =>
           request<SelfCheckInHost[]>(
             'GET',

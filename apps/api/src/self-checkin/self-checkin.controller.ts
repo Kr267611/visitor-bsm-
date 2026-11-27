@@ -16,6 +16,7 @@ const location = z
   .optional();
 const phoneBody = z.object({ phone: z.string() });
 const verifyBody = z.object({ phone: z.string(), otp: z.string().regex(/^\d{6}$/), location });
+const startBody = z.object({ phone: z.string(), location });
 const checkInBody = z.object({
   name: z.string().trim().min(1).max(100),
   company: z.string().trim().max(100).optional(),
@@ -55,6 +56,14 @@ export class SelfCheckInController {
   verify(@Param('business') business: string, @Param('premises') premises: string, @Body() body: unknown) {
     const input = parseBody(verifyBody, body);
     return this.service.verify(business, premises, requirePhone(input.phone), input.otp, input.location);
+  }
+
+  /** Without OTP (premises setting): a session for the number the visitor typed. */
+  @Post('start')
+  @HttpCode(200)
+  start(@Param('business') business: string, @Param('premises') premises: string, @Body() body: unknown) {
+    const input = parseBody(startBody, body);
+    return this.service.start(business, premises, requirePhone(input.phone), input.location);
   }
 
   @Get('hosts')

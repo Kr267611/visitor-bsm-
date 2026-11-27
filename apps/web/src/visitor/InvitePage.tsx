@@ -29,7 +29,7 @@ function WaitingCard({ invite }: { invite: PublicInvite }) {
         <dt>Host</dt>
         <dd>{invite.hostName}</dd>
       </dl>
-      <p className="muted small">You can close this page: the same link was sent to you by SMS.</p>
+      <p className="muted small">Keep this page open. If you close it, scan the poster again on this phone to come back here.</p>
     </section>
   );
 }

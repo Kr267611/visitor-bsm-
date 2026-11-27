@@ -32,6 +32,7 @@ const settingsUpdate = z
     visitStart: hhmm.nullable(),
     visitEnd: hhmm.nullable(),
     checkinOnApproval: z.boolean(),
+    verifyPhone: z.boolean(),
     onlyCheckin: z.boolean(),
     autoCheckoutHrs: z.number().int().min(1).max(72).nullable(),
     overstayMin: minutes(1440).nullable(),

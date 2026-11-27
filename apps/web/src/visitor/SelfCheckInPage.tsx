@@ -22,6 +22,25 @@ function currentPosition(): Promise<GeoPosition> {
   });
 }
 
+const requestKey = (business: string, premises: string) => `visitor.request.${business}/${premises}`;
+
+/** The last request sent from this phone, so a visitor who closed the page can open it again. */
+function rememberRequest(business: string, premises: string, token: string) {
+  try {
+    localStorage.setItem(requestKey(business, premises), token);
+  } catch {
+    // Private mode: the visitor keeps the page open instead.
+  }
+}
+
+function earlierRequest(business: string, premises: string): string | null {
+  try {
+    return localStorage.getItem(requestKey(business, premises));
+  } catch {
+    return null;
+  }
+}
+
 function Shell({ title, subtitle, children }: { title: string; subtitle?: string; children?: ReactNode }) {
   return (
     <main className="visitor-page">
@@ -65,6 +84,7 @@ export function SelfCheckInPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const uploadedKey = useRef<string | null>(null);
+  const [earlier] = useState(() => earlierRequest(business, premises));
 
   useEffect(
     () => () => {
@@ -117,6 +137,7 @@ export function SelfCheckInPage() {
         consent,
         location: where,
       });
+      rememberRequest(business, premises, result.token);
       navigate(`/v/${result.token}`, { replace: true });
     } catch (e) {
       // An expired session needs a new OTP; anything else can be retried as is.
@@ -138,8 +159,17 @@ export function SelfCheckInPage() {
     }
     void run(async () => {
       if (session) {
-        // Number already verified (the visitor went back to fix a detail).
+        // Session already there (the visitor went back to fix a detail).
         await sendRequest(session, location);
+        return;
+      }
+      if (!info.data?.verifyPhone) {
+        // No OTP here: the request goes straight to the gate, which approves it.
+        const where = info.data?.needsLocation ? await currentPosition() : undefined;
+        setLocation(where);
+        const started: SelfCheckInSession = { ...(await desk.start({ phone: normalized, location: where })), visitor: null, activeVisit: null };
+        setSession(started);
+        await sendRequest(started, where);
         return;
       }
       await desk.requestOtp(normalized);
@@ -286,7 +316,16 @@ export function SelfCheckInPage() {
 
   return (
     <Shell title="Visitor check-in" subtitle={subtitle}>
-      <p className="muted">Fill in your details. We will then send an OTP to your mobile. No app needed.</p>
+      <p className="muted">
+        {place.verifyPhone
+          ? 'Fill in your details. We will then send an OTP to your mobile. No app needed.'
+          : 'Fill in your details and send. The security guard at the gate will approve your request. No app needed.'}
+      </p>
+      {earlier && (
+        <Link to={`/v/${earlier}`} className="notice notice-link">
+          You already sent a request from this phone. Open it
+        </Link>
+      )}
       <form className="stack" onSubmit={submitForm}>
         <label htmlFor="sc-name">Your name</label>
         <input id="sc-name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" required />
@@ -334,7 +373,7 @@ export function SelfCheckInPage() {
           placeholder="Write the details and who you want to meet, e.g. Yarn delivery for order 452, to meet the weaving master"
           required
         />
-        <p className="muted small">Your request goes to the reception desk, who will let you in.</p>
+        <p className="muted small">Your request goes to the security guard at the gate, who will let you in.</p>
 
         <label htmlFor="sc-photo">Your photo</label>
         <input id="sc-photo" type="file" accept="image/*" capture="user" onChange={choosePhoto} />
@@ -351,7 +390,7 @@ export function SelfCheckInPage() {
 
         {alert}
         <button type="submit" className="primary" disabled={!formReady || busy}>
-          {busy ? 'Please wait…' : session ? 'Send request' : 'Send OTP'}
+          {busy ? 'Please wait…' : session || !place.verifyPhone ? 'Send request' : 'Send OTP'}
         </button>
       </form>
     </Shell>

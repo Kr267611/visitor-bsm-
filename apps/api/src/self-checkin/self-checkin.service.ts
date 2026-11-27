@@ -34,6 +34,8 @@ export interface Session {
   premisesId: string;
   businessId: string;
   sid: string;
+  /** True when an OTP proved the phone. Without it the number is only what the visitor typed. */
+  verified: boolean;
 }
 
 export interface CheckInInput {
@@ -127,6 +129,7 @@ export class SelfCheckInService {
       purposes: p.purposes,
       needsLocation: p.lat != null && p.lng != null && !!p.geofenceM,
       status: await this.availability(p),
+      verifyPhone: p.setting?.verifyPhone ?? false,
       visitStart: p.setting?.visitStart ?? null,
       visitEnd: p.setting?.visitEnd ?? null,
     };
@@ -144,11 +147,8 @@ export class SelfCheckInService {
     if (!(await this.otp.verify(phone, otp, 'SELF_CHECKIN_OTP'))) {
       throw new ApiException(401, 'INVALID_OTP', 'Incorrect OTP.');
     }
-    const session: Session = { phone, premisesId: p.id, businessId: p.businessId, sid: randomBytes(12).toString('base64url') };
-    const sessionToken = await this.jwt.signAsync(
-      { sub: phone, p: p.id, b: p.businessId, sid: session.sid },
-      { audience: AUDIENCE, expiresIn: SESSION_TTL },
-    );
+    const session: Session = { phone, premisesId: p.id, businessId: p.businessId, sid: randomBytes(12).toString('base64url'), verified: true };
+    const sessionToken = await this.sign(session);
     const visitor = await this.prisma.visitor.findUnique({
       where: { businessId_phone: { businessId: p.businessId, phone } },
     });
@@ -159,10 +159,32 @@ export class SelfCheckInService {
     };
   }
 
+  private sign(s: Session) {
+    return this.jwt.signAsync(
+      { sub: s.phone, p: s.premisesId, b: s.businessId, sid: s.sid, ...(!s.verified && { u: 1 }) },
+      { audience: AUDIENCE, expiresIn: SESSION_TTL },
+    );
+  }
+
+  /**
+   * Without OTP: the visitor sends the request straight away and the gate approves it.
+   * The number is unproven, so this session never reveals or reopens anything saved for that number.
+   */
+  async start(businessSlug: string, premisesSlug: string, phone: string, location?: Location) {
+    const p = await this.load(businessSlug, premisesSlug);
+    await this.assertOpen(p);
+    if (p.setting?.verifyPhone) {
+      throw new ApiException(403, 'FORBIDDEN', 'Please verify your mobile number with an OTP.');
+    }
+    this.assertLocation(p, location);
+    const session: Session = { phone, premisesId: p.id, businessId: p.businessId, sid: randomBytes(12).toString('base64url'), verified: false };
+    return { sessionToken: await this.sign(session) };
+  }
+
   /** Reads and checks a session token; it must belong to this premises. */
   async session(businessSlug: string, premisesSlug: string, token: string | undefined): Promise<{ p: LoadedPremises; s: Session }> {
     const p = await this.load(businessSlug, premisesSlug);
-    let payload: { sub: string; p: string; b: string; sid: string };
+    let payload: { sub: string; p: string; b: string; sid: string; u?: number };
     try {
       payload = await this.jwt.verifyAsync(token ?? '', { audience: AUDIENCE });
     } catch {
@@ -171,7 +193,7 @@ export class SelfCheckInService {
     if (payload.p !== p.id || payload.b !== p.businessId) {
       throw new ApiException(401, 'UNAUTHORIZED', 'Your check-in session has expired. Please verify your number again.');
     }
-    return { p, s: { phone: payload.sub, premisesId: payload.p, businessId: payload.b, sid: payload.sid } };
+    return { p, s: { phone: payload.sub, premisesId: payload.p, businessId: payload.b, sid: payload.sid, verified: payload.u !== 1 } };
   }
 
   private activeVisit(s: Session) {
@@ -236,9 +258,18 @@ export class SelfCheckInService {
   async checkIn(p: LoadedPremises, s: Session, input: CheckInInput) {
     await this.assertOpen(p);
     this.assertLocation(p, input.location);
-    // Scanning again never creates a second visit: hand back the one that already exists.
-    const existing = await this.activeVisitLink(s);
-    if (existing) return { ...existing, existing: true };
+    if (s.verified) {
+      // Scanning again never creates a second visit: hand back the one that already exists.
+      const existing = await this.activeVisitLink(s);
+      if (existing) return { ...existing, existing: true };
+    } else if (await this.activeVisit(s)) {
+      // Without OTP anyone could type this number: never hand out or replace its open visit.
+      throw new ApiException(
+        409,
+        'REQUEST_OPEN',
+        'A request from this mobile number is already open here. Please speak to the security guard at the gate.',
+      );
+    }
 
     if (!input.consent) {
       throw new ApiException(422, 'CONSENT_REQUIRED', 'Please give consent to continue.');
@@ -259,14 +290,15 @@ export class SelfCheckInService {
     const known = await this.prisma.visitor.findUnique({
       where: { businessId_phone: { businessId: p.businessId, phone: s.phone } },
     });
-    let photoKey = known?.photoKey ?? null;
+    // A saved photo is reused only when OTP proved the number belongs to this visitor.
+    let photoKey = s.verified ? (known?.photoKey ?? null) : null;
     if (input.photoKey) {
       if (!input.photoKey.startsWith(this.photoPrefix(s)) || !(await this.storage.exists(input.photoKey))) {
         throw new ApiException(422, 'VALIDATION_FAILED', 'Please upload the photo again.');
       }
       photoKey = input.photoKey;
     }
-    if (!photoKey) throw new ApiException(422, 'VALIDATION_FAILED', 'A photo is required for a new visitor.');
+    if (!photoKey) throw new ApiException(422, 'VALIDATION_FAILED', 'Please take your photo.');
     if (!p.purposes.includes(input.purpose)) {
       throw new ApiException(422, 'VALIDATION_FAILED', 'Please choose the purpose of your visit from the list.');
     }
@@ -292,6 +324,16 @@ export class SelfCheckInService {
         create: { businessId: p.businessId, phone: s.phone, ...details },
       });
       // With a host, the host decides; otherwise the request waits on the reception desk (live list).
+      const sms: OutboxDraft[] = needsApproval
+        ? [
+            {
+              channel: 'SMS',
+              template: 'SELF_CHECKIN_LINK',
+              recipient: s.phone,
+              vars: { siteName: p.name, hostName: host?.name ?? 'the security gate', link },
+            },
+          ]
+        : [{ channel: 'SMS', template: 'PASS_READY', recipient: s.phone, vars: { link } }];
       const notify: OutboxDraft[] = needsApproval
         ? [
             ...(host
@@ -304,14 +346,12 @@ export class SelfCheckInService {
                   },
                 ]
               : []),
-            {
-              channel: 'SMS',
-              template: 'SELF_CHECKIN_LINK',
-              recipient: s.phone,
-              vars: { siteName: p.name, hostName: host?.name ?? 'the reception desk', link },
-            },
+            // No SMS to a number nobody proved: the visitor keeps the page open instead.
+            ...(s.verified ? sms : []),
           ]
-        : [{ channel: 'SMS', template: 'PASS_READY', recipient: s.phone, vars: { link } }];
+        : s.verified
+          ? sms
+          : [];
       return this.lifecycle.create({
         data: {
           visitorId: visitor.id,
@@ -337,6 +377,7 @@ export class SelfCheckInService {
 
   /** Self check-out: the visitor scans the premises QR again on the way out. */
   async checkOut(p: LoadedPremises, s: Session) {
+    if (!s.verified) throw new ApiException(403, 'FORBIDDEN', 'Please check out with the security guard at the gate.');
     const visit = await this.prisma.visit.findFirst({
       where: { businessId: p.businessId, premisesId: p.id, visitor: { phone: s.phone }, status: 'CHECKED_IN' },
       orderBy: { checkedInAt: 'desc' },

@@ -13,7 +13,7 @@ function SettingsForm({ premises }: { premises: Premises }) {
   const queryClient = useQueryClient();
   const key = ['admin', 'premises', premises.id, 'settings'];
   const settings = useQuery({ queryKey: key, queryFn: () => api.admin.premises.settings(premises.id) });
-  const [form, setForm] = useState({ visitStart: '', visitEnd: '', defaultVisitMin: '', overstayMin: '', checkinOnApproval: true });
+  const [form, setForm] = useState({ visitStart: '', visitEnd: '', defaultVisitMin: '', overstayMin: '', checkinOnApproval: true, verifyPhone: false });
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -26,6 +26,7 @@ function SettingsForm({ premises }: { premises: Premises }) {
       defaultVisitMin: String(s.defaultVisitMin),
       overstayMin: s.overstayMin == null ? '' : String(s.overstayMin),
       checkinOnApproval: s.checkinOnApproval,
+      verifyPhone: s.verifyPhone ?? false,
     });
   }, [settings.data]);
 
@@ -39,6 +40,7 @@ function SettingsForm({ premises }: { premises: Premises }) {
       defaultVisitMin: Number(form.defaultVisitMin),
       overstayMin: toNumber(form.overstayMin),
       checkinOnApproval: form.checkinOnApproval,
+      verifyPhone: form.verifyPhone,
     };
     try {
       queryClient.setQueryData(key, await api.admin.premises.updateSettings(premises.id, body));
@@ -95,6 +97,10 @@ function SettingsForm({ premises }: { premises: Premises }) {
           onChange={(e) => set({ checkinOnApproval: e.target.checked })}
         />
         Check-in only after approval
+      </label>
+      <label className="row">
+        <input type="checkbox" checked={form.verifyPhone} onChange={(e) => set({ verifyPhone: e.target.checked })} />
+        Verify the visitor's mobile with an SMS OTP on the QR form (needs SMS to be set up)
       </label>
       {error && (
         <p role="alert" className="error">

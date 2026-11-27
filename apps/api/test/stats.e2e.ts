@@ -59,7 +59,7 @@ describe('dashboard stats', () => {
     expect(stats.monthWise).toEqual([1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0]);
     expect(stats.hostWise).toEqual([{ name: 'Anita Singh', count: 2 }]);
     expect(stats.todayVisits.map((v) => v.id)).toEqual([inside.id, waiting.id]);
-    expect(stats.todayVisits[1].hostName).toBe('Reception desk');
+    expect(stats.todayVisits[1].hostName).toBe('Security gate');
   });
 
   it('host-wise visits follow the chosen period', async () => {

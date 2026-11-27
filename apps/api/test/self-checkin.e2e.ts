@@ -150,7 +150,7 @@ describe('QR self check-in', () => {
     const { base, host } = await setup();
     const { sessionToken } = await verify(base);
     const send = (body: object) => http().post(`${base}/check-in`).set('x-checkin-session', sessionToken).send({ name: 'R', purpose: 'Meeting', purposeNote: 'Yarn delivery', hostId: host.id, consent: true, ...body });
-    expect((await send({})).body.message).toMatch(/photo is required/);
+    expect((await send({})).body.message).toMatch(/Please take your photo/);
     expect((await send({ photoKey: 'self/other/session/x.jpg' })).status).toBe(422);
     const res = await checkIn(base, sessionToken, host.id, { consent: false });
     expect(res.body.error).toBe('CONSENT_REQUIRED');
@@ -210,7 +210,7 @@ describe('QR self check-in', () => {
     expect(visit).toMatchObject({ hostId: null, purpose: 'Delivery / Dispatch', purposeNote: 'Yarn delivery for order 452, to meet the weaving master' });
     const outbox = await ctx.prisma.outbox.findMany({ where: { visitId: visit.id } });
     expect(outbox.map((o) => o.template)).toEqual(['SELF_CHECKIN_LINK']);
-    expect(outbox[0].vars).toMatchObject({ hostName: 'the reception desk' });
+    expect(outbox[0].vars).toMatchObject({ hostName: 'the security gate' });
 
     const deskToken = await tokenFor(ctx, reception.id);
     const desk = { Authorization: `Bearer ${deskToken}` };
@@ -218,16 +218,86 @@ describe('QR self check-in', () => {
     expect(live.body.pending).toEqual([
       expect.objectContaining({
         id: visit.id,
-        hostName: 'Reception desk',
+        hostName: 'Security gate',
         purpose: 'Delivery / Dispatch',
         purposeNote: 'Yarn delivery for order 452, to meet the weaving master',
       }),
     ]);
     const waiting = await http().get(`/public/invites/${res.body.token}`).expect(200);
-    expect(waiting.body.hostName).toBe('Reception desk');
+    expect(waiting.body.hostName).toBe('Security gate');
 
     await http().post(`/visits/${visit.id}/approve`).set(desk).send({}).expect(200);
     expect((await ctx.prisma.visit.findUniqueOrThrow({ where: { id: visit.id } })).status).toBe('APPROVED');
+  });
+
+  describe('without OTP (the default)', () => {
+    const start = (base: string, body: object = {}) => http().post(`${base}/start`).send({ phone: PHONE, ...body });
+
+    it('the visitor sends the request straight away; no SMS goes to the typed number; the gate approves', async () => {
+      const { base, guard, site } = await setup();
+      expect((await http().get(base).expect(200)).body.verifyPhone).toBe(false);
+      const { sessionToken } = (await start(base).expect(200)).body;
+      const res = await checkIn(base, sessionToken, undefined, { purpose: 'Delivery / Dispatch' });
+      expect(res.status).toBe(201);
+      expect(res.body).toMatchObject({ status: 'PENDING_APPROVAL', existing: false });
+      expect(ctx.sms.sent).toHaveLength(0);
+
+      const visit = await ctx.prisma.visit.findFirstOrThrow({ where: { premisesId: site.id } });
+      expect(await ctx.prisma.outbox.count({ where: { visitId: visit.id, channel: 'SMS' } })).toBe(0);
+      await http().post(`/visits/${visit.id}/approve`).set('Authorization', `Bearer ${await tokenFor(ctx, guard.id)}`).send({}).expect(200);
+      const page = await http().get(`/public/invites/${res.body.token}`).expect(200);
+      expect(page.body.status).toBe('APPROVED');
+      expect(page.body.pass).toEqual(expect.any(String));
+    });
+
+    it('a number with an open request is refused, and the open visit and its link stay as they were', async () => {
+      const { base, site } = await setup();
+      const first = await checkIn(base, (await start(base).expect(200)).body.sessionToken, undefined);
+      const before = await ctx.prisma.visit.findFirstOrThrow({ where: { premisesId: site.id } });
+
+      const again = await checkIn(base, (await start(base).expect(200)).body.sessionToken, undefined, { name: 'Someone Else' });
+      expect(again.status).toBe(409);
+      expect(again.body.error).toBe('REQUEST_OPEN');
+      expect(again.body.token).toBeUndefined();
+      const after = await ctx.prisma.visit.findUniqueOrThrow({ where: { id: before.id } });
+      expect(after.inviteTokenHash).toBe(before.inviteTokenHash);
+      expect(await ctx.prisma.visit.count({ where: { premisesId: site.id } })).toBe(1);
+      await http().get(`/public/invites/${first.body.token}`).expect(200);
+      // The start response never reveals anything saved for the number.
+      expect(Object.keys((await start(base).expect(200)).body)).toEqual(['sessionToken']);
+    });
+
+    it('a photo is always needed, even when the number has one on file', async () => {
+      const { base, business } = await setup();
+      await ctx.prisma.visitor.create({ data: { businessId: business.id, phone: '+91' + PHONE, name: 'Old Name', photoKey: 'visitors/old.jpg' } });
+      const { sessionToken } = (await start(base).expect(200)).body;
+      const res = await http()
+        .post(`${base}/check-in`)
+        .set('x-checkin-session', sessionToken)
+        .send({ name: 'Rahul Verma', purpose: 'Meeting', purposeNote: 'Yarn delivery', consent: true });
+      expect(res.status).toBe(422);
+      expect(res.body.message).toBe('Please take your photo.');
+    });
+
+    it('self check-out needs OTP; the guard checks the visitor out instead', async () => {
+      const { base } = await setup();
+      const { sessionToken } = (await start(base).expect(200)).body;
+      await http().post(`${base}/check-out`).set('x-checkin-session', sessionToken).expect(403);
+    });
+
+    it('a premises that turns OTP on refuses the shortcut', async () => {
+      const { base, site } = await setup();
+      await ctx.prisma.premisesSetting.update({ where: { premisesId: site.id }, data: { verifyPhone: true } });
+      expect((await http().get(base).expect(200)).body.verifyPhone).toBe(true);
+      await start(base).expect(403);
+    });
+
+    it('visiting hours still apply', async () => {
+      const { base, site } = await setup();
+      await ctx.prisma.premisesSetting.update({ where: { premisesId: site.id }, data: { visitStart: '00:00', visitEnd: '00:01' } });
+      const res = await start(base);
+      expect([403]).toContain(res.status);
+    });
   });
 
   it('new premises start with the textile purpose list', async () => {

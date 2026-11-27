@@ -36,4 +36,4 @@ export const slugify = (name: string, fallback = 'premises') =>
     .slice(0, 40) || fallback;
 
 /** Shown instead of a person when a QR request goes to the reception desk rather than a host. */
-export const RECEPTION_DESK = 'Reception desk';
+export const RECEPTION_DESK = 'Security gate';

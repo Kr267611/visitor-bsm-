@@ -117,6 +117,8 @@ model PremisesSetting {
   visitStart        String?  @map("visit_start")
   visitEnd          String?  @map("visit_end")
   checkinOnApproval Boolean  @default(true) @map("checkin_on_approval")
+  /// QR check-in asks for an SMS OTP first. Off: the visitor sends the request straight away and the gate approves it.
+  verifyPhone       Boolean  @default(false) @map("verify_phone")
   onlyCheckin       Boolean  @default(false) @map("only_checkin")
   autoCheckoutHrs   Int?     @map("auto_checkout_hrs")
   overstayMin       Int?     @map("overstay_min")
