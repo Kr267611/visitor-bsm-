@@ -481,3 +481,31 @@ textarea { resize: vertical; font: inherit; }
 .purpose-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .chip-row { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 14px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 0.9rem; font-weight: 500; }
 .chip-row .link { font-size: 0.8rem; padding: 2px 8px; }
+
+/* Gate pass: a compact slip that prints alone on A5, A4 or an 80 mm receipt printer. */
+.gate-pass { width: 100%; max-width: 420px; background: #ffffff; color: #18202f; border: 1px solid var(--line-strong); border-radius: 16px; padding: 18px 20px; display: grid; gap: 14px; }
+.gate-pass-head { display: flex; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: 2px dashed var(--line-strong); }
+.gate-pass-head > div { display: grid; }
+.gate-pass-head span { font-size: 0.82rem; color: #5b6577; }
+.gate-pass-no { text-align: right; }
+.gate-pass-no strong { font-size: 1.15rem; letter-spacing: 0.02em; }
+.gate-pass-who { display: flex; gap: 12px; align-items: center; }
+.gate-pass-who > div { display: grid; min-width: 0; }
+.gate-pass-who span { font-size: 0.85rem; color: #5b6577; overflow-wrap: anywhere; }
+.gate-pass-photo { width: 64px; height: 64px; border-radius: 12px; object-fit: cover; flex: none; }
+.gate-pass-name { font-size: 1.2rem; }
+.gate-pass-rows { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 0.9rem; }
+.gate-pass-rows dt { color: #5b6577; }
+.gate-pass-rows dd { margin: 0; overflow-wrap: anywhere; }
+.gate-pass-rows small { color: #5b6577; }
+.gate-pass-sign { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding-top: 34px; font-size: 0.78rem; color: #5b6577; }
+.gate-pass-sign span { border-top: 1px solid #5b6577; padding-top: 4px; }
+.row-inside { background: rgba(251, 235, 207, 0.45); }
+@media print {
+  @page { margin: 8mm; }
+  body { background: #ffffff !important; }
+  .sidebar, .mobile-bar, .bottom-bar { display: none !important; }
+  .shell { display: block; }
+  .content { padding: 0; max-width: none; }
+  .gate-pass { border: 1px solid #000; max-width: 100%; break-inside: avoid; }
+}

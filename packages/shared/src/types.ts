@@ -33,6 +33,31 @@ export interface StatCount {
   total: number;
 }
 
+/** Exit slip for one visit: who, when in, when out, what they carried. Times are ISO. */
+export interface GatePass {
+  visitId: string;
+  /** Null until the visitor checks out. */
+  gatePassNo: string | null;
+  visitCode: string;
+  status: VisitStatus;
+  businessName: string;
+  premisesName: string;
+  visitorName: string;
+  company: string | null;
+  phone: string;
+  photoUrl: string | null;
+  hostName: string;
+  purpose: string;
+  purposeNote: string | null;
+  inAt: string | null;
+  outAt: string | null;
+  inGate: string | null;
+  outGate: string | null;
+  itemsOut: string | null;
+  /** Who checked the visitor out. */
+  checkedOutBy: string | null;
+}
+
 export type StatsPeriod = 'today' | 'month' | 'year';
 
 /** Numbers for the premises dashboard. */

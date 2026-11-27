@@ -1,7 +1,7 @@
 import type { VisitSummary } from '@visitor/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ReactNode, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { errorMessage, useApi } from '../api';
 import { useAuth } from '../auth/AuthProvider';
 import { useLive } from './LiveSiteContext';
@@ -106,9 +106,11 @@ const ActionError = ({ message }: { message: string | null }) =>
 
 function CheckOutAction({ visit, gateId }: { visit: VisitSummary; gateId: string }) {
   const api = useApi();
+  const navigate = useNavigate();
   const eventId = useEventId();
   const { run, busy, error } = useAction();
   const [confirming, setConfirming] = useState(false);
+  const [items, setItems] = useState('');
 
   if (!confirming) {
     return (
@@ -119,13 +121,26 @@ function CheckOutAction({ visit, gateId }: { visit: VisitSummary; gateId: string
   }
   return (
     <div className="confirm">
+      <input
+        aria-label={`Items ${visit.visitorName} carries out`}
+        placeholder="Items carried out (optional), e.g. 2 sample cones"
+        maxLength={200}
+        value={items}
+        onChange={(e) => setItems(e.target.value)}
+        style={{ flex: '1 1 240px', width: 'auto' }}
+      />
       <button
         type="button"
         className="danger"
         disabled={busy}
         onClick={async () => {
-          const ok = await run(() => api.visits.checkOut(visit.id, { gateId, clientEventId: eventId.current() }));
-          if (ok) eventId.done();
+          const itemsOut = items.trim() || undefined;
+          const ok = await run(() => api.visits.checkOut(visit.id, { gateId, clientEventId: eventId.current(), itemsOut }));
+          if (ok) {
+            eventId.done();
+            // The gate pass is ready to print.
+            navigate(`/desk/gate-pass/${visit.id}`);
+          }
         }}
       >
         Yes, check out
@@ -188,8 +203,10 @@ export function DeskPage({ section }: { section: DeskSection }) {
   const [gateId, setGateId] = useState(storedGate);
   const [search, setSearch] = useState('');
 
-  const canGate = user?.role === 'guard' || user?.role === 'reception';
-  const canDecide = user?.role === 'reception' || user?.role === 'admin';
+  // Whoever runs the gate checks visitors in and out and decides on requests.
+  const GATE_ROLES = ['guard', 'reception', 'security', 'admin'];
+  const canGate = !!user && GATE_ROLES.includes(user.role);
+  const canDecide = canGate;
 
   useEffect(() => {
     const list = gates.data;

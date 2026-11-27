@@ -13,6 +13,8 @@ import { homeForModules, RequireModule, useModules } from '../auth/RequireModule
 import { RequireRole } from '../auth/RequireRole';
 import { DashboardPage } from '../desk/DashboardPage';
 import { DeskPage } from '../desk/DeskPage';
+import { GatePassPage } from '../desk/GatePassPage';
+import { RegisterPage } from '../desk/RegisterPage';
 import { ApprovalPage } from '../host/ApprovalPage';
 import { DelegateSetting } from '../host/DelegateSetting';
 import { InviteForm } from '../host/InviteForm';
@@ -103,6 +105,8 @@ export function AppRoutes() {
           <Route path="pending" element={<DeskPage key="pending" section="pending" />} />
           <Route path="expected" element={<DeskPage key="expected" section="expected" />} />
           <Route path="inside" element={<DeskPage key="inside" section="inside" />} />
+          <Route path="register" element={<RegisterPage />} />
+          <Route path="gate-pass/:id" element={<GatePassPage />} />
         </Route>
         <Route path="/my" element={<Allow module="visitors" />}>
           <Route index element={<MyVisitsPage />} />

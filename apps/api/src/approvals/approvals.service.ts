@@ -17,7 +17,7 @@ export class ApprovalsService {
   private async loadForDecision(user: AuthUser, id: string) {
     const visit = await this.visits.load(id);
     const allowed =
-      this.visits.isHostOrDelegate(user, visit) || this.visits.isSiteStaff(user, visit, ['reception', 'admin']);
+      this.visits.isHostOrDelegate(user, visit) || this.visits.isSiteStaff(user, visit, ['guard', 'reception', 'security', 'admin']);
     if (!allowed) throw new ApiException(403, 'FORBIDDEN', 'You do not have permission to do this.');
     return visit;
   }

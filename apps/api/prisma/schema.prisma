@@ -279,6 +279,10 @@ model Visit {
   vehicleNo                String?     @map("vehicle_no")
   inviteTokenHash          String?     @unique @map("invite_token_hash")
   receptionCallRequestedAt DateTime?   @map("reception_call_requested_at")
+  /// Set at check-out: the printed exit slip, e.g. GP-2026-00045.
+  gatePassNo               String?     @unique @map("gate_pass_no")
+  /// What the visitor carried out, written by the guard at check-out.
+  itemsOut                 String?     @map("items_out")
   createdAt                DateTime    @default(now()) @map("created_at")
   updatedAt                DateTime    @updatedAt @map("updated_at")
 

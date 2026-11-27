@@ -222,10 +222,13 @@ describe('walk-in', () => {
     await http().post(`/visits/${id}/approve`).set(auth(await tokenFor(ctx, other.id))).send({}).expect(403);
   });
 
-  it('guard cannot approve', async () => {
+  it('the guard at this gate can approve; an employee who is not the host cannot', async () => {
     const w = await world();
     const id = await pendingVisit(w);
-    await http().post(`/visits/${id}/approve`).set(auth(w.token)).send({}).expect(403);
+    const site = (await ctx.prisma.visit.findUniqueOrThrow({ where: { id } })).premisesId;
+    const other = await seedUser(ctx.prisma, site, 'employee');
+    await http().post(`/visits/${id}/approve`).set(auth(await tokenFor(ctx, other.id))).send({}).expect(403);
+    await http().post(`/visits/${id}/approve`).set(auth(w.token)).send({}).expect(200);
   });
 
   it('second approver after decision 409 INVALID_TRANSITION with status', async () => {

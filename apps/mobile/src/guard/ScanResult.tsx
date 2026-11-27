@@ -27,6 +27,7 @@ export function ScanResult({ outcome, onNext, onWalkIn }: Props) {
         <Text style={styles.name}>{data.visitor.name}</Text>
         {data.visitor.company ? <Muted>{data.visitor.company}</Muted> : null}
         <Text style={styles.host}>Host: {data.host}</Text>
+        {data.result === 'CHECKED_OUT' && data.gatePassNo ? <Text style={styles.host}>Gate pass {data.gatePassNo}</Text> : null}
         <Button title="Next scan" onPress={onNext} />
       </View>
     );

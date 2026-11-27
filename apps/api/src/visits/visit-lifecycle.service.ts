@@ -27,7 +27,7 @@ export interface ApplyInput {
   patch?: Partial<
     Pick<
       Visit,
-      'checkedInAt' | 'checkedOutAt' | 'inGateId' | 'outGateId' | 'inviteTokenHash'
+      'checkedInAt' | 'checkedOutAt' | 'inGateId' | 'outGateId' | 'inviteTokenHash' | 'gatePassNo' | 'itemsOut'
     >
   >;
   notify?: OutboxDraft[];

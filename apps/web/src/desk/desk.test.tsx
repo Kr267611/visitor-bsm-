@@ -184,18 +184,48 @@ describe('desk pages', () => {
     expect(await within(main()).findByRole('alert')).toHaveTextContent('The server ran into a problem.');
   });
 
-  it('manual check-out confirms in page, then updates list', async () => {
-    const s = server({ 'POST /visits/in1/check-out': () => json(200, { result: 'CHECKED_OUT' }) });
+  it('manual check-out confirms in page, notes items carried, then opens the gate pass', async () => {
+    const s = server({
+      'POST /visits/in1/check-out': () => json(200, { result: 'CHECKED_OUT', gatePassNo: 'GP-2026-00007' }),
+      'GET /visits/in1/gate-pass': () =>
+        json(200, {
+          visitId: 'in1',
+          gatePassNo: 'GP-2026-00007',
+          visitCode: 'VIS-2026-00001',
+          status: 'CHECKED_OUT',
+          businessName: 'Acme Pvt Ltd',
+          premisesName: 'Head Office',
+          visitorName: 'Visitor in1',
+          company: 'ABC Traders',
+          phone: '+919876543210',
+          photoUrl: null,
+          hostName: 'Anita Singh',
+          purpose: 'Meeting',
+          purposeNote: null,
+          inAt: '2026-11-27T04:45:00.000Z',
+          outAt: '2026-11-27T06:10:00.000Z',
+          inGate: 'Main Gate 1',
+          outGate: 'Main Gate 1',
+          itemsOut: '2 sample cones',
+          checkedOutBy: 'Desk',
+        }),
+    });
     renderApp('/desk/inside', s);
     const user = userEvent.setup();
     await user.click(await within(main()).findByRole('button', { name: 'Check-out' }));
     expect(s.calls.some((c) => c.key === 'POST /visits/in1/check-out')).toBe(false);
+    await user.type(within(main()).getByLabelText('Items Visitor in1 carries out'), '2 sample cones');
     s.handlers['GET /dashboard/live'] = () => json(200, { ...dashboard, inside: [] });
     await user.click(within(main()).getByRole('button', { name: 'Yes, check out' }));
-    await waitFor(() => expect(screen.queryByText('Visitor in1')).not.toBeInTheDocument());
     const call = s.calls.find((c) => c.key === 'POST /visits/in1/check-out')!;
     expect(call.body.gateId).toBe('g1');
+    expect(call.body.itemsOut).toBe('2 sample cones');
     expect(call.body.clientEventId.length).toBeGreaterThanOrEqual(8);
+
+    const slip = await screen.findByRole('article', { name: 'Gate pass GP-2026-00007' });
+    expect(within(slip).getByText('1 h 25 min')).toBeInTheDocument();
+    expect(within(slip).getByText('2 sample cones')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Print' })).toBeInTheDocument();
   });
 
   it('confirm can be cancelled', async () => {
@@ -238,11 +268,11 @@ describe('desk pages', () => {
     await waitFor(() => expect(s.calls.some((c) => c.key === 'POST /visits/pe1/approve')).toBe(true));
   });
 
-  it('security sees lists but no action buttons', async () => {
+  it('security at the gate can check visitors out', async () => {
     signIn(USERS.security);
     renderApp('/desk/inside', server());
     await within(main()).findByText('Visitor in1');
-    expect(within(main()).queryByRole('button')).toBeNull();
+    expect(within(main()).getByRole('button', { name: 'Check-out' })).toBeInTheDocument();
   });
 
   it('search filters by name or code', async () => {

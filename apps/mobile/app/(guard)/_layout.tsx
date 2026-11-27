@@ -10,6 +10,7 @@ export default function GuardLayout() {
     <IconTabs
       tabs={[
         { name: 'index', label: 'Scan pass', icon: 'qr-code-outline' },
+        { name: 'requests', label: 'Requests', icon: 'notifications-outline' },
         { name: 'inside', label: 'Visitors inside', icon: 'people-outline' },
         { name: 'walk-in', label: 'Walk-in entry', icon: 'person-add-outline' },
       ]}

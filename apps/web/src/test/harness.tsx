@@ -14,7 +14,7 @@ export const json = (status: number, body?: unknown) =>
 
 export interface FakeServer {
   web: WebClient;
-  calls: { key: string; body: any; init: RequestInit }[];
+  calls: { key: string; body: any; init: RequestInit; url: URL }[];
   /** Lets a test swap handlers midway. */
   handlers: Handlers;
 }
@@ -26,7 +26,7 @@ export function fakeServer(handlers: Handlers = {}): FakeServer {
     const url = new URL(input);
     const key = `${init.method ?? 'GET'} ${url.pathname}`;
     const body = typeof init.body === 'string' ? JSON.parse(init.body) : init.body;
-    calls.push({ key, body, init });
+    calls.push({ key, body, init, url });
     const handler = handlers[key];
     if (!handler) return json(404, { error: 'NOT_FOUND', message: `No test handler: ${key}` });
     return handler({ body, url, init });

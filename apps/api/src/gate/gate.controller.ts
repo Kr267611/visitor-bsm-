@@ -12,8 +12,10 @@ const scanSchema = z.object({
   gateId: z.string().uuid(),
   mode: z.enum(['IN', 'OUT']),
   clientEventId,
+  itemsOut: z.string().trim().max(200).optional(),
 });
 const manualSchema = z.object({ gateId: z.string().uuid(), clientEventId });
+const checkOutSchema = manualSchema.extend({ itemsOut: z.string().trim().max(200).optional() });
 const otpSchema = z.object({ phone: z.string() });
 const walkInSchema = z.object({
   phone: z.string(),
@@ -29,7 +31,7 @@ const walkInSchema = z.object({
   clientEventId,
 });
 
-@Roles('guard', 'reception')
+@Roles('guard', 'reception', 'security', 'admin')
 @RequireModule('desk')
 @Controller()
 export class GateController {
@@ -53,7 +55,7 @@ export class GateController {
   @Post('visits/:id/check-out')
   @HttpCode(200)
   checkOut(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body() body: unknown) {
-    return this.gate.manual(user, id, 'OUT', parseBody(manualSchema, body));
+    return this.gate.manual(user, id, 'OUT', parseBody(checkOutSchema, body));
   }
 
   @Get('gate/visitors/lookup')

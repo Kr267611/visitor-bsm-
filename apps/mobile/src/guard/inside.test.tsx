@@ -66,15 +66,19 @@ describe('inside list', () => {
     expect(screen.getByText('Visitor b')).toBeTruthy();
   });
 
-  it('manual check-out confirms, then removes the row', async () => {
-    const s = server({ 'POST /visits/a/check-out': () => json(200, { result: 'CHECKED_OUT' }) });
+  it('manual check-out notes items carried, removes the row and shows the gate pass number', async () => {
+    const s = server({ 'POST /visits/a/check-out': () => json(200, { result: 'CHECKED_OUT', gatePassNo: 'GP-2026-00007' }) });
     await renderScreen(<InsideList />, s);
     await fireEvent.press(await screen.findByRole('button', { name: 'Visitor a check-out' }));
     expect(s.calls.some((c) => c.key === 'POST /visits/a/check-out')).toBe(false);
+    await fireEvent.changeText(screen.getByLabelText('Items carried out (optional)'), '2 sample cones');
     s.handlers['GET /dashboard/live'] = () => json(200, board({ inside: [visit('b')] }));
     await fireEvent.press(screen.getByRole('button', { name: 'Yes, check out' }));
-    await waitFor(() => expect(screen.queryByText('Visitor a')).toBeNull());
-    expect(s.calls.find((c) => c.key === 'POST /visits/a/check-out')!.body.gateId).toBe('g1');
+    expect(await screen.findByText('Visitor a checked out. Gate pass GP-2026-00007')).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Visitor a check-out' })).toBeNull());
+    const body = s.calls.find((c) => c.key === 'POST /visits/a/check-out')!.body;
+    expect(body.gateId).toBe('g1');
+    expect(body.itemsOut).toBe('2 sample cones');
   });
 
   it('check-out conflict shows message and refreshes', async () => {

@@ -3,7 +3,7 @@ import { Gate, Prisma } from '@prisma/client';
 import { AuthUser } from '../auth/roles.decorator';
 import { ApiException } from '../common/api-exception';
 import { RECEPTION_DESK, usedRequestId } from '../common/records';
-import { formatIstDate } from '../common/time';
+import { formatIstDate, istYear } from '../common/time';
 import { PassService } from '../passes/pass.service';
 import { TENANT_PRISMA, TenantPrismaClient } from '../tenancy/tenant-prisma';
 import { StorageService } from '../storage/storage.service';
@@ -22,6 +22,8 @@ interface Action {
   user: AuthUser;
   clientEventId: string;
   meta?: object;
+  /** Check-out only: what the visitor carries out. */
+  itemsOut?: string;
 }
 
 @Injectable()
@@ -33,7 +35,7 @@ export class GateService {
     private readonly storage: StorageService,
   ) {}
 
-  async scan(user: AuthUser, input: { qr: string; gateId: string; mode: ScanMode; clientEventId: string }) {
+  async scan(user: AuthUser, input: { qr: string; gateId: string; mode: ScanMode; clientEventId: string; itemsOut?: string }) {
     const gate = await this.requireGate(user, input.gateId);
     const replay = await this.replay(input.clientEventId, user.businessId);
     if (replay) return replay;
@@ -43,7 +45,7 @@ export class GateService {
     if (pass.s !== gate.premisesId) throw new ApiException(422, 'WRONG_SITE', 'This pass is for a different premises.');
 
     const visit = await this.loadVisit(pass.v);
-    const action = { gate, user, clientEventId: input.clientEventId };
+    const action = { gate, user, clientEventId: input.clientEventId, itemsOut: input.itemsOut };
     return input.mode === 'IN' ? this.checkIn(visit, action) : this.checkOut(visit, action);
   }
 
@@ -52,7 +54,7 @@ export class GateService {
     user: AuthUser,
     visitId: string,
     mode: ScanMode,
-    input: { gateId: string; clientEventId: string },
+    input: { gateId: string; clientEventId: string; itemsOut?: string },
   ) {
     const gate = await this.requireGate(user, input.gateId);
     const replay = await this.replay(input.clientEventId, user.businessId);
@@ -62,7 +64,7 @@ export class GateService {
     if (visit.businessId !== user.businessId || !user.premisesIds.includes(visit.premisesId)) {
       throw new ApiException(403, 'FORBIDDEN', 'This visit is not at your premises.');
     }
-    const action = { gate, user, clientEventId: input.clientEventId, meta: { method: 'manual' } };
+    const action = { gate, user, clientEventId: input.clientEventId, meta: { method: 'manual' }, itemsOut: input.itemsOut };
     return mode === 'IN' ? this.checkIn(visit, action) : this.checkOut(visit, action);
   }
 
@@ -107,6 +109,8 @@ export class GateService {
       if (replay) return replay;
       throw new ApiException(409, 'NOT_CHECKED_IN', 'This visitor is not checked in.', { status: visit.status });
     }
+    // Every exit gets a numbered gate pass, printed or kept on record.
+    const gatePassNo = await this.nextGatePassNo();
     try {
       await this.lifecycle.apply({
         visitId: visit.id,
@@ -116,7 +120,7 @@ export class GateService {
         deviceId: action.user.deviceId,
         clientEventId: action.clientEventId,
         meta: action.meta,
-        patch: { checkedOutAt: new Date(), outGateId: action.gate.id },
+        patch: { checkedOutAt: new Date(), outGateId: action.gate.id, gatePassNo, itemsOut: action.itemsOut || null },
       });
     } catch (error) {
       return this.afterConflict(error, visit.id, action.clientEventId, action.user.businessId);
@@ -165,6 +169,12 @@ export class GateService {
     return this.result(event.type === 'CHECK_OUT' ? 'CHECKED_OUT' : 'CHECKED_IN', visit);
   }
 
+  /** For example GP-2026-00045. Numbers lost to a failed check-out are simply skipped. */
+  private async nextGatePassNo(): Promise<string> {
+    const [{ seq }] = await this.prisma.$queryRaw<{ seq: bigint }[]>`SELECT nextval('gate_pass_seq') AS seq`;
+    return `GP-${istYear(new Date())}-${String(seq).padStart(5, '0')}`;
+  }
+
   async requireGate(user: AuthUser, gateId: string): Promise<Gate> {
     const gate = await this.prisma.gate.findUnique({ where: { id: gateId } });
     if (!gate) throw new ApiException(422, 'VALIDATION_FAILED', 'Gate not found.');
@@ -191,6 +201,7 @@ export class GateService {
       },
       host: visit.host?.name ?? RECEPTION_DESK,
       validTo: visit.validTo.toISOString(),
+      gatePassNo: visit.gatePassNo,
     };
   }
 }

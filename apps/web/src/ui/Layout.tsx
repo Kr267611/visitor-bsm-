@@ -137,6 +137,7 @@ function Shell() {
               <MenuLink to="/desk/pending" label="Awaiting approval" count={approvals} urgent={!!data?.needsCall.length} onPick={close} />
               <MenuLink to="/desk/expected" label="Expected" count={data?.expected.length} onPick={close} />
               <MenuLink to="/desk/inside" label="Inside" count={data?.inside.length} onPick={close} />
+              <MenuLink to="/desk/register" label="Gate register" onPick={close} />
             </MenuGroup>
           )}
           {can('visitors') && (

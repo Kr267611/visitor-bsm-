@@ -1,6 +1,6 @@
 import type { Module } from './modules';
 import type { VisitStatus } from './status';
-import type { DashboardStats, ErrorCode, LiveDashboard, Role, StatsPeriod, VisitSummary } from './types';
+import type { DashboardStats, ErrorCode, GatePass, LiveDashboard, Role, StatsPeriod, VisitSummary } from './types';
 
 export interface Tokens {
   accessToken: string;
@@ -46,6 +46,8 @@ export interface ScanRequest {
   gateId: string;
   mode: 'IN' | 'OUT';
   clientEventId: string;
+  /** OUT only: what the visitor carries out, for the gate pass. */
+  itemsOut?: string;
 }
 
 export interface GateResult {
@@ -54,6 +56,8 @@ export interface GateResult {
   visitor: { name: string; company: string | null; photoUrl: string | null };
   host: string;
   validTo: string;
+  /** Set on check-out, e.g. GP-2026-00045. */
+  gatePassNo?: string | null;
 }
 
 export interface WalkInRequest {
@@ -509,7 +513,7 @@ export function createApiClient(options: ApiClientOptions) {
         request<{ id: string; status: VisitStatus }>('POST', `/visits/${id}/reject`, { body: { reason } }),
       checkIn: (id: string, body: { gateId: string; clientEventId: string }) =>
         request<GateResult>('POST', `/visits/${id}/check-in`, { body }),
-      checkOut: (id: string, body: { gateId: string; clientEventId: string }) =>
+      checkOut: (id: string, body: { gateId: string; clientEventId: string; itemsOut?: string }) =>
         request<GateResult>('POST', `/visits/${id}/check-out`, { body }),
     },
     gate: {
@@ -563,6 +567,12 @@ export function createApiClient(options: ApiClientOptions) {
     dashboard: {
       live: () => request<LiveDashboard>('GET', '/dashboard/live'),
       stats: (period: StatsPeriod = 'month') => request<DashboardStats>('GET', `/dashboard/stats?period=${period}`),
+    },
+    gatePasses: {
+      /** Visits that came in between two India dates (YYYY-MM-DD), newest first. */
+      list: (from: string, to: string, q = '') =>
+        request<GatePass[]>('GET', `/gate-passes?${new URLSearchParams({ from, to, ...(q && { q }) })}`),
+      get: (visitId: string) => request<GatePass>('GET', `/visits/${visitId}/gate-pass`),
     },
     admin: {
       users: {
